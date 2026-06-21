@@ -171,10 +171,16 @@
     markDirtySection(control);
   });
 
-  // Selects fire `change` rather than a useful `input` in some browsers.
+  // Selects and file inputs fire `change` rather than a useful `input`.
   document.addEventListener("change", (event) => {
-    if (event.target instanceof HTMLSelectElement) {
-      markDirtySection(event.target);
+    const control = event.target;
+    if (
+      control instanceof HTMLSelectElement ||
+      (control instanceof HTMLInputElement && control.type === "file")
+    ) {
+      control.dataset.dirty = "true";
+      syncField(control);
+      markDirtySection(control);
     }
   });
 

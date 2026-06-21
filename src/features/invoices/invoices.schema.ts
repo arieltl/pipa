@@ -79,7 +79,6 @@ export const itemFormSchema = z
     name: requiredText("Item name", 300),
     value: requiredText("Value", 30),
     source: z.enum(ITEM_SOURCES).default("other"),
-    notes: optionalText(1000),
     /** Currency the value is entered in; carried from the invoice. */
     currency: z.enum(SUPPORTED_CURRENCIES),
   })

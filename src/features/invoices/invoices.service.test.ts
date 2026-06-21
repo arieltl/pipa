@@ -187,7 +187,6 @@ describe("item CRUD and totals", () => {
       name: "Travel",
       value: "120.00",
       source: "expense",
-      notes: undefined,
       currency: "GBP",
     });
     expect(getInvoiceDetail(inv.id)!.total).toBe(12000);
@@ -196,7 +195,6 @@ describe("item CRUD and totals", () => {
       name: "Travel",
       value: "150.00",
       source: "expense",
-      notes: undefined,
       currency: "GBP",
     });
     expect(getInvoiceDetail(inv.id)!.total).toBe(15000);

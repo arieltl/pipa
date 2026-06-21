@@ -3,6 +3,7 @@ import {
   SubmitButton,
   textareaClass,
 } from "../../../web/components/forms.tsx";
+import { Icon } from "../../../web/components/icons.tsx";
 
 export type NfseSectionProps = {
   invoiceId: number;
@@ -58,26 +59,28 @@ export function NfseSection({
           {value}
         </textarea>
 
-        <div class="mt-3 flex flex-wrap items-center justify-end gap-2">
-          <span data-dirty-badge class="mr-auto">Unsaved changes</span>
+        <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <span data-dirty-badge class="sm:col-span-2">Unsaved changes</span>
           <button
             type="button"
-            class="btn btn-ghost btn-sm"
+            class="btn btn-ghost btn-sm w-full sm:col-span-2"
             hx-post={`/invoices/${invoiceId}/nfse/generate`}
             hx-target="#invoice-nfse"
             hx-swap="outerHTML"
             hx-confirm="Replace the current text with a freshly generated version?"
           >
-            {generateLabel}
+            <Icon name="refresh" />
+            <span>{generateLabel}</span>
           </button>
           <button
             type="button"
-            class="btn btn-ghost btn-sm"
+            class="btn btn-ghost btn-sm w-full"
             x-on:click="navigator.clipboard.writeText($refs.nfse.value); copied = true; setTimeout(() => copied = false, 1500)"
           >
+            <Icon name="copy" />
             <span x-text="copied ? 'Copied!' : 'Copy'">Copy</span>
           </button>
-          <SubmitButton label="Save" size="sm" />
+          <SubmitButton label="Save" size="sm" className="w-full" />
         </div>
       </form>
 

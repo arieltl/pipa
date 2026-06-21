@@ -1,19 +1,18 @@
 import type { InvoiceItem } from "../../../db/schema.ts";
 import { formatMoney } from "../../../domain/money.ts";
 import {
-  Field,
   SubmitButton,
   inputClass,
   selectClass,
   type FieldErrors,
 } from "../../../web/components/forms.tsx";
+import { Icon } from "../../../web/components/icons.tsx";
 import { ITEM_SOURCES } from "../invoices.schema.ts";
 
 export type ItemFormValues = {
   name: string;
   value: string;
   source: string;
-  notes: string;
 };
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -49,12 +48,12 @@ export function ItemsSection(props: ItemsSectionProps) {
   return (
     <div id="invoice-items">
       <div class="app-table overflow-x-auto rounded-lg">
-        <table class="table">
+        <table class="table table-sm">
           <thead>
             <tr>
               <th>Item</th>
-              <th>Type</th>
-              <th class="text-right">Value</th>
+              <th class="w-40">Type</th>
+              <th class="w-40 text-right">Value</th>
               {locked ? null : <th class="w-px"></th>}
             </tr>
           </thead>
@@ -101,14 +100,7 @@ export function ItemsSection(props: ItemsSectionProps) {
         </table>
       </div>
 
-      {locked ? null : (
-        <AddItemForm
-          invoiceId={invoiceId}
-          currency={currency}
-          values={props.addValues}
-          errors={props.addErrors}
-        />
-      )}
+      {locked ? null : <AddItemForm invoiceId={invoiceId} currency={currency} values={props.addValues} errors={props.addErrors} />}
     </div>
   );
 }
@@ -118,7 +110,6 @@ function toValues(item: InvoiceItem): ItemFormValues {
     name: item.name,
     value: "",
     source: item.source,
-    notes: item.notes ?? "",
   };
 }
 
@@ -137,9 +128,6 @@ function ItemDisplayRow({
     <tr class="hover">
       <td>
         <div class="font-medium">{item.name}</div>
-        {item.notes ? (
-          <div class="text-xs text-base-content/50">{item.notes}</div>
-        ) : null}
       </td>
       <td>
         <span class="badge badge-ghost badge-sm">
@@ -156,7 +144,8 @@ function ItemDisplayRow({
           hx-target="#invoice-items"
           hx-swap="outerHTML"
         >
-          Edit
+          <Icon name="edit" />
+          <span>Edit</span>
         </button>
         <button
           type="button"
@@ -166,7 +155,8 @@ function ItemDisplayRow({
           hx-swap="outerHTML"
           hx-confirm="Delete this item?"
         >
-          Delete
+          <Icon name="trash" />
+          <span>Delete</span>
         </button>
       </td>
       )}
@@ -189,8 +179,9 @@ function ItemEditRow({
 }) {
   const formId = `edit-item-${itemId}`;
   return (
-    <tr>
-      <td colspan={4} class="bg-base-200/50">
+    <>
+      <tr class="bg-base-200/50">
+        <td class="min-w-80">
         <form
           id={formId}
           hx-post={`/invoices/${invoiceId}/items/${itemId}`}
@@ -198,25 +189,32 @@ function ItemEditRow({
           hx-swap="outerHTML"
           x-data="enhancedForm"
           data-dirty-section
-          class="app-form grid sm:grid-cols-2"
         >
           <input type="hidden" name="currency" value={currency} />
-          <ItemFields values={values} errors={errors} />
-          <div class="sm:col-span-2 flex justify-end gap-2">
-            <button
-              type="button"
-              class="btn btn-ghost btn-sm"
-              hx-get={`/invoices/${invoiceId}/items`}
-              hx-target="#invoice-items"
-              hx-swap="outerHTML"
-            >
-              Cancel
-            </button>
-            <SubmitButton label="Save item" size="sm" />
-          </div>
+          <ItemNameInput formId={formId} values={values} errors={errors} />
         </form>
-      </td>
-    </tr>
+        </td>
+        <td>
+          <ItemSourceSelect formId={formId} values={values} errors={errors} />
+        </td>
+        <td>
+          <ItemValueInput formId={formId} values={values} errors={errors} />
+        </td>
+        <td class="whitespace-nowrap text-right">
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs"
+            hx-get={`/invoices/${invoiceId}/items`}
+            hx-target="#invoice-items"
+            hx-swap="outerHTML"
+          >
+            <span>Cancel</span>
+          </button>
+          <SubmitButton label="Save" size="sm" formId={formId} />
+        </td>
+      </tr>
+      <ErrorRow errors={errors} />
+    </>
   );
 }
 
@@ -231,86 +229,135 @@ function AddItemForm({
   values: ItemFormValues;
   errors?: FieldErrors;
 }) {
+  const formId = "add-invoice-item";
   return (
-    <div class="app-card mt-4 rounded-lg p-4">
-      <h3 class="mb-3 text-sm font-semibold text-base-content/70">Add item</h3>
+    <div class="mt-3 overflow-x-auto rounded-lg border border-dashed border-base-300/70 bg-base-200/20 p-2">
       <form
+        id={formId}
         hx-post={`/invoices/${invoiceId}/items`}
         hx-target="#invoice-items"
         hx-swap="outerHTML"
         x-data="enhancedForm"
         data-dirty-section
-        class="app-form grid sm:grid-cols-2"
+        class="grid min-w-[44rem] grid-cols-[minmax(16rem,1fr)_10rem_10rem_auto] items-start gap-2"
       >
         <input type="hidden" name="currency" value={currency} />
-        <ItemFields values={values} errors={errors} />
-        <div class="sm:col-span-2 flex justify-end">
-          <SubmitButton label="Add item" size="sm" />
-        </div>
+        <ItemNameInput formId={formId} values={values} errors={errors} placeholder="New item description" />
+        <ItemSourceSelect formId={formId} values={values} errors={errors} />
+        <ItemValueInput formId={formId} values={values} errors={errors} />
+        <SubmitButton label="Add" size="sm" />
       </form>
+      <ErrorList errors={errors} />
     </div>
   );
 }
 
-/** Shared name/value/source/notes inputs for add + edit forms. */
-function ItemFields({
+function ItemNameInput({
+  formId,
+  values,
+  errors = {},
+  placeholder = "Item description",
+}: {
+  formId: string;
+  values: ItemFormValues;
+  errors?: FieldErrors;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      form={formId}
+      name="name"
+      type="text"
+      value={values.name}
+      autocomplete="off"
+      class={`${inputClass(errors.name)} input-sm`}
+      placeholder={placeholder}
+      required
+      maxlength={300}
+      data-format="trim"
+      aria-label="Item description"
+    />
+  );
+}
+
+function ItemValueInput({
+  formId,
   values,
   errors = {},
 }: {
+  formId: string;
   values: ItemFormValues;
   errors?: FieldErrors;
 }) {
   return (
-    <>
-      <Field label="Description" name="name" required error={errors.name}>
-        <input
-          name="name"
-          type="text"
-          value={values.name}
-          autocomplete="off"
-          class={inputClass(errors.name)}
-          required
-          maxlength={300}
-          data-format="trim"
-        />
-      </Field>
+    <input
+      form={formId}
+      name="value"
+      type="text"
+      inputmode="decimal"
+      value={values.value}
+      placeholder="120.00"
+      class={`${inputClass(errors.value)} input-sm text-right tabular-nums`}
+      required
+      maxlength={30}
+      title="Enter a valid amount, e.g. 120.00."
+      data-format="money"
+      aria-label="Item value"
+    />
+  );
+}
 
-      <Field label="Value" name="value" required error={errors.value}>
-        <input
-          name="value"
-          type="text"
-          inputmode="decimal"
-          value={values.value}
-          placeholder="120.00"
-          class={inputClass(errors.value)}
-          required
-          maxlength={30}
-          title="Enter a valid amount, e.g. 120.00."
-          data-format="money"
-        />
-      </Field>
+function ItemSourceSelect({
+  formId,
+  values,
+  errors = {},
+}: {
+  formId: string;
+  values: ItemFormValues;
+  errors?: FieldErrors;
+}) {
+  return (
+    <select
+      form={formId}
+      name="source"
+      class={`${selectClass(errors.source)} select-sm`}
+      aria-label="Item type"
+    >
+      {ITEM_SOURCES.map((src) => (
+        <option value={src} selected={values.source === src}>
+          {SOURCE_LABEL[src]}
+        </option>
+      ))}
+    </select>
+  );
+}
 
-      <Field label="Type" name="source" error={errors.source}>
-        <select name="source" class={selectClass(errors.source)}>
-          {ITEM_SOURCES.map((src) => (
-            <option value={src} selected={values.source === src}>
-              {SOURCE_LABEL[src]}
-            </option>
-          ))}
-        </select>
-      </Field>
+function ErrorRow({ errors = {} }: { errors?: FieldErrors }) {
+  const messages = errorMessages(errors);
+  if (messages.length === 0) return null;
+  return (
+    <tr class="bg-base-200/50">
+      <td colspan={4}>
+        <ErrorList errors={errors} />
+      </td>
+    </tr>
+  );
+}
 
-      <Field label="Notes" name="notes" error={errors.notes}>
-        <input
-          name="notes"
-          type="text"
-          value={values.notes}
-          autocomplete="off"
-          class={inputClass(errors.notes)}
-          maxlength={1000}
-          data-format="trim"
-        />
-      </Field>
-    </>
+function ErrorList({ errors = {} }: { errors?: FieldErrors }) {
+  const messages = errorMessages(errors);
+  if (messages.length === 0) return null;
+  return (
+    <div class="flex flex-wrap gap-2 px-1 py-2">
+      {messages.map((message) => (
+        <span class="app-error text-xs">{message}</span>
+      ))}
+    </div>
+  );
+}
+
+function errorMessages(errors: FieldErrors): string[] {
+  return Object.values(errors).filter((message): message is string =>
+    Boolean(message),
   );
 }

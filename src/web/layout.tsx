@@ -75,12 +75,12 @@ export function Layout({
               </a>
             </header>
 
-            <main class="page-enter mx-auto w-full max-w-5xl flex-1 px-4 py-7 sm:py-9">
+            <main class="page-enter mx-auto w-full max-w-7xl flex-1 px-4 py-7 sm:py-9">
               {children}
             </main>
 
             <footer class="border-t border-base-300/70 bg-base-100/45">
-              <div class="mx-auto max-w-5xl px-4 py-3 text-xs text-base-content/60">
+              <div class="mx-auto max-w-7xl px-4 py-3 text-xs text-base-content/60">
                 Self-hosted invoice generator
               </div>
             </footer>

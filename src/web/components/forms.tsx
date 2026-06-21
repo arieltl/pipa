@@ -1,4 +1,5 @@
 import type { Child } from "hono/jsx";
+import { Icon, type IconName } from "./icons.tsx";
 
 /** First error message per field, as produced from a Zod flattened error. */
 export type FieldErrors = Record<string, string | undefined>;
@@ -78,14 +79,23 @@ export function Alert({
 export function SubmitButton({
   label,
   size,
+  formId,
+  icon = "check",
+  className = "",
 }: {
   label: string;
   size?: "sm";
+  formId?: string;
+  icon?: IconName;
+  className?: string;
 }) {
   const sizeClass = size === "sm" ? "btn-sm min-w-24" : "min-w-32";
   return (
-    <button type="submit" class={`btn btn-primary ${sizeClass}`}>
-      <span class="submit-label">{label}</span>
+    <button type="submit" form={formId} class={`btn btn-primary ${sizeClass} ${className}`}>
+      <span class="submit-label inline-flex items-center justify-center gap-1.5">
+        <Icon name={icon} />
+        <span>{label}</span>
+      </span>
       <span class="htmx-indicator loading loading-spinner loading-xs"></span>
     </button>
   );

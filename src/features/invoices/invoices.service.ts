@@ -91,6 +91,8 @@ export type InvoiceDetail = {
   items: InvoiceItem[];
   total: number;
   notaFiscal: NotaFiscalLink | null;
+  notaFiscalPdf: FileRecord | null;
+  notaFiscalXml: FileRecord | null;
   archivedPdf: FileRecord | null;
 };
 
@@ -188,13 +190,18 @@ export function getInvoiceDetail(id: number): InvoiceDetail | null {
     invoice.archivedPdfFileId != null
       ? repo.getFileById(invoice.archivedPdfFileId)
       : null;
+  const notaFiscal = repo.getNotaFiscalLink(id);
   return {
     invoice,
     client,
     issuer: loadIssuerSettings(),
     items,
     total: sum(items),
-    notaFiscal: repo.getNotaFiscalLink(id),
+    notaFiscal,
+    notaFiscalPdf:
+      notaFiscal?.pdfFileId != null ? repo.getFileById(notaFiscal.pdfFileId) : null,
+    notaFiscalXml:
+      notaFiscal?.xmlFileId != null ? repo.getFileById(notaFiscal.xmlFileId) : null,
     archivedPdf,
   };
 }
@@ -316,7 +323,7 @@ function toItemColumns(input: ItemFormInput): repo.ItemInput {
     name: input.name,
     value,
     source: input.source,
-    notes: input.notes ?? null,
+    notes: null,
   };
 }
 
@@ -547,6 +554,16 @@ export function linkNotaFiscal(
     xmlFileId,
   });
 
+  const updated = getInvoiceDetail(detail.invoice.id);
+  if (!updated) throw new Error(`Invoice ${detail.invoice.id} vanished`);
+  return updated;
+}
+
+export function removeNotaFiscalAttachment(
+  detail: InvoiceDetail,
+  attachment: "pdf" | "xml",
+): InvoiceDetail {
+  repo.clearNotaFiscalAttachment(detail.invoice.id, attachment);
   const updated = getInvoiceDetail(detail.invoice.id);
   if (!updated) throw new Error(`Invoice ${detail.invoice.id} vanished`);
   return updated;

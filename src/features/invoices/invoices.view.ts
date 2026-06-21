@@ -48,7 +48,7 @@ function parseItemDrafts(raw: FormBody[string] | undefined): ItemDraft[] {
 }
 
 export function emptyItemFormValues(): ItemFormValues {
-  return { name: "", value: "", source: "other", notes: "" };
+  return { name: "", value: "", source: "other" };
 }
 
 export function itemFormValuesFromBody(body: FormBody): ItemFormValues {
@@ -56,7 +56,6 @@ export function itemFormValuesFromBody(body: FormBody): ItemFormValues {
     name: formString(body.name),
     value: formString(body.value),
     source: formString(body.source) || "other",
-    notes: formString(body.notes),
   };
 }
 
@@ -68,6 +67,5 @@ export function itemFormValuesFromRow(
     name: item.name,
     value: minorToDecimalString(item.value, currency),
     source: item.source,
-    notes: str(item.notes),
   };
 }

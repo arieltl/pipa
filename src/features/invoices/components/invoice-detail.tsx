@@ -1,4 +1,4 @@
-import type { Invoice } from "../../../db/schema.ts";
+import type { FileRecord, Invoice } from "../../../db/schema.ts";
 import {
   StatusBadge,
   type InvoiceStatus,
@@ -8,11 +8,12 @@ import {
   manualStatusOptions,
 } from "../../../domain/invoice-status.ts";
 import { textareaClass } from "../../../web/components/forms.tsx";
+import { Icon } from "../../../web/components/icons.tsx";
 import { Caption, ClientBlock, IssuerBlock } from "./invoice-parties.tsx";
 import { ItemsSection } from "./items-section.tsx";
 import { NfseSection } from "./nfse-section.tsx";
 import { NfseLinkSection } from "./nfse-link-section.tsx";
-import { PdfSection } from "./pdf-section.tsx";
+import { PdfQuickAction, PdfSection } from "./pdf-section.tsx";
 import { emptyItemFormValues } from "../invoices.view.ts";
 import type { InvoiceDetail } from "../invoices.service.ts";
 
@@ -26,6 +27,23 @@ const STEPS: { key: InvoiceStatus; label: string }[] = [
   { key: "paid", label: "Paid" },
 ];
 
+export function InvoiceHeaderStatus({
+  status,
+  oob,
+}: {
+  status: InvoiceStatus;
+  oob?: boolean;
+}) {
+  return (
+    <span
+      id="invoice-header-status"
+      hx-swap-oob={oob ? "true" : undefined}
+    >
+      <StatusBadge status={status} />
+    </span>
+  );
+}
+
 /**
  * Workflow header (`#invoice-workflow`): the lifecycle stepper plus the actions
  * available in the current state. Issuing/reverting reload the page (they flip
@@ -33,29 +51,35 @@ const STEPS: { key: InvoiceStatus; label: string }[] = [
  */
 export function WorkflowHeader({
   invoice,
+  archivedPdf,
   error,
 }: {
   invoice: Invoice;
+  archivedPdf: FileRecord | null;
   error?: string;
 }) {
   const status = invoice.status as InvoiceStatus;
   const draft = status === "draft";
   const id = invoice.id;
   const options = manualStatusOptions(status);
+  const actionsClass =
+    options.length > 0
+      ? "grid w-full grid-cols-1 gap-2 sm:grid-cols-3"
+      : "grid w-full grid-cols-2 gap-2";
 
   return (
     <div
       id="invoice-workflow"
-      class="app-card lift-enter sticky top-0 z-10 rounded-xl p-4"
+      class="app-card lift-enter relative z-40 rounded-lg p-4"
     >
-      <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div class="grid gap-3">
         <Stepper status={status} />
 
-        <div class="ml-auto flex flex-wrap items-center gap-2">
+        <div class={actionsClass}>
           {options.length > 0 ? (
             <select
               name="status"
-              class="select select-bordered select-sm"
+              class="select select-bordered select-sm w-full"
               hx-post={`/invoices/${id}/status`}
               hx-trigger="change"
               hx-target="#invoice-workflow"
@@ -73,18 +97,19 @@ export function WorkflowHeader({
           {draft ? (
             <button
               type="button"
-              class="btn btn-primary btn-sm"
+              class="btn btn-primary btn-sm w-full"
               hx-post={`/invoices/${id}/issue`}
               hx-target="#invoice-workflow"
               hx-swap="outerHTML"
               hx-confirm="Issue this invoice? Its PDF is archived and the document is locked for editing."
             >
-              Issue invoice
+              <Icon name="send" />
+              <span>Issue</span>
             </button>
           ) : (
             <button
               type="button"
-              class="btn btn-ghost btn-sm"
+              class="btn btn-ghost btn-sm w-full"
               hx-post={`/invoices/${id}/revert`}
               hx-target="#invoice-workflow"
               hx-swap="outerHTML"
@@ -94,16 +119,12 @@ export function WorkflowHeader({
                   : `This invoice is ${status}. Revert to draft to edit it? The archived PDF is kept.`
               }
             >
-              Revert to draft
+              <Icon name="undo" />
+              <span>Revert to draft</span>
             </button>
           )}
 
-          <a
-            href={`/invoices/${id}/pdf`}
-            class={`btn btn-sm ${draft ? "btn-ghost" : "btn-primary"}`}
-          >
-            Download PDF
-          </a>
+          <PdfQuickAction invoice={invoice} archivedPdf={archivedPdf} />
         </div>
       </div>
 
@@ -183,104 +204,101 @@ export function InvoiceDetailBody({
   const editable = isDocumentEditable(invoice.status);
 
   return (
-    <div class="mx-auto grid max-w-3xl gap-6">
-      <WorkflowHeader invoice={invoice} />
-
-      {/* The invoice document — mirrors the composer's layout. */}
-      <div class="app-card overflow-hidden rounded-xl">
-        <div class="grid gap-6 border-b border-base-300/60 bg-base-200/25 p-6 sm:grid-cols-2">
-          <IssuerBlock issuer={issuer} />
-          <div class="sm:text-right">
-            <div class="flex items-center gap-2 sm:justify-end">
-              <span class="text-lg font-semibold tracking-tight">Invoice</span>
-              <StatusBadge status={invoice.status as InvoiceStatus} />
+    <div class="mx-auto max-w-7xl">
+      <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <main class="min-w-0">
+          <div class="app-card overflow-hidden rounded-xl">
+            <div class="grid gap-5 border-b border-base-300/60 bg-base-200/25 p-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+              <IssuerBlock issuer={issuer} />
+              <div class="lg:text-right">
+                <div class="flex items-center gap-2 lg:justify-end">
+                  <span class="text-lg font-semibold tracking-tight">Invoice</span>
+                  <InvoiceHeaderStatus status={invoice.status as InvoiceStatus} />
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-1">
+                  <DocMeta label="Number">
+                    <span class="font-mono">{invoice.number}</span>
+                  </DocMeta>
+                  <DocMeta label="Date">
+                    <span class="tabular-nums">{invoice.invoiceDate}</span>
+                  </DocMeta>
+                </div>
+              </div>
             </div>
-            <div class="mt-4 grid gap-3">
-              <DocMeta label="Number">
-                <span class="font-mono">{invoice.number}</span>
-              </DocMeta>
-              <DocMeta label="Date">
-                <span class="tabular-nums">{invoice.invoiceDate}</span>
-              </DocMeta>
+
+            <div class="grid gap-5 border-b border-base-300/60 p-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+              <ClientBlock client={client} />
+              <div class="lg:text-right">
+                <Caption>Currency</Caption>
+                <div class="mt-1 font-medium">{invoice.currency}</div>
+              </div>
+            </div>
+
+            <div class="p-4">
+              <div class="mb-3 flex items-center justify-between">
+                <Caption>Line items</Caption>
+                {editable ? null : (
+                  <span class="text-xs text-base-content/45">
+                    Locked — revert to draft to edit
+                  </span>
+                )}
+              </div>
+              <ItemsSection
+                invoiceId={invoice.id}
+                currency={invoice.currency}
+                items={items}
+                total={total}
+                locked={!editable}
+                addValues={emptyItemFormValues()}
+              />
+            </div>
+
+            <div class="border-t border-base-300/60 bg-base-200/25 p-4">
+              <NotesEditor invoiceId={invoice.id} notes={invoice.notes ?? ""} />
             </div>
           </div>
-        </div>
 
-        <div class="grid gap-6 border-b border-base-300/60 p-6 sm:grid-cols-2">
-          <ClientBlock client={client} />
-          <div class="sm:text-right">
-            <Caption>Currency</Caption>
-            <div class="mt-1 font-medium">{invoice.currency}</div>
-          </div>
-        </div>
+          <section class="mt-5">
+            <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-base-content/55">
+              Invoice PDF
+            </h2>
+            <PdfSection
+              invoice={invoice}
+              archivedPdf={archivedPdf}
+              filename={pdfFilename}
+            />
+          </section>
+        </main>
 
-        <div class="p-6">
-          <div class="mb-3 flex items-center justify-between">
-            <Caption>Line items</Caption>
-            {editable ? null : (
-              <span class="text-xs text-base-content/45">
-                Locked — revert to draft to edit
-              </span>
-            )}
-          </div>
-          <ItemsSection
-            invoiceId={invoice.id}
-            currency={invoice.currency}
-            items={items}
-            total={total}
-            locked={!editable}
-            addValues={emptyItemFormValues()}
-          />
-        </div>
+        <aside class="grid gap-4 self-start xl:sticky xl:top-6">
+          <WorkflowHeader invoice={invoice} archivedPdf={archivedPdf} />
 
-        <div class="border-t border-base-300/60 bg-base-200/25 p-6">
-          <NotesEditor invoiceId={invoice.id} notes={invoice.notes ?? ""} />
-        </div>
+          <section class="app-card rounded-lg p-5">
+            <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/55">
+              NFS-e description
+            </h2>
+            <NfseSection
+              invoiceId={invoice.id}
+              value={nfse.value}
+              hasTemplate={Boolean(client.defaultNfseDescriptionTemplate)}
+              generated={nfse.autofilled}
+            />
+          </section>
+
+          <section>
+            <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-base-content/55">
+              NFS-e link
+            </h2>
+            <NfseLinkSection
+              invoiceId={invoice.id}
+              link={notaFiscal}
+              pdfFile={detail.notaFiscalPdf}
+              xmlFile={detail.notaFiscalXml}
+              offerMarkSent={invoice.status === "issued" && notaFiscal === null}
+            />
+          </section>
+        </aside>
       </div>
-
-      {/* Operations: produce the PDF, then the nota fiscal workflow. */}
-      <section>
-        <h2 class="mb-3 text-lg font-semibold">Invoice PDF</h2>
-        <PdfSection
-          invoice={invoice}
-          archivedPdf={archivedPdf}
-          filename={pdfFilename}
-        />
-      </section>
-
-      <section class="grid gap-4">
-        <h2 class="text-lg font-semibold">Nota fiscal</h2>
-
-        <div class="app-card rounded-lg p-5">
-          <h3 class="mb-3 text-sm font-semibold text-base-content/70">
-            1 · Description
-          </h3>
-          <p class="mb-3 text-sm text-base-content/55">
-            Generate and copy this into the city NFS-e portal.
-          </p>
-          <NfseSection
-            invoiceId={invoice.id}
-            value={nfse.value}
-            hasTemplate={Boolean(client.defaultNfseDescriptionTemplate)}
-            generated={nfse.autofilled}
-          />
-        </div>
-
-        <div class="app-card rounded-lg p-5">
-          <h3 class="mb-3 text-sm font-semibold text-base-content/70">
-            2 · Link the issued NFS-e
-          </h3>
-          <p class="mb-3 text-sm text-base-content/55">
-            After issuing it in the portal, record the number/code and attach
-            the PDF/XML.
-          </p>
-          <NfseLinkSection
-            invoiceId={invoice.id}
-            link={notaFiscal}
-            offerMarkSent={invoice.status === "issued" && notaFiscal === null}
-          />
-        </div>
-      </section>
     </div>
   );
 }

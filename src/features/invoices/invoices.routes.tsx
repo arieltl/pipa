@@ -12,7 +12,11 @@ import { ItemsSection } from "./components/items-section.tsx";
 import { NfseSection } from "./components/nfse-section.tsx";
 import { NfseLinkSection } from "./components/nfse-link-section.tsx";
 import { PdfSection } from "./components/pdf-section.tsx";
-import { NotesEditor, WorkflowHeader } from "./components/invoice-detail.tsx";
+import {
+  InvoiceHeaderStatus,
+  NotesEditor,
+  WorkflowHeader,
+} from "./components/invoice-detail.tsx";
 import {
   InvoiceDetailPage,
   InvoicesListPage,
@@ -25,7 +29,10 @@ import {
   notesSchema,
   statusSchema,
 } from "./invoices.schema.ts";
-import { isDocumentEditable } from "../../domain/invoice-status.ts";
+import {
+  isDocumentEditable,
+  type InvoiceStatus,
+} from "../../domain/invoice-status.ts";
 import {
   addItem,
   archiveInvoicePdf,
@@ -49,6 +56,7 @@ import {
   markSent,
   pdfFilename,
   renderInvoicePdf,
+  removeNotaFiscalAttachment,
   revertToDraft,
   saveNfseDescription,
   saveNotes,
@@ -142,19 +150,29 @@ invoicesRoutes.post("/:id/status", async (c) => {
   if (!parsed.success) {
     c.status(422);
     return c.html(
-      <WorkflowHeader invoice={detail.invoice} error="Invalid status." />,
+      <WorkflowHeader
+        invoice={detail.invoice}
+        archivedPdf={detail.archivedPdf}
+        error="Invalid status."
+      />,
     );
   }
 
   try {
     const updated = changeStatus(detail.invoice.id, parsed.data.status);
-    return c.html(<WorkflowHeader invoice={updated} />);
+    return c.html(
+      <>
+        <WorkflowHeader invoice={updated} archivedPdf={detail.archivedPdf} />
+        <InvoiceHeaderStatus status={updated.status as InvoiceStatus} oob />
+      </>,
+    );
   } catch (err) {
     if (err instanceof InvalidStatusTransitionError) {
       c.status(422);
       return c.html(
         <WorkflowHeader
           invoice={detail.invoice}
+          archivedPdf={detail.archivedPdf}
           error={`Can't move from ${err.from} to ${err.to}.`}
         />,
       );
@@ -179,6 +197,7 @@ invoicesRoutes.post("/:id/issue", async (c) => {
       return c.html(
         <WorkflowHeader
           invoice={detail.invoice}
+          archivedPdf={detail.archivedPdf}
           error="Add at least one item before issuing."
         />,
       );
@@ -188,6 +207,7 @@ invoicesRoutes.post("/:id/issue", async (c) => {
       return c.html(
         <WorkflowHeader
           invoice={detail.invoice}
+          archivedPdf={detail.archivedPdf}
           error="This invoice can no longer be issued."
         />,
       );
@@ -211,6 +231,7 @@ invoicesRoutes.post("/:id/revert", (c) => {
       return c.html(
         <WorkflowHeader
           invoice={detail.invoice}
+          archivedPdf={detail.archivedPdf}
           error="This invoice is already a draft."
         />,
       );
@@ -305,6 +326,16 @@ invoicesRoutes.post("/:id/archive", async (c) => {
   );
 });
 
+invoicesRoutes.post("/:id/pdf/archive-download", async (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+
+  const archived = await archiveInvoicePdf(detail);
+  c.header("Content-Type", archived.mimeType ?? "application/pdf");
+  c.header("Content-Disposition", contentDisposition(pdfFilename(detail)));
+  return c.body(Bun.file(absolutePath(archived)).stream());
+});
+
 invoicesRoutes.post("/:id/nfse-link", async (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
@@ -321,15 +352,21 @@ invoicesRoutes.post("/:id/nfse-link", async (c) => {
       <NfseLinkSection
         invoiceId={detail.invoice.id}
         link={detail.notaFiscal}
+        pdfFile={detail.notaFiscalPdf}
+        xmlFile={detail.notaFiscalXml}
         errors={fieldErrorsFromZod(parsed.error)}
         offerMarkSent={offerMarkSent}
       />,
     );
   }
 
-  const updated = linkNotaFiscal(detail, parsed.data, {
+  const uploads = {
     pdf: await uploadFrom(body.pdf),
     xml: await uploadFrom(body.xml),
+  };
+  const updated = linkNotaFiscal(detail, parsed.data, {
+    pdf: uploads.pdf,
+    xml: uploads.xml,
   });
 
   // Advancing to "sent" changes the workflow header too, so reload the page.
@@ -340,7 +377,36 @@ invoicesRoutes.post("/:id/nfse-link", async (c) => {
   }
 
   return c.html(
-    <NfseLinkSection invoiceId={updated.invoice.id} link={updated.notaFiscal} saved />,
+    <NfseLinkSection
+      invoiceId={updated.invoice.id}
+      link={updated.notaFiscal}
+      pdfFile={updated.notaFiscalPdf}
+      xmlFile={updated.notaFiscalXml}
+      saved
+      uploadedPdf={Boolean(uploads.pdf)}
+      uploadedXml={Boolean(uploads.xml)}
+    />,
+  );
+});
+
+invoicesRoutes.delete("/:id/nfse-link/:attachment", (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+
+  const attachment = c.req.param("attachment");
+  if (attachment !== "pdf" && attachment !== "xml") return c.notFound();
+
+  const updated = removeNotaFiscalAttachment(detail, attachment);
+  return c.html(
+    <NfseLinkSection
+      invoiceId={updated.invoice.id}
+      link={updated.notaFiscal}
+      pdfFile={updated.notaFiscalPdf}
+      xmlFile={updated.notaFiscalXml}
+      saved
+      removedPdf={attachment === "pdf"}
+      removedXml={attachment === "xml"}
+    />,
   );
 });
 

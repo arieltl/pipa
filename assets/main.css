@@ -384,6 +384,24 @@
   .htmx-request .submit-label {
     opacity: 0.58;
   }
+
+  .btn {
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .btn svg {
+    pointer-events: none;
+  }
+
+  .menu :where(li > a),
+  .menu :where(li > form > button) {
+    align-items: center;
+    gap: 0.5rem;
+  }
 }
 
 @keyframes page-enter {

@@ -255,8 +255,8 @@ export type NotaFiscalLinkInput = {
   publicUrl: string | null;
   notes: string | null;
   /** undefined leaves the existing attachment untouched; a number replaces it. */
-  pdfFileId?: number;
-  xmlFileId?: number;
+  pdfFileId?: number | null;
+  xmlFileId?: number | null;
 };
 
 /** Create or update the single nota fiscal link for an invoice (spec §16). */
@@ -297,6 +297,23 @@ export function upsertNotaFiscalLink(
       createdAt: now,
       updatedAt: now,
     })
+    .returning()
+    .get();
+}
+
+export function clearNotaFiscalAttachment(
+  invoiceId: number,
+  attachment: "pdf" | "xml",
+): NotaFiscalLink | null {
+  const existing = getNotaFiscalLink(invoiceId);
+  if (!existing) return null;
+  return db
+    .update(notaFiscalLinks)
+    .set({
+      [attachment === "pdf" ? "pdfFileId" : "xmlFileId"]: null,
+      updatedAt: nowIso(),
+    })
+    .where(eq(notaFiscalLinks.id, existing.id))
     .returning()
     .get();
 }
