@@ -51,7 +51,7 @@ export function ClientWorkspacePage({
               Client settings
             </a>
             <a
-              href={`/invoices/new?clientId=${client.id}`}
+              href={`/clients/${client.id}/invoices/new`}
               class="btn btn-primary btn-sm"
             >
               New invoice

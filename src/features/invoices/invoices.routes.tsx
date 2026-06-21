@@ -4,11 +4,10 @@ import {
   getDefaultClient,
   listClients,
 } from "../clients/clients.service.ts";
-import { todayDate } from "../../domain/dates.ts";
 import { fieldErrorsFromZod } from "../../web/validation.ts";
-import type { FieldErrors } from "../../web/components/forms.tsx";
-import type { FormBody } from "../../web/form-values.ts";
-import { InvoiceForm } from "./components/invoice-form.tsx";
+import { Alert, type FieldErrors } from "../../web/components/forms.tsx";
+import { formString, type FormBody } from "../../web/form-values.ts";
+import { InvoiceComposer } from "./components/invoice-composer.tsx";
 import { ItemsSection } from "./components/items-section.tsx";
 import { NfseSection } from "./components/nfse-section.tsx";
 import { NfseLinkSection } from "./components/nfse-link-section.tsx";
@@ -17,7 +16,7 @@ import { StatusControl } from "./components/invoice-detail.tsx";
 import {
   InvoiceDetailPage,
   InvoicesListPage,
-  NewInvoicePage,
+  PickClientPage,
 } from "./invoices.pages.tsx";
 import {
   createInvoiceSchema,
@@ -29,8 +28,8 @@ import {
   addItem,
   archiveInvoicePdf,
   ClientNotFoundError,
-  clientSeed,
-  clientSeedMap,
+  clientInvoiceStats,
+  composerContext,
   createInvoice,
   deleteItem,
   generateNfseDescription,
@@ -50,7 +49,6 @@ import {
 } from "./invoices.service.ts";
 import { absolutePath } from "../files/files.service.ts";
 import {
-  emptyInvoiceFormValues,
   emptyItemFormValues,
   invoiceFormValuesFromBody,
   itemFormValuesFromBody,
@@ -63,37 +61,17 @@ invoicesRoutes.get("/", (c) =>
   c.render(<InvoicesListPage invoices={listInvoices()} />, { title: "Invoices" }),
 );
 
-invoicesRoutes.get("/new", (c) => {
-  const clients = listClients();
-  const invoiceDate = todayDate();
-
-  const requested = Number(c.req.query("clientId"));
-  const selected =
-    (Number.isInteger(requested) && requested > 0
-      ? getClientById(requested)
-      : null) ??
-    getDefaultClient() ??
-    clients[0] ??
-    null;
-
-  const seed = selected ? clientSeed(selected, invoiceDate) : null;
-  const values = {
-    ...emptyInvoiceFormValues(),
-    clientId: selected ? String(selected.id) : "",
-    invoiceDate,
-    currency: seed?.currency ?? "GBP",
-    items: seed?.fixedMonthly ? [seed.fixedMonthly] : [],
-  };
-
-  return c.render(
-    <NewInvoicePage
-      values={values}
-      clients={clients}
-      seedMap={clientSeedMap(clients, invoiceDate)}
+// Quick invoice (step one): choose the client, then jump into its composer.
+invoicesRoutes.get("/new", (c) =>
+  c.render(
+    <PickClientPage
+      clients={listClients()}
+      stats={clientInvoiceStats()}
+      defaultClientId={getDefaultClient()?.id ?? null}
     />,
     { title: "New invoice" },
-  );
-});
+  ),
+);
 
 invoicesRoutes.post("/", async (c) => {
   const body = (await c.req.parseBody()) as FormBody;
@@ -432,12 +410,20 @@ function renderInvoiceFormError(
   errors: FieldErrors,
 ) {
   c.status(422);
-  const clients = listClients();
+  const id = Number(formString(body.clientId));
+  const client =
+    Number.isInteger(id) && id > 0 ? getClientById(id) : null;
+  if (!client) {
+    return c.html(<Alert kind="error" message="Select a client first." />);
+  }
+  const ctx = composerContext(client);
   return c.html(
-    <InvoiceForm
+    <InvoiceComposer
+      client={client}
+      issuer={ctx.issuer}
       values={invoiceFormValuesFromBody(body)}
-      clients={clients}
-      seedMap={clientSeedMap(clients, todayDate())}
+      currencyDefault={ctx.currencyDefault}
+      hasProfile={ctx.hasProfile}
       errors={errors}
     />,
   );

@@ -113,18 +113,12 @@
       },
     }));
 
-    // Create-invoice form: client-aware currency + editable line items before
-    // the invoice (and its number) exists. `config` carries initial values and
-    // a per-client seed map { clientId: { currency, fixedMonthly } }.
-    window.Alpine.data("invoiceCreate", (config) => ({
-      clientId: config.clientId || "",
+    // Invoice composer: editable line items + a live total before the invoice
+    // exists. The client is fixed (chosen before this page), so there is no
+    // client switching here. `config` carries the initial currency and items.
+    window.Alpine.data("invoiceCompose", (config) => ({
       currency: config.currency || "GBP",
       items: Array.isArray(config.items) ? config.items : [],
-      seeds: config.seeds || {},
-
-      get currencyDefault() {
-        return this.seeds[this.clientId]?.currency || "";
-      },
 
       get total() {
         return this.items.reduce((acc, item) => {
@@ -135,15 +129,6 @@
 
       get formattedTotal() {
         return `${this.currency} ${this.total.toFixed(2)}`;
-      },
-
-      onClientChange() {
-        const seed = this.seeds[this.clientId];
-        if (!seed) return;
-        this.currency = seed.currency;
-        // Re-seed the fixed monthly row, keeping any user-added rows.
-        const extras = this.items.filter((it) => it.source !== "fixed_monthly");
-        this.items = seed.fixedMonthly ? [seed.fixedMonthly, ...extras] : extras;
       },
 
       addItem() {

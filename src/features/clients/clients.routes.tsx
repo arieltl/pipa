@@ -9,7 +9,14 @@ import {
   EditClientPage,
   NewClientPage,
 } from "./clients.pages.tsx";
-import { listInvoicesByClient } from "../invoices/invoices.service.ts";
+import { ComposeInvoicePage } from "../invoices/invoices.pages.tsx";
+import {
+  clientSeed,
+  composerContext,
+  listInvoicesByClient,
+} from "../invoices/invoices.service.ts";
+import { emptyInvoiceFormValues } from "../invoices/invoices.view.ts";
+import { todayDate } from "../../domain/dates.ts";
 import { clientFormSchema } from "./clients.schema.ts";
 import {
   ClientCodeTakenError,
@@ -72,6 +79,33 @@ clientsRoutes.get("/:id", (c) => {
       invoices={listInvoicesByClient(client.id)}
     />,
     { title: client.name },
+  );
+});
+
+clientsRoutes.get("/:id/invoices/new", (c) => {
+  const client = getClientFromParam(c.req.param("id"));
+  if (!client) return c.notFound();
+
+  const invoiceDate = todayDate();
+  const seed = clientSeed(client, invoiceDate);
+  const ctx = composerContext(client);
+  const values = {
+    ...emptyInvoiceFormValues(),
+    clientId: String(client.id),
+    invoiceDate,
+    currency: seed.currency,
+    items: seed.fixedMonthly ? [seed.fixedMonthly] : [],
+  };
+
+  return c.render(
+    <ComposeInvoicePage
+      client={client}
+      issuer={ctx.issuer}
+      values={values}
+      currencyDefault={ctx.currencyDefault}
+      hasProfile={ctx.hasProfile}
+    />,
+    { title: "New invoice" },
   );
 });
 

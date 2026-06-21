@@ -2,7 +2,7 @@ import type { InvoiceItem } from "../../db/schema.ts";
 import { todayDate } from "../../domain/dates.ts";
 import { minorToDecimalString } from "../../domain/money.ts";
 import { formString, str, type FormBody } from "../../web/form-values.ts";
-import type { InvoiceFormValues } from "./components/invoice-form.tsx";
+import type { InvoiceFormValues } from "./components/invoice-composer.tsx";
 import type { ItemDraft } from "./invoices.service.ts";
 import type { ItemFormValues } from "./components/items-section.tsx";
 

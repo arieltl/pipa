@@ -118,14 +118,17 @@ export function clientSeed(client: Client, invoiceDate: string): ClientSeed {
   };
 }
 
-/** Per-client seeds keyed by client id, for the form's client-switch behavior. */
-export function clientSeedMap(
-  clients: Client[],
-  invoiceDate: string,
-): Record<string, ClientSeed> {
-  return Object.fromEntries(
-    clients.map((c) => [String(c.id), clientSeed(c, invoiceDate)]),
-  );
+/** Static context the invoice composer needs for a given client. */
+export function composerContext(client: Client): {
+  issuer: ReturnType<typeof loadIssuerSettings>;
+  currencyDefault: string;
+  hasProfile: boolean;
+} {
+  return {
+    issuer: loadIssuerSettings(),
+    currencyDefault: client.defaultCurrency,
+    hasProfile: client.numberingProfileId != null,
+  };
 }
 
 export function listInvoices(): InvoiceListRow[] {

@@ -55,7 +55,7 @@ export function Layout({
             class="fixed inset-0 z-30 bg-black/40 lg:hidden"
             x-show="nav"
             x-on:click="nav = false"
-            x-transition
+            x-transition=""
             style="display:none"
           ></div>
 
