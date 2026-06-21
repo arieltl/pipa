@@ -7,6 +7,12 @@ import { dashboardRoutes } from "./features/dashboard/dashboard.routes.tsx";
 import { clientsRoutes } from "./features/clients/clients.routes.tsx";
 import { invoicesRoutes } from "./features/invoices/invoices.routes.tsx";
 import { settingsRoutes } from "./features/settings/settings.routes.tsx";
+import { paths } from "./config/paths.ts";
+import { existsSync } from "node:fs";
+
+function staticRoot(): string {
+  return existsSync(paths.runtimeStaticRoot) ? paths.runtimeStaticRoot : "./src";
+}
 
 export function createApp() {
   const app = new Hono();
@@ -18,7 +24,7 @@ export function createApp() {
   app.use(
     "/public/*",
     serveStatic({
-      root: "./src",
+      root: staticRoot(),
       onFound: (_path, c) => {
         c.header("Cache-Control", "public, max-age=3600");
       },

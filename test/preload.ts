@@ -16,5 +16,9 @@ process.env.DB_PATH = join(dir, "test.db");
 process.env.FILES_DIR = join(dir, "files");
 process.env.TMP_DIR = join(dir, "tmp");
 
+const { ensureDataDirs } = await import("../src/config/paths.ts");
+const { extractEmbeddedRuntimeFiles } = await import("../src/runtime/embedded-runtime.ts");
 const { runMigrations } = await import("../src/db/migrate.ts");
+ensureDataDirs();
+extractEmbeddedRuntimeFiles();
 runMigrations();

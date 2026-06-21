@@ -12,6 +12,9 @@ export const paths = {
   dbPath: env.dbPath,
   filesDir: env.filesDir,
   tmpDir: env.tmpDir,
+  runtimeDir: join(env.tmpDir, "invoice-runtime"),
+  runtimeStaticRoot: join(env.tmpDir, "invoice-runtime", "src"),
+  runtimeMigrationsDir: join(env.tmpDir, "invoice-runtime", "drizzle"),
 
   archivedInvoicesDir: join(env.filesDir, "archived", "invoices"),
   generatedInvoicesDir: join(env.filesDir, "generated", "invoices"),

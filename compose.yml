@@ -1,0 +1,32 @@
+services:
+  invoice:
+    image: ghcr.io/arieltl/invoice:latest
+    container_name: invoice
+    restart: unless-stopped
+
+    # Keep generated files owned by the host user on a typical single-user VPS.
+    # Run `mkdir -p data && chown -R 1000:1000 data` before first start.
+    user: "1000:1000"
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATA_DIR: /data
+      DB_PATH: /data/app.db
+      FILES_DIR: /data/files
+      TMP_DIR: /tmp
+
+    volumes:
+      - ./data:/data
+
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
