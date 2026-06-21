@@ -29,7 +29,7 @@ export function Layout({ title, currentPath, children }: LayoutProps) {
   return (
     <>
       {raw("<!DOCTYPE html>")}
-      <html lang="en" data-theme="winter">
+      <html lang="en" data-theme="business">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

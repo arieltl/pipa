@@ -1,4 +1,7 @@
+# Dependencies
 node_modules/
+
+# Local data: SQLite db, WAL/SHM sidecars, stored files, tmp (see DATA_DIR)
 data/
 *.db
 *.db-wal
@@ -9,6 +12,26 @@ src/public/app.css
 src/public/htmx.min.js
 src/public/alpine.min.js
 
+# Environment / secrets
 .env
-.env.local
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Test / coverage output
+coverage/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Editor / OS cruft
 .DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

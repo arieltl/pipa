@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseMoneyToMinor, SUPPORTED_CURRENCIES } from "../../domain/money.ts";
+import { templateFieldError } from "../invoices/invoice-template-context.ts";
 import {
   optionalEmail,
   optionalText,
@@ -47,6 +48,16 @@ export const clientFormSchema = z
         path: ["defaultFixedMonthlyValue"],
         message: "Enter a valid amount, e.g. 4000.00",
       });
+    }
+
+    const templateFields = [
+      "defaultFixedMonthlyItemNameTemplate",
+      "defaultNfseDescriptionTemplate",
+      "defaultPdfFilenameTemplate",
+    ] as const;
+    for (const field of templateFields) {
+      const message = templateFieldError(data[field]);
+      if (message) ctx.addIssue({ code: "custom", path: [field], message });
     }
   });
 

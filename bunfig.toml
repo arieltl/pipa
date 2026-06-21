@@ -1,0 +1,4 @@
+[test]
+# Point the DB at an isolated temp file and apply migrations before any test
+# module imports the SQLite client (which binds to DB_PATH at import time).
+preload = ["./test/preload.ts"]

@@ -5,6 +5,7 @@ import { renderer } from "./web/renderer.tsx";
 import { Placeholder } from "./web/components/placeholder.tsx";
 import { dashboardRoutes } from "./features/dashboard/dashboard.routes.tsx";
 import { clientsRoutes } from "./features/clients/clients.routes.tsx";
+import { invoicesRoutes } from "./features/invoices/invoices.routes.tsx";
 import { settingsRoutes } from "./features/settings/settings.routes.tsx";
 
 export function createApp() {
@@ -32,20 +33,8 @@ export function createApp() {
 
   app.route("/", dashboardRoutes);
   app.route("/clients", clientsRoutes);
+  app.route("/invoices", invoicesRoutes);
   app.route("/settings", settingsRoutes);
-
-  // Placeholder sections — replaced as later build phases land.
-  app.get("/invoices", (c) =>
-    c.render(<Placeholder title="Invoices" phase="Phase 3 (invoice core)" />, {
-      title: "Invoices",
-    }),
-  );
-  app.get("/invoices/new", (c) =>
-    c.render(
-      <Placeholder title="New invoice" phase="Phase 3 (invoice core)" />,
-      { title: "New invoice" },
-    ),
-  );
 
   app.notFound((c) => {
     c.status(404);

@@ -48,8 +48,8 @@ clientsRoutes.post("/", async (c) => {
   }
 
   try {
-    const client = createClient(parsed.data);
-    c.header("HX-Redirect", `/clients/${client.id}`);
+    createClient(parsed.data);
+    c.header("HX-Redirect", "/clients");
     return c.body(null, 201);
   } catch (err) {
     if (err instanceof ClientCodeTakenError) {

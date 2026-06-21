@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n css,server -c cyan,green \"bun run dev:css\" \"bun run dev:server\"",
+    "dev": "bun run build:vendor && concurrently -k -n css,server -c cyan,green \"bun run dev:css\" \"bun run dev:server\"",
     "dev:server": "bun run --hot src/index.tsx",
     "dev:css": "bun run build:css -- --watch",
     "build": "bun run build:vendor && bun run build:css",
@@ -19,8 +19,11 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.8.0",
+    "@react-pdf/renderer": "^4.5.1",
+    "@types/react": "^19.2.17",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.26",
+    "react": "^19.2.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {

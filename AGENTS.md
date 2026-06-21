@@ -40,6 +40,7 @@ Avoid adding Chromium/Puppeteer, MinIO/S3, Postgres, Prisma, or a full SPA unles
 - Put reusable pure domain logic in `src/domain/`.
 - Put database schema/client/migrations support in `src/db/`.
 - Keep React PDF components separate under `src/pdf/`; do not reuse web UI components inside PDFs.
+- The global JSX runtime is `hono/jsx`. Files under `src/pdf/` that use JSX must start with `/** @jsxImportSource react */` (and be `.tsx`) so `@react-pdf/renderer` gets React's runtime; `react` is a dependency only for this.
 - Store money as integer minor units plus currency, never floating point.
 - Store invoice dates as `YYYY-MM-DD`; store timestamps as ISO strings.
 - Enable SQLite foreign keys; prefer WAL mode for normal app use.
