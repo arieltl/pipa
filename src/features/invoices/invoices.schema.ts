@@ -20,20 +20,50 @@ const manualNumber = z.preprocess(
   z.string().max(60, "Number is too long").optional(),
 );
 
-/** htmx checkboxes submit "on" when checked and are absent otherwise. */
-const checkbox = z.preprocess((v) => v === "on" || v === "true", z.boolean());
-
 export const ITEM_SOURCES = ["fixed_monthly", "expense", "other"] as const;
 export type ItemSource = (typeof ITEM_SOURCES)[number];
 
-export const createInvoiceSchema = z.object({
-  clientId: idField,
-  invoiceDate,
-  currency: z.enum(SUPPORTED_CURRENCIES),
-  includeFixedMonthly: checkbox,
-  manualNumber,
-  notes: optionalText(2000),
+/** A line item drafted in the create form, before the invoice exists. */
+const itemDraftSchema = z.object({
+  name: requiredText("Item name", 300),
+  value: requiredText("Value", 30),
+  source: z.enum(ITEM_SOURCES).default("other"),
+  notes: optionalText(1000),
 });
+
+/** Items arrive as a JSON string from the form's hidden field. */
+const itemsField = z.preprocess((v) => {
+  if (Array.isArray(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    try {
+      return JSON.parse(v);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}, z.array(itemDraftSchema).max(50, "Too many items"));
+
+export const createInvoiceSchema = z
+  .object({
+    clientId: idField,
+    invoiceDate,
+    currency: z.enum(SUPPORTED_CURRENCIES),
+    manualNumber,
+    notes: optionalText(2000),
+    items: itemsField,
+  })
+  .superRefine((data, ctx) => {
+    data.items.forEach((item, i) => {
+      if (parseMoneyToMinor(item.value, data.currency) === null) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["items", i, "value"],
+          message: "Enter a valid amount, e.g. 120.00",
+        });
+      }
+    });
+  });
 
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 

@@ -55,6 +55,8 @@ export const clients = sqliteTable(
     country: text("country"),
     email: text("email"),
     defaultCurrency: text("default_currency").notNull().default("GBP"),
+    /** At most one client is the default, preselected in the global create flow. */
+    isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
     /** Default fixed monthly value in minor units of defaultCurrency. */
     defaultFixedMonthlyValue: integer("default_fixed_monthly_value"),
     defaultFixedMonthlyItemNameTemplate: text(

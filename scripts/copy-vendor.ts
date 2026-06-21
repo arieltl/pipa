@@ -12,6 +12,7 @@ const PUBLIC_DIR = join(ROOT, "src", "public");
 const ASSETS: Array<{ from: string; to: string }> = [
   { from: "node_modules/htmx.org/dist/htmx.min.js", to: "htmx.min.js" },
   { from: "node_modules/alpinejs/dist/cdn.min.js", to: "alpine.min.js" },
+  { from: "assets/app.js", to: "app.js" },
 ];
 
 await mkdir(PUBLIC_DIR, { recursive: true });

@@ -1,5 +1,10 @@
 import { Hono, type Context } from "hono";
-import { listClients } from "../clients/clients.service.ts";
+import {
+  getClient as getClientById,
+  getDefaultClient,
+  listClients,
+} from "../clients/clients.service.ts";
+import { todayDate } from "../../domain/dates.ts";
 import { fieldErrorsFromZod } from "../../web/validation.ts";
 import type { FieldErrors } from "../../web/components/forms.tsx";
 import type { FormBody } from "../../web/form-values.ts";
@@ -24,6 +29,8 @@ import {
   addItem,
   archiveInvoicePdf,
   ClientNotFoundError,
+  clientSeed,
+  clientSeedMap,
   createInvoice,
   deleteItem,
   generateNfseDescription,
@@ -56,12 +63,37 @@ invoicesRoutes.get("/", (c) =>
   c.render(<InvoicesListPage invoices={listInvoices()} />, { title: "Invoices" }),
 );
 
-invoicesRoutes.get("/new", (c) =>
-  c.render(
-    <NewInvoicePage values={emptyInvoiceFormValues()} clients={listClients()} />,
+invoicesRoutes.get("/new", (c) => {
+  const clients = listClients();
+  const invoiceDate = todayDate();
+
+  const requested = Number(c.req.query("clientId"));
+  const selected =
+    (Number.isInteger(requested) && requested > 0
+      ? getClientById(requested)
+      : null) ??
+    getDefaultClient() ??
+    clients[0] ??
+    null;
+
+  const seed = selected ? clientSeed(selected, invoiceDate) : null;
+  const values = {
+    ...emptyInvoiceFormValues(),
+    clientId: selected ? String(selected.id) : "",
+    invoiceDate,
+    currency: seed?.currency ?? "GBP",
+    items: seed?.fixedMonthly ? [seed.fixedMonthly] : [],
+  };
+
+  return c.render(
+    <NewInvoicePage
+      values={values}
+      clients={clients}
+      seedMap={clientSeedMap(clients, invoiceDate)}
+    />,
     { title: "New invoice" },
-  ),
-);
+  );
+});
 
 invoicesRoutes.post("/", async (c) => {
   const body = (await c.req.parseBody()) as FormBody;
@@ -97,8 +129,20 @@ invoicesRoutes.post("/", async (c) => {
 invoicesRoutes.get("/:id", (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
+
+  // Auto-fill the nota fiscal text from the template when none is saved yet, so
+  // the user never has to click "generate" first (it still needs an explicit
+  // Save to persist).
+  const saved = detail.invoice.nfseDescription;
+  const value = saved ?? generateNfseDescription(detail);
+  const nfse = { value, autofilled: saved == null && value.trim() !== "" };
+
   return c.render(
-    <InvoiceDetailPage detail={detail} pdfFilename={pdfFilename(detail)} />,
+    <InvoiceDetailPage
+      detail={detail}
+      pdfFilename={pdfFilename(detail)}
+      nfse={nfse}
+    />,
     { title: detail.invoice.number },
   );
 });
@@ -388,10 +432,12 @@ function renderInvoiceFormError(
   errors: FieldErrors,
 ) {
   c.status(422);
+  const clients = listClients();
   return c.html(
     <InvoiceForm
       values={invoiceFormValuesFromBody(body)}
-      clients={listClients()}
+      clients={clients}
+      seedMap={clientSeedMap(clients, todayDate())}
       errors={errors}
     />,
   );

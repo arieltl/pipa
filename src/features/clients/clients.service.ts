@@ -20,6 +20,14 @@ export function getClient(id: number): Client | null {
   return repo.getClientById(id);
 }
 
+export function getDefaultClient(): Client | null {
+  return repo.getDefaultClient();
+}
+
+export function setDefaultClient(id: number): void {
+  repo.setDefaultClient(id);
+}
+
 export function listNumberingProfiles(): NumberingProfile[] {
   return repo.listNumberingProfiles();
 }
@@ -48,6 +56,7 @@ function toColumns(input: ClientFormInput): Omit<
     defaultNfseDescriptionTemplate: input.defaultNfseDescriptionTemplate ?? null,
     defaultPdfFilenameTemplate: input.defaultPdfFilenameTemplate ?? null,
     numberingProfileId: input.numberingProfileId ?? null,
+    isDefault: input.isDefault,
   };
 }
 
@@ -56,7 +65,14 @@ export function createClient(input: ClientFormInput): Client {
     throw new ClientCodeTakenError(input.code);
   }
   const now = nowIso();
-  return repo.insertClient({ ...toColumns(input), createdAt: now, updatedAt: now });
+  const client = repo.insertClient({
+    ...toColumns(input),
+    createdAt: now,
+    updatedAt: now,
+  });
+  // Pinning a default must clear the flag on every other client.
+  if (input.isDefault) repo.setDefaultClient(client.id);
+  return client;
 }
 
 export function updateClient(id: number, input: ClientFormInput): Client {
@@ -64,5 +80,10 @@ export function updateClient(id: number, input: ClientFormInput): Client {
   if (existing && existing.id !== id) {
     throw new ClientCodeTakenError(input.code);
   }
-  return repo.updateClientRow(id, { ...toColumns(input), updatedAt: nowIso() });
+  const client = repo.updateClientRow(id, {
+    ...toColumns(input),
+    updatedAt: nowIso(),
+  });
+  if (input.isDefault) repo.setDefaultClient(id);
+  return client;
 }

@@ -1,4 +1,8 @@
-import { Alert, textareaClass } from "../../../web/components/forms.tsx";
+import {
+  Alert,
+  SubmitButton,
+  textareaClass,
+} from "../../../web/components/forms.tsx";
 
 export type NfseSectionProps = {
   invoiceId: number;
@@ -26,7 +30,7 @@ export function NfseSection({
 }: NfseSectionProps) {
   const generateLabel = value.trim() === "" ? "Generate from template" : "Regenerate";
   return (
-    <div id="invoice-nfse" x-data="{ copied: false }">
+    <div id="invoice-nfse" x-data="{ copied: false }" data-dirty-section>
       {saved ? (
         <Alert kind="success" message="Nota fiscal description saved." />
       ) : null}
@@ -40,6 +44,7 @@ export function NfseSection({
         hx-post={`/invoices/${invoiceId}/nfse`}
         hx-target="#invoice-nfse"
         hx-swap="outerHTML"
+        x-data="enhancedForm"
       >
         <textarea
           name="nfseDescription"
@@ -47,11 +52,14 @@ export function NfseSection({
           rows={5}
           class={textareaClass()}
           placeholder="Generate from the client's template, or write the description here."
+          maxlength={2000}
+          data-format="trim"
         >
           {value}
         </textarea>
 
         <div class="mt-3 flex flex-wrap items-center justify-end gap-2">
+          <span data-dirty-badge class="mr-auto">Unsaved changes</span>
           <button
             type="button"
             class="btn btn-ghost btn-sm"
@@ -69,9 +77,7 @@ export function NfseSection({
           >
             <span x-text="copied ? 'Copied!' : 'Copy'">Copy</span>
           </button>
-          <button type="submit" class="btn btn-primary btn-sm">
-            Save
-          </button>
+          <SubmitButton label="Save" size="sm" />
         </div>
       </form>
 

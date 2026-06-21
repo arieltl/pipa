@@ -1,6 +1,7 @@
 import type { Context, MiddlewareHandler } from "hono";
 import type { Child } from "hono/jsx";
 import { Layout } from "./layout.tsx";
+import { listClients } from "../features/clients/clients.service.ts";
 
 /**
  * htmx-aware renderer.
@@ -33,8 +34,17 @@ export const renderer: MiddlewareHandler = async (c, next) => {
       // HtmlEscapedString; cast to satisfy c.html's string-typed overloads.
       return c.html(content as Parameters<typeof c.html>[0]);
     }
+    // The sidebar needs the client list on every full-page response. This is a
+    // cheap query (a handful of clients) and only runs for non-htmx requests.
+    const clients = listClients();
+    const defaultClientId = clients.find((c) => c.isDefault)?.id ?? null;
     return c.html(
-      <Layout title={options?.title} currentPath={c.req.path}>
+      <Layout
+        title={options?.title}
+        currentPath={c.req.path}
+        clients={clients}
+        defaultClientId={defaultClientId}
+      >
         {content}
       </Layout>,
     );

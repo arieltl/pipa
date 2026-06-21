@@ -35,72 +35,101 @@ export function StatusControl({ invoice }: { invoice: Invoice }) {
   );
 }
 
+export type NfseInitial = { value: string; autofilled: boolean };
+
 export function InvoiceDetailBody({
   detail,
   pdfFilename,
+  nfse,
 }: {
   detail: InvoiceDetail;
   pdfFilename: string;
+  /** Initial nota fiscal text (saved value, or auto-generated when empty). */
+  nfse: NfseInitial;
 }) {
   const { invoice, client, items, total, notaFiscal, archivedPdf } = detail;
   return (
     <div class="grid gap-6">
-      <div class="grid gap-4 rounded-lg border border-base-300 bg-base-100 p-5 sm:grid-cols-2">
-        <Meta label="Client">
-          <a href={`/clients/${client.id}`} class="link link-hover">
-            {client.name}
-          </a>{" "}
-          <span class="badge badge-ghost badge-sm font-mono">{client.code}</span>
-        </Meta>
-        <Meta label="Status">
+      {/* Action bar: the two most common actions, always reachable. */}
+      <div class="app-card lift-enter sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg p-4">
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-medium uppercase tracking-wide text-base-content/50">
+            Status
+          </span>
           <StatusControl invoice={invoice} />
-        </Meta>
-        <Meta label="Invoice date">
-          <span class="tabular-nums">{invoice.invoiceDate}</span>
-        </Meta>
-        <Meta label="Currency">{invoice.currency}</Meta>
-        {invoice.notes ? (
-          <div class="sm:col-span-2">
-            <Meta label="Notes">{invoice.notes}</Meta>
-          </div>
-        ) : null}
+        </div>
+        <a href={`/invoices/${invoice.id}/pdf`} class="btn btn-primary btn-sm">
+          Download PDF
+        </a>
       </div>
 
-      <section>
-        <h2 class="mb-3 text-lg font-semibold">Items</h2>
-        <ItemsSection
-          invoiceId={invoice.id}
-          currency={invoice.currency}
-          items={items}
-          total={total}
-          addValues={emptyItemFormValues()}
-        />
-      </section>
+      <div class="grid gap-6 lg:grid-cols-3">
+        <div class="grid gap-6 lg:col-span-2">
+          <section>
+            <h2 class="mb-3 text-lg font-semibold">Items</h2>
+            <ItemsSection
+              invoiceId={invoice.id}
+              currency={invoice.currency}
+              items={items}
+              total={total}
+              addValues={emptyItemFormValues()}
+            />
+          </section>
 
-      <section>
-        <h2 class="mb-3 text-lg font-semibold">Nota fiscal description</h2>
-        <div class="rounded-lg border border-base-300 bg-base-100 p-5">
-          <NfseSection
-            invoiceId={invoice.id}
-            value={invoice.nfseDescription ?? ""}
-            hasTemplate={Boolean(client.defaultNfseDescriptionTemplate)}
-          />
+          <section>
+            <h2 class="mb-3 text-lg font-semibold">Nota fiscal description</h2>
+            <div class="app-card rounded-lg p-5">
+              <NfseSection
+                invoiceId={invoice.id}
+                value={nfse.value}
+                hasTemplate={Boolean(client.defaultNfseDescriptionTemplate)}
+                generated={nfse.autofilled}
+              />
+            </div>
+          </section>
+
+          {invoice.notes ? (
+            <section>
+              <h2 class="mb-3 text-lg font-semibold">Notes</h2>
+              <div class="app-card rounded-lg p-5 text-sm">{invoice.notes}</div>
+            </section>
+          ) : null}
         </div>
-      </section>
 
-      <section>
-        <h2 class="mb-3 text-lg font-semibold">Invoice PDF</h2>
-        <PdfSection
-          invoice={invoice}
-          archivedPdf={archivedPdf}
-          filename={pdfFilename}
-        />
-      </section>
+        <div class="grid gap-6">
+          <section>
+            <h2 class="mb-3 text-lg font-semibold">Details</h2>
+            <div class="app-card grid gap-4 rounded-lg p-5">
+              <Meta label="Client">
+                <a href={`/clients/${client.id}`} class="link link-hover">
+                  {client.name}
+                </a>{" "}
+                <span class="badge badge-ghost badge-sm font-mono">
+                  {client.code}
+                </span>
+              </Meta>
+              <Meta label="Invoice date">
+                <span class="tabular-nums">{invoice.invoiceDate}</span>
+              </Meta>
+              <Meta label="Currency">{invoice.currency}</Meta>
+            </div>
+          </section>
 
-      <section>
-        <h2 class="mb-3 text-lg font-semibold">Nota fiscal / NFS-e link</h2>
-        <NfseLinkSection invoiceId={invoice.id} link={notaFiscal} />
-      </section>
+          <section>
+            <h2 class="mb-3 text-lg font-semibold">Invoice PDF</h2>
+            <PdfSection
+              invoice={invoice}
+              archivedPdf={archivedPdf}
+              filename={pdfFilename}
+            />
+          </section>
+
+          <section>
+            <h2 class="mb-3 text-lg font-semibold">Nota fiscal / NFS-e link</h2>
+            <NfseLinkSection invoiceId={invoice.id} link={notaFiscal} />
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

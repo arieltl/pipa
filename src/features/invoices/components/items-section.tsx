@@ -2,6 +2,7 @@ import type { InvoiceItem } from "../../../db/schema.ts";
 import { formatMoney } from "../../../domain/money.ts";
 import {
   Field,
+  SubmitButton,
   inputClass,
   selectClass,
   type FieldErrors,
@@ -44,7 +45,7 @@ export function ItemsSection(props: ItemsSectionProps) {
   const { invoiceId, currency, items, total } = props;
   return (
     <div id="invoice-items">
-      <div class="overflow-x-auto rounded-lg border border-base-300 bg-base-100">
+      <div class="app-table overflow-x-auto rounded-lg">
         <table class="table">
           <thead>
             <tr>
@@ -182,7 +183,9 @@ function ItemEditRow({
           hx-post={`/invoices/${invoiceId}/items/${itemId}`}
           hx-target="#invoice-items"
           hx-swap="outerHTML"
-          class="grid gap-3 sm:grid-cols-2"
+          x-data="enhancedForm"
+          data-dirty-section
+          class="app-form grid sm:grid-cols-2"
         >
           <input type="hidden" name="currency" value={currency} />
           <ItemFields values={values} errors={errors} />
@@ -196,9 +199,7 @@ function ItemEditRow({
             >
               Cancel
             </button>
-            <button type="submit" class="btn btn-primary btn-sm">
-              Save item
-            </button>
+            <SubmitButton label="Save item" size="sm" />
           </div>
         </form>
       </td>
@@ -218,20 +219,20 @@ function AddItemForm({
   errors?: FieldErrors;
 }) {
   return (
-    <div class="mt-4 rounded-lg border border-base-300 bg-base-100 p-4">
+    <div class="app-card mt-4 rounded-lg p-4">
       <h3 class="mb-3 text-sm font-semibold text-base-content/70">Add item</h3>
       <form
         hx-post={`/invoices/${invoiceId}/items`}
         hx-target="#invoice-items"
         hx-swap="outerHTML"
-        class="grid gap-3 sm:grid-cols-2"
+        x-data="enhancedForm"
+        data-dirty-section
+        class="app-form grid sm:grid-cols-2"
       >
         <input type="hidden" name="currency" value={currency} />
         <ItemFields values={values} errors={errors} />
         <div class="sm:col-span-2 flex justify-end">
-          <button type="submit" class="btn btn-primary btn-sm">
-            Add item
-          </button>
+          <SubmitButton label="Add item" size="sm" />
         </div>
       </form>
     </div>
@@ -255,6 +256,9 @@ function ItemFields({
           value={values.name}
           autocomplete="off"
           class={inputClass(errors.name)}
+          required
+          maxlength={300}
+          data-format="trim"
         />
       </Field>
 
@@ -266,6 +270,10 @@ function ItemFields({
           value={values.value}
           placeholder="120.00"
           class={inputClass(errors.value)}
+          required
+          maxlength={30}
+          title="Enter a valid amount, e.g. 120.00."
+          data-format="money"
         />
       </Field>
 
@@ -286,6 +294,8 @@ function ItemFields({
           value={values.notes}
           autocomplete="off"
           class={inputClass(errors.notes)}
+          maxlength={1000}
+          data-format="trim"
         />
       </Field>
     </>

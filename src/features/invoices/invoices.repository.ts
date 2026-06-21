@@ -49,6 +49,59 @@ export function listInvoices(): InvoiceListRow[] {
   }));
 }
 
+/** Same shape as {@link listInvoices}, scoped to a single client. */
+export function listInvoicesByClient(clientId: number): InvoiceListRow[] {
+  const rows = db
+    .select({
+      invoice: invoices,
+      clientName: clients.name,
+      clientCode: clients.code,
+      total: sql<number>`coalesce((
+        select sum(${invoiceItems.value})
+        from ${invoiceItems}
+        where ${invoiceItems.invoiceId} = ${invoices.id}
+      ), 0)`,
+    })
+    .from(invoices)
+    .innerJoin(clients, eq(invoices.clientId, clients.id))
+    .where(eq(invoices.clientId, clientId))
+    .orderBy(desc(invoices.createdAt))
+    .all();
+
+  return rows.map((r) => ({
+    ...r.invoice,
+    clientName: r.clientName,
+    clientCode: r.clientCode,
+    total: r.total,
+  }));
+}
+
+export type ClientInvoiceStats = {
+  clientId: number;
+  invoiceCount: number;
+  /** Total of invoices not yet paid or void (draft + sent), in minor units. */
+  outstandingMinor: number;
+};
+
+/** Per-client invoice counts and outstanding totals, for the Overview. */
+export function clientInvoiceStats(): ClientInvoiceStats[] {
+  return db
+    .select({
+      clientId: invoices.clientId,
+      invoiceCount: sql<number>`count(*)`,
+      outstandingMinor: sql<number>`coalesce(sum(
+        case when ${invoices.status} in ('draft', 'sent') then (
+          select coalesce(sum(${invoiceItems.value}), 0)
+          from ${invoiceItems}
+          where ${invoiceItems.invoiceId} = ${invoices.id}
+        ) else 0 end
+      ), 0)`,
+    })
+    .from(invoices)
+    .groupBy(invoices.clientId)
+    .all();
+}
+
 export function getInvoiceById(id: number): Invoice | null {
   return db.select().from(invoices).where(eq(invoices.id, id)).get() ?? null;
 }

@@ -2,6 +2,7 @@ import type { NotaFiscalLink } from "../../../db/schema.ts";
 import {
   Alert,
   Field,
+  SubmitButton,
   inputClass,
   textareaClass,
   type FieldErrors,
@@ -53,7 +54,7 @@ export function NfseLinkSection({
   return (
     <div
       id="invoice-nfse-link"
-      class="rounded-lg border border-base-300 bg-base-100 p-5"
+      class="app-card rounded-lg p-5"
     >
       {saved ? (
         <Alert kind="success" message="Nota fiscal link saved." />
@@ -64,7 +65,8 @@ export function NfseLinkSection({
         hx-target="#invoice-nfse-link"
         hx-swap="outerHTML"
         hx-encoding="multipart/form-data"
-        class="grid gap-4 sm:grid-cols-2"
+        x-data="enhancedForm"
+        class="app-form grid sm:grid-cols-2"
       >
         <Field label="NFS-e number" name="nfNumber" error={errors?.nfNumber}>
           <input
@@ -73,6 +75,8 @@ export function NfseLinkSection({
             name="nfNumber"
             value={v.nfNumber}
             class={inputClass(errors?.nfNumber)}
+            maxlength={120}
+            data-format="trim"
           />
         </Field>
         <Field label="Issue date" name="issueDate" error={errors?.issueDate}>
@@ -95,6 +99,8 @@ export function NfseLinkSection({
             name="verificationCode"
             value={v.verificationCode}
             class={inputClass(errors?.verificationCode)}
+            maxlength={200}
+            data-format="trim"
           />
         </Field>
         <Field label="Public URL" name="publicUrl" error={errors?.publicUrl}>
@@ -104,6 +110,9 @@ export function NfseLinkSection({
             name="publicUrl"
             value={v.publicUrl}
             class={inputClass(errors?.publicUrl)}
+            maxlength={2000}
+            placeholder="https://..."
+            data-format="trim"
           />
         </Field>
 
@@ -114,6 +123,8 @@ export function NfseLinkSection({
               name="notes"
               rows={2}
               class={textareaClass(errors?.notes)}
+              maxlength={2000}
+              data-format="trim"
             >
               {v.notes}
             </textarea>
@@ -130,7 +141,7 @@ export function NfseLinkSection({
             id="pdf"
             name="pdf"
             accept="application/pdf,.pdf"
-            class="file-input file-input-bordered w-full"
+            class="app-control file-input file-input-bordered w-full"
           />
         </Field>
         <Field
@@ -143,7 +154,7 @@ export function NfseLinkSection({
             id="xml"
             name="xml"
             accept="application/xml,text/xml,.xml"
-            class="file-input file-input-bordered w-full"
+            class="app-control file-input file-input-bordered w-full"
           />
         </Field>
 
@@ -169,9 +180,7 @@ export function NfseLinkSection({
         ) : null}
 
         <div class="sm:col-span-2 flex justify-end">
-          <button type="submit" class="btn btn-primary btn-sm">
-            Save link
-          </button>
+          <SubmitButton label="Save link" size="sm" />
         </div>
       </form>
     </div>

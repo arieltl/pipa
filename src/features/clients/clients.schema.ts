@@ -22,6 +22,9 @@ const numberingProfileId = z.preprocess(
   z.number().int().positive().optional(),
 );
 
+/** htmx checkboxes submit "on" when checked and are absent otherwise. */
+const checkbox = z.preprocess((v) => v === "on" || v === "true", z.boolean());
+
 export const clientFormSchema = z
   .object({
     name: requiredText("Name", 200),
@@ -36,6 +39,7 @@ export const clientFormSchema = z
     defaultNfseDescriptionTemplate: optionalText(2000),
     defaultPdfFilenameTemplate: optionalText(300),
     numberingProfileId,
+    isDefault: checkbox,
   })
   .superRefine((data, ctx) => {
     if (

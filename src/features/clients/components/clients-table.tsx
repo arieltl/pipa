@@ -4,7 +4,7 @@ import { formatMoney } from "../../../domain/money.ts";
 export function ClientsTable({ clients }: { clients: Client[] }) {
   if (clients.length === 0) {
     return (
-      <div class="rounded-lg border border-dashed border-base-300 bg-base-100 p-10 text-center">
+      <div class="app-card lift-enter rounded-lg border-dashed p-10 text-center">
         <p class="text-sm text-base-content/60">
           No clients yet. Create your first client to start invoicing.
         </p>
@@ -16,7 +16,7 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
   }
 
   return (
-    <div class="overflow-x-auto rounded-lg border border-base-300 bg-base-100">
+    <div class="app-table lift-enter overflow-x-auto rounded-lg">
       <table class="table">
         <thead>
           <tr>
@@ -38,11 +38,11 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
                 </a>
               </td>
               <td>
-                <span class="badge badge-ghost badge-sm font-mono">
+                <span class="badge badge-sm app-code-badge font-mono">
                   {client.code}
                 </span>
               </td>
-              <td class="text-base-content/70">{client.country ?? "—"}</td>
+              <td class="text-base-content/84">{client.country ?? "—"}</td>
               <td class="text-right tabular-nums">
                 {client.defaultFixedMonthlyValue != null
                   ? formatMoney(

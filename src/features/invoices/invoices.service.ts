@@ -12,7 +12,7 @@ import { buildInvoicePdfViewModel } from "../../pdf/view-model.ts";
 import { renderInvoicePdfBuffer } from "../../pdf/render.tsx";
 import { supersedeFile } from "../files/files.service.ts";
 import type { NotaFiscalLinkFormInput } from "./invoices.schema.ts";
-import { parseMoneyToMinor } from "../../domain/money.ts";
+import { minorToDecimalString, parseMoneyToMinor } from "../../domain/money.ts";
 import {
   isResetPeriod,
   periodKeyFor,
@@ -64,8 +64,80 @@ export type InvoiceDetail = {
   archivedPdf: FileRecord | null;
 };
 
+/** An editable item row in the create form, before the invoice exists. */
+export type ItemDraft = {
+  name: string;
+  value: string;
+  source: string;
+  notes: string;
+};
+
+/** Defaults used to seed the create form for a client (currency + fixed item). */
+export type ClientSeed = {
+  currency: string;
+  fixedMonthly: ItemDraft | null;
+};
+
+/**
+ * Seed values for the create form given a client: its default currency and, if
+ * configured, the fixed monthly item (name rendered from the client's template
+ * against the chosen date; the invoice number isn't known yet so `{{invoice.
+ * number}}` resolves empty — the user can edit before creating).
+ */
+export function clientSeed(client: Client, invoiceDate: string): ClientSeed {
+  if (client.defaultFixedMonthlyValue == null) {
+    return { currency: client.defaultCurrency, fixedMonthly: null };
+  }
+  const issuer = loadIssuerSettings();
+  const template = client.defaultFixedMonthlyItemNameTemplate;
+  const name = template
+    ? renderTemplate(
+        template,
+        buildInvoiceContext({
+          number: "",
+          invoiceDate,
+          currency: client.defaultCurrency,
+          totalMinor: client.defaultFixedMonthlyValue,
+          client,
+          issuer,
+          items: [],
+        }),
+      ).output
+    : FIXED_MONTHLY_FALLBACK_NAME;
+  return {
+    currency: client.defaultCurrency,
+    fixedMonthly: {
+      name,
+      value: minorToDecimalString(
+        client.defaultFixedMonthlyValue,
+        client.defaultCurrency,
+      ),
+      source: "fixed_monthly",
+      notes: "",
+    },
+  };
+}
+
+/** Per-client seeds keyed by client id, for the form's client-switch behavior. */
+export function clientSeedMap(
+  clients: Client[],
+  invoiceDate: string,
+): Record<string, ClientSeed> {
+  return Object.fromEntries(
+    clients.map((c) => [String(c.id), clientSeed(c, invoiceDate)]),
+  );
+}
+
 export function listInvoices(): InvoiceListRow[] {
   return repo.listInvoices();
+}
+
+export function listInvoicesByClient(clientId: number): InvoiceListRow[] {
+  return repo.listInvoicesByClient(clientId);
+}
+
+export function clientInvoiceStats(): Map<number, repo.ClientInvoiceStats> {
+  return new Map(repo.clientInvoiceStats().map((s) => [s.clientId, s]));
 }
 
 export function getClient(id: number): Client | null {
@@ -130,9 +202,15 @@ export function createInvoice(input: CreateInvoiceInput): Invoice {
   const client = repo.getClientById(input.clientId);
   if (!client) throw new ClientNotFoundError();
 
-  const issuer = loadIssuerSettings();
-  const buildItems = (number: string) =>
-    buildFixedMonthlyItems(client, issuer, input, number);
+  // Items come from the create form (already edited by the user). They are
+  // concrete snapshots and do not depend on the allocated number.
+  const items: ItemRow[] = input.items.map((it) => ({
+    name: it.name,
+    value: parseMoneyToMinor(it.value, input.currency) ?? 0,
+    source: it.source,
+    notes: it.notes ?? null,
+  }));
+  const buildItems = () => items;
 
   const profile = getProfile(client.numberingProfileId);
   const useManual = input.manualNumber !== undefined || profile === null;
@@ -154,7 +232,7 @@ export function createInvoice(input: CreateInvoiceInput): Invoice {
         nfseDescription: null,
         notes: input.notes ?? null,
       },
-      items: buildItems(number),
+      items: buildItems(),
     });
   }
 
@@ -189,46 +267,6 @@ export function createInvoice(input: CreateInvoiceInput): Invoice {
     }
     throw err;
   }
-}
-
-/**
- * The copied fixed monthly item, with its name rendered from the client's name
- * template (spec §7) using the now-known invoice number. The rendered text is a
- * snapshot — later template edits never touch this row.
- */
-function buildFixedMonthlyItems(
-  client: Client,
-  issuer: ReturnType<typeof loadIssuerSettings>,
-  input: CreateInvoiceInput,
-  number: string,
-): ItemRow[] {
-  if (!input.includeFixedMonthly || client.defaultFixedMonthlyValue == null) {
-    return [];
-  }
-  const template = client.defaultFixedMonthlyItemNameTemplate;
-  const name = template
-    ? renderTemplate(
-        template,
-        buildInvoiceContext({
-          number,
-          invoiceDate: input.invoiceDate,
-          currency: input.currency,
-          totalMinor: client.defaultFixedMonthlyValue,
-          client,
-          issuer,
-          items: [],
-        }),
-      ).output
-    : FIXED_MONTHLY_FALLBACK_NAME;
-
-  return [
-    {
-      name,
-      value: client.defaultFixedMonthlyValue,
-      source: "fixed_monthly",
-      notes: null,
-    },
-  ];
 }
 
 // --- item CRUD -----------------------------------------------------------

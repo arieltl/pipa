@@ -15,7 +15,7 @@ describe("app foundation", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain("<!DOCTYPE html>");
-    expect(body).toContain("<title>Dashboard");
+    expect(body).toContain("<title>Overview");
   });
 
   it("returns a bare fragment (no layout) for htmx requests", async () => {
@@ -27,7 +27,7 @@ describe("app foundation", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).not.toContain("<html");
-    expect(body).toContain("Dashboard");
+    expect(body).toContain("Overview");
   });
 
   it("returns 404 for unknown routes", async () => {

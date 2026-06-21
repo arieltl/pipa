@@ -1,6 +1,7 @@
 import {
   Alert,
   Field,
+  SubmitButton,
   inputClass,
   selectClass,
   textareaClass,
@@ -22,6 +23,7 @@ export type ClientFormValues = {
   defaultNfseDescriptionTemplate: string;
   defaultPdfFilenameTemplate: string;
   numberingProfileId: string;
+  isDefault: boolean;
 };
 
 export type ClientFormProps = {
@@ -50,7 +52,9 @@ export function ClientForm({
         hx-post={action}
         hx-target="#client-form"
         hx-swap="outerHTML"
-        class="grid gap-4 sm:grid-cols-2"
+        x-data="enhancedForm"
+        data-dirty-section
+        class="app-form grid sm:grid-cols-2"
       >
         <Field label="Name" name="name" required error={errors.name}>
           <input
@@ -59,7 +63,9 @@ export function ClientForm({
             type="text"
             value={values.name}
             class={inputClass(errors.name)}
-            autocomplete="off"
+            autocomplete="organization"
+            required
+            maxlength={200}
           />
         </Field>
 
@@ -77,6 +83,11 @@ export function ClientForm({
             value={values.code}
             class={inputClass(errors.code)}
             autocomplete="off"
+            required
+            maxlength={30}
+            pattern="[A-Za-z0-9_-]+"
+            title="Use letters, numbers, dashes, or underscores."
+            data-format="upper"
           />
         </Field>
 
@@ -87,6 +98,8 @@ export function ClientForm({
             type="text"
             value={values.legalName}
             class={inputClass(errors.legalName)}
+            maxlength={200}
+            data-format="trim"
           />
         </Field>
 
@@ -97,6 +110,9 @@ export function ClientForm({
             type="text"
             value={values.country}
             class={inputClass(errors.country)}
+            maxlength={100}
+            autocomplete="country-name"
+            data-format="trim"
           />
         </Field>
 
@@ -107,6 +123,9 @@ export function ClientForm({
             type="email"
             value={values.email}
             class={inputClass(errors.email)}
+            maxlength={254}
+            autocomplete="email"
+            placeholder="billing@example.com"
           />
         </Field>
 
@@ -135,6 +154,8 @@ export function ClientForm({
               name="address"
               rows={2}
               class={textareaClass(errors.address)}
+              maxlength={1000}
+              data-format="trim"
             >
               {values.address}
             </textarea>
@@ -155,6 +176,8 @@ export function ClientForm({
             value={values.defaultFixedMonthlyValue}
             placeholder="4000.00"
             class={inputClass(errors.defaultFixedMonthlyValue)}
+            maxlength={30}
+            data-format="money"
           />
         </Field>
 
@@ -193,6 +216,8 @@ export function ClientForm({
               type="text"
               value={values.defaultFixedMonthlyItemNameTemplate}
               class={inputClass(errors.defaultFixedMonthlyItemNameTemplate)}
+              maxlength={500}
+              data-format="trim"
             />
           </Field>
         </div>
@@ -209,6 +234,8 @@ export function ClientForm({
               name="defaultNfseDescriptionTemplate"
               rows={3}
               class={textareaClass(errors.defaultNfseDescriptionTemplate)}
+              maxlength={2000}
+              data-format="trim"
             >
               {values.defaultNfseDescriptionTemplate}
             </textarea>
@@ -228,17 +255,32 @@ export function ClientForm({
               type="text"
               value={values.defaultPdfFilenameTemplate}
               class={inputClass(errors.defaultPdfFilenameTemplate)}
+              maxlength={300}
+              data-format="trim"
             />
           </Field>
         </div>
 
+        <div class="sm:col-span-2">
+          <label class="app-card flex cursor-pointer items-start gap-3 rounded-lg p-4 transition hover:border-primary/30">
+            <input
+              type="checkbox"
+              name="isDefault"
+              class="checkbox checkbox-sm"
+              checked={values.isDefault}
+            />
+            <span class="text-sm">
+              Make this the default client for new invoices
+            </span>
+          </label>
+        </div>
+
         <div class="sm:col-span-2 flex items-center justify-end gap-2">
+          <span data-dirty-badge class="mr-auto">Unsaved changes</span>
           <a href="/clients" class="btn btn-ghost">
             Cancel
           </a>
-          <button type="submit" class="btn btn-primary">
-            {submitLabel}
-          </button>
+          <SubmitButton label={submitLabel} />
         </div>
       </form>
     </div>

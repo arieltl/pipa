@@ -8,8 +8,10 @@ import {
   invoices,
 } from "../../db/schema.ts";
 import { nowIso } from "../../domain/dates.ts";
+import { getClient } from "../clients/clients.service.ts";
 import {
   addItem,
+  clientSeed,
   createInvoice,
   deleteItem,
   generateNfseDescription,
@@ -49,15 +51,15 @@ beforeEach(() => {
 });
 
 describe("createInvoice — numbering", () => {
-  test("generates a per-client monthly number and copies the fixed item", () => {
+  test("generates a per-client monthly number and stores the items", () => {
     const clientId = makeClient({ code: "LONDONCO" });
     const inv = createInvoice({
       clientId,
       invoiceDate: "2026-06-30",
       currency: "GBP",
-      includeFixedMonthly: true,
       manualNumber: undefined,
       notes: undefined,
+      items: [fixedItem()],
     });
 
     expect(inv.number).toBe("LONDONCO-202606-01");
@@ -116,21 +118,29 @@ describe("createInvoice — manual numbering", () => {
   });
 });
 
-describe("createInvoice — fixed monthly item", () => {
-  test("omitted when includeFixedMonthly is false", () => {
-    const clientId = makeClient({ code: "NOFIX" });
-    const inv = createInvoice({ ...base(clientId), includeFixedMonthly: false });
+describe("createInvoice — items", () => {
+  test("creates no items when none are provided", () => {
+    const clientId = makeClient({ code: "NOITEMS" });
+    const inv = createInvoice({ ...base(clientId), items: [] });
     expect(getInvoiceDetail(inv.id)!.items).toHaveLength(0);
   });
 
-  test("omitted when the client has no default value", () => {
-    const clientId = makeClient({ code: "NOVAL", defaultFixedMonthlyValue: null });
-    const inv = createInvoice(base(clientId));
-    expect(getInvoiceDetail(inv.id)!.items).toHaveLength(0);
+  test("stores multiple items and sums the total", () => {
+    const clientId = makeClient({ code: "MULTI" });
+    const inv = createInvoice({
+      ...base(clientId),
+      items: [
+        fixedItem(),
+        { name: "Travel", value: "120.00", source: "expense", notes: undefined },
+      ],
+    });
+    const detail = getInvoiceDetail(inv.id)!;
+    expect(detail.items).toHaveLength(2);
+    expect(detail.total).toBe(412000);
   });
 
-  test("changing the client default does not mutate existing invoices", () => {
-    const clientId = makeClient({ code: "HIST", defaultFixedMonthlyValue: 400000 });
+  test("item values are snapshots, unaffected by later client edits", () => {
+    const clientId = makeClient({ code: "HIST" });
     const inv = createInvoice(base(clientId));
 
     db.update(clients)
@@ -142,10 +152,36 @@ describe("createInvoice — fixed monthly item", () => {
   });
 });
 
+describe("clientSeed — create-form defaults", () => {
+  test("seeds currency and a fixed monthly item rendered from the template", () => {
+    const clientId = makeClient({
+      name: "London Co",
+      code: "LONDONCO",
+      defaultFixedMonthlyValue: 400000,
+      defaultFixedMonthlyItemNameTemplate:
+        "{{client.name}} - dev services - {{invoice.dateMonthName}} {{invoice.dateYear}}",
+    });
+    const seed = clientSeed(getClient(clientId)!, "2026-06-30");
+    expect(seed.currency).toBe("GBP");
+    expect(seed.fixedMonthly).not.toBeNull();
+    expect(seed.fixedMonthly!.name).toBe(
+      "London Co - dev services - June 2026",
+    );
+    expect(seed.fixedMonthly!.value).toBe("4000.00");
+    expect(seed.fixedMonthly!.source).toBe("fixed_monthly");
+  });
+
+  test("no fixed monthly item when the client has no default value", () => {
+    const clientId = makeClient({ code: "NOVAL", defaultFixedMonthlyValue: null });
+    const seed = clientSeed(getClient(clientId)!, "2026-06-30");
+    expect(seed.fixedMonthly).toBeNull();
+  });
+});
+
 describe("item CRUD and totals", () => {
   test("add/update/delete recomputes the total", () => {
     const clientId = makeClient({ code: "ITEMS", defaultFixedMonthlyValue: null });
-    const inv = createInvoice(base(clientId));
+    const inv = createInvoice({ ...base(clientId), items: [] });
 
     const item = addItem(inv.id, {
       name: "Travel",
@@ -171,30 +207,6 @@ describe("item CRUD and totals", () => {
 });
 
 describe("templates (Phase 4)", () => {
-  test("fixed monthly item name is rendered from the client template", () => {
-    const clientId = makeClient({
-      name: "London Co",
-      code: "LONDONCO",
-      defaultFixedMonthlyValue: 400000,
-      defaultFixedMonthlyItemNameTemplate:
-        "{{client.name}} - dev services - {{invoice.dateMonthName}} {{invoice.dateYear}}",
-    });
-    const inv = createInvoice(base(clientId));
-    const item = getInvoiceDetail(inv.id)!.items[0]!;
-    expect(item.name).toBe("London Co - dev services - June 2026");
-  });
-
-  test("item name template can use the freshly allocated invoice number", () => {
-    const clientId = makeClient({
-      code: "NUMTPL",
-      defaultFixedMonthlyValue: 400000,
-      defaultFixedMonthlyItemNameTemplate: "Services - Invoice {{invoice.number}}",
-    });
-    const inv = createInvoice(base(clientId));
-    const item = getInvoiceDetail(inv.id)!.items[0]!;
-    expect(item.name).toBe(`Services - Invoice ${inv.number}`);
-  });
-
   test("generate renders the nota fiscal template; save persists it", () => {
     const clientId = makeClient({
       code: "NFSE",
@@ -203,7 +215,7 @@ describe("templates (Phase 4)", () => {
       defaultNfseDescriptionTemplate:
         "Serviços para {{client.legalName}} conforme invoice {{invoice.number}}, emitida em {{invoice.date}}.",
     });
-    const inv = createInvoice(base(clientId));
+    const inv = createInvoice({ ...base(clientId), items: [] });
     const detail = getInvoiceDetail(inv.id)!;
 
     const generated = generateNfseDescription(detail);
@@ -217,7 +229,7 @@ describe("templates (Phase 4)", () => {
 
   test("saving blank clears the nota fiscal description", () => {
     const clientId = makeClient({ code: "CLR", defaultFixedMonthlyValue: null });
-    const inv = createInvoice(base(clientId));
+    const inv = createInvoice({ ...base(clientId), items: [] });
     saveNfseDescription(inv.id, "something");
     saveNfseDescription(inv.id, "   ");
     expect(getInvoiceDetail(inv.id)!.invoice.nfseDescription).toBeNull();
@@ -229,7 +241,7 @@ describe("templates (Phase 4)", () => {
       defaultFixedMonthlyValue: null,
       defaultNfseDescriptionTemplate: "Original {{invoice.number}}",
     });
-    const inv = createInvoice(base(clientId));
+    const inv = createInvoice({ ...base(clientId), items: [] });
     saveNfseDescription(inv.id, generateNfseDescription(getInvoiceDetail(inv.id)!));
 
     db.update(clients)
@@ -243,13 +255,23 @@ describe("templates (Phase 4)", () => {
   });
 });
 
+/** A fixed monthly item draft worth 400000 minor units (GBP 4000.00). */
+function fixedItem() {
+  return {
+    name: "Monthly software development services",
+    value: "4000.00",
+    source: "fixed_monthly" as const,
+    notes: undefined,
+  };
+}
+
 function base(clientId: number) {
   return {
     clientId,
     invoiceDate: "2026-06-30",
     currency: "GBP" as const,
-    includeFixedMonthly: true,
     manualNumber: undefined,
     notes: undefined,
+    items: [fixedItem()],
   };
 }

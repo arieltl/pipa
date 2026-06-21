@@ -3,6 +3,7 @@ import { todayDate } from "../../domain/dates.ts";
 import { minorToDecimalString } from "../../domain/money.ts";
 import { formString, str, type FormBody } from "../../web/form-values.ts";
 import type { InvoiceFormValues } from "./components/invoice-form.tsx";
+import type { ItemDraft } from "./invoices.service.ts";
 import type { ItemFormValues } from "./components/items-section.tsx";
 
 export function emptyInvoiceFormValues(
@@ -12,9 +13,9 @@ export function emptyInvoiceFormValues(
     clientId: "",
     invoiceDate: todayDate(),
     currency: defaultCurrency,
-    includeFixedMonthly: true,
     manualNumber: "",
     notes: "",
+    items: [],
   };
 }
 
@@ -23,10 +24,27 @@ export function invoiceFormValuesFromBody(body: FormBody): InvoiceFormValues {
     clientId: formString(body.clientId),
     invoiceDate: formString(body.invoiceDate) || todayDate(),
     currency: formString(body.currency) || "GBP",
-    includeFixedMonthly: body.includeFixedMonthly === "on",
     manualNumber: formString(body.manualNumber),
     notes: formString(body.notes),
+    items: parseItemDrafts(body.items),
   };
+}
+
+/** Parse the form's `items` JSON blob back into draft rows for re-rendering. */
+function parseItemDrafts(raw: FormBody[string] | undefined): ItemDraft[] {
+  if (typeof raw !== "string" || raw.trim() === "") return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((it) => ({
+      name: str(it?.name),
+      value: str(it?.value),
+      source: str(it?.source) || "other",
+      notes: str(it?.notes),
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export function emptyItemFormValues(): ItemFormValues {

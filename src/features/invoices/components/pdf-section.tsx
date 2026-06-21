@@ -22,44 +22,37 @@ export function PdfSection({
   archived,
 }: PdfSectionProps) {
   return (
-    <div id="invoice-pdf" class="rounded-lg border border-base-300 bg-base-100 p-5">
+    <div id="invoice-pdf" class="app-card rounded-lg p-5">
       {archived ? (
         <div class="mb-3 text-sm text-success">PDF archived.</div>
       ) : null}
 
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="text-sm">
-          <code class="font-mono text-base-content/80">{filename}</code>
+        <div class="min-w-0 text-sm">
+          <code class="font-mono text-base-content/80 break-all">{filename}</code>
           <p class="mt-1 text-xs text-base-content/50">
-            Regenerated on demand from the invoice data.
+            Download is in the action bar above. Archive freezes the exact PDF
+            sent.
           </p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <a
-            href={`/invoices/${invoice.id}/pdf`}
-            class="btn btn-primary btn-sm"
-          >
-            Download PDF
-          </a>
-          <button
-            type="button"
-            class="btn btn-ghost btn-sm"
-            hx-post={`/invoices/${invoice.id}/archive`}
-            hx-target="#invoice-pdf"
-            hx-swap="outerHTML"
-            hx-confirm={
-              archivedPdf
-                ? "Re-archive? The previous archived PDF is kept and superseded."
-                : "Freeze the current PDF as an immutable archive?"
-            }
-          >
-            {archivedPdf ? "Re-archive" : "Archive PDF"}
-          </button>
-        </div>
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm"
+          hx-post={`/invoices/${invoice.id}/archive`}
+          hx-target="#invoice-pdf"
+          hx-swap="outerHTML"
+          hx-confirm={
+            archivedPdf
+              ? "Re-archive? The previous archived PDF is kept and superseded."
+              : "Freeze the current PDF as an immutable archive?"
+          }
+        >
+          {archivedPdf ? "Re-archive" : "Archive PDF"}
+        </button>
       </div>
 
       {archivedPdf ? (
-        <div class="mt-4 rounded-md border border-base-300 bg-base-200/40 p-3 text-sm">
+        <div class="mt-4 rounded-md border border-base-300/80 bg-base-200/55 p-3 text-sm">
           <div class="flex items-center justify-between gap-3">
             <div>
               <div class="font-medium">Archived PDF</div>

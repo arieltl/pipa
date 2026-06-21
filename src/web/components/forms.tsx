@@ -26,7 +26,7 @@ export function Field({
   children,
 }: FieldProps) {
   return (
-    <div class="form-control w-full">
+    <div class="app-field form-control w-full">
       <label class="label" for={name}>
         <span class="label-text font-medium">
           {label}
@@ -35,19 +35,19 @@ export function Field({
       </label>
       {children}
       {error ? (
-        <p class="mt-1 text-sm text-error" data-field-error={name}>
+        <p class="app-error mt-2 text-xs" data-field-error={name}>
           {error}
         </p>
       ) : hint ? (
-        <p class="mt-1 text-sm text-base-content/50">{hint}</p>
+        <p class="app-hint mt-1.5 text-xs leading-relaxed">{hint}</p>
       ) : null}
     </div>
   );
 }
 
-const INPUT_BASE = "input input-bordered w-full";
-const TEXTAREA_BASE = "textarea textarea-bordered w-full";
-const SELECT_BASE = "select select-bordered w-full";
+const INPUT_BASE = "app-control input input-bordered w-full";
+const TEXTAREA_BASE = "app-control textarea textarea-bordered w-full";
+const SELECT_BASE = "app-control select select-bordered w-full";
 
 export function inputClass(error?: string): string {
   return error ? `${INPUT_BASE} input-error` : INPUT_BASE;
@@ -69,8 +69,24 @@ export function Alert({
 }) {
   const cls = kind === "success" ? "alert-success" : "alert-error";
   return (
-    <div class={`alert ${cls} mb-4 py-2 text-sm`} role="alert">
+    <div class={`alert ${cls} lift-enter mb-4 py-2 text-sm shadow-sm`} role="alert">
       <span>{message}</span>
     </div>
+  );
+}
+
+export function SubmitButton({
+  label,
+  size,
+}: {
+  label: string;
+  size?: "sm";
+}) {
+  const sizeClass = size === "sm" ? "btn-sm min-w-24" : "min-w-32";
+  return (
+    <button type="submit" class={`btn btn-primary ${sizeClass}`}>
+      <span class="submit-label">{label}</span>
+      <span class="htmx-indicator loading loading-spinner loading-xs"></span>
+    </button>
   );
 }

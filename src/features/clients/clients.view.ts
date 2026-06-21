@@ -19,6 +19,7 @@ export function emptyClientFormValues(
     defaultNfseDescriptionTemplate: "",
     defaultPdfFilenameTemplate: "",
     numberingProfileId: "",
+    isDefault: false,
   };
 }
 
@@ -47,6 +48,7 @@ export function clientFormValuesFromRow(client: Client): ClientFormValues {
       client.numberingProfileId != null
         ? String(client.numberingProfileId)
         : "",
+    isDefault: client.isDefault,
   };
 }
 
@@ -68,5 +70,6 @@ export function clientFormValuesFromBody(body: FormBody): ClientFormValues {
     ),
     defaultPdfFilenameTemplate: formString(body.defaultPdfFilenameTemplate),
     numberingProfileId: formString(body.numberingProfileId),
+    isDefault: body.isDefault === "on" || body.isDefault === "true",
   };
 }

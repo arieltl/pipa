@@ -5,9 +5,11 @@ import type { FormBody } from "../../web/form-values.ts";
 import { ClientForm } from "./components/client-form.tsx";
 import {
   ClientsListPage,
+  ClientWorkspacePage,
   EditClientPage,
   NewClientPage,
 } from "./clients.pages.tsx";
+import { listInvoicesByClient } from "../invoices/invoices.service.ts";
 import { clientFormSchema } from "./clients.schema.ts";
 import {
   ClientCodeTakenError,
@@ -62,6 +64,18 @@ clientsRoutes.post("/", async (c) => {
 });
 
 clientsRoutes.get("/:id", (c) => {
+  const client = getClientFromParam(c.req.param("id"));
+  if (!client) return c.notFound();
+  return c.render(
+    <ClientWorkspacePage
+      client={client}
+      invoices={listInvoicesByClient(client.id)}
+    />,
+    { title: client.name },
+  );
+});
+
+clientsRoutes.get("/:id/edit", (c) => {
   const client = getClientFromParam(c.req.param("id"));
   if (!client) return c.notFound();
   return c.render(

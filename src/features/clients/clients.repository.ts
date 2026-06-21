@@ -20,6 +20,18 @@ export function getClientByCode(code: string): Client | null {
   return db.select().from(clients).where(eq(clients.code, code)).get() ?? null;
 }
 
+export function getDefaultClient(): Client | null {
+  return db.select().from(clients).where(eq(clients.isDefault, true)).get() ?? null;
+}
+
+/** Pin one client as the default, clearing the flag on every other client. */
+export function setDefaultClient(id: number): void {
+  db.transaction((tx) => {
+    tx.update(clients).set({ isDefault: false }).run();
+    tx.update(clients).set({ isDefault: true }).where(eq(clients.id, id)).run();
+  });
+}
+
 export function insertClient(values: NewClient): Client {
   return db.insert(clients).values(values).returning().get();
 }

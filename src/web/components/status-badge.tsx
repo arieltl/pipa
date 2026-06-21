@@ -6,10 +6,10 @@
 export type InvoiceStatus = "draft" | "sent" | "paid" | "void";
 
 const STATUS_CLASS: Record<InvoiceStatus, string> = {
-  draft: "badge-ghost",
-  sent: "badge-info",
-  paid: "badge-success",
-  void: "badge-error",
+  draft: "app-status-draft",
+  sent: "app-status-sent",
+  paid: "app-status-paid",
+  void: "app-status-void",
 };
 
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
@@ -21,7 +21,7 @@ const STATUS_LABEL: Record<InvoiceStatus, string> = {
 
 export function StatusBadge({ status }: { status: InvoiceStatus }) {
   return (
-    <span class={`badge badge-sm ${STATUS_CLASS[status]}`}>
+    <span class={`app-status ${STATUS_CLASS[status]}`}>
       {STATUS_LABEL[status]}
     </span>
   );

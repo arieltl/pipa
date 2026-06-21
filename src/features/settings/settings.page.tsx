@@ -8,7 +8,7 @@ export function IssuerSettingsPage({ values }: { values: IssuerFormValues }) {
         title="Issuer settings"
         description="Your details as they appear on every invoice. Used as defaults for new clients and PDFs."
       />
-      <div class="max-w-3xl rounded-lg border border-base-300 bg-base-100 p-6">
+      <div class="app-card lift-enter rounded-lg p-6">
         <IssuerForm values={values} />
       </div>
     </div>

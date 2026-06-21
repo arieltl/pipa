@@ -44,9 +44,16 @@ function newInvoice() {
     clientId,
     invoiceDate: "2026-06-30",
     currency: "GBP",
-    includeFixedMonthly: true,
     manualNumber: undefined,
     notes: undefined,
+    items: [
+      {
+        name: "Monthly software development services",
+        value: "4000.00",
+        source: "fixed_monthly",
+        notes: undefined,
+      },
+    ],
   });
   return getInvoiceDetail(inv.id)!;
 }

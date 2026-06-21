@@ -1,16 +1,23 @@
+import type { Client } from "../../db/schema.ts";
 import { PageHeader } from "../../web/components/page-header.tsx";
+import { formatMoney } from "../../domain/money.ts";
+import { InvoicesTable } from "../invoices/components/invoices-table.tsx";
+import type { InvoiceListRow } from "../invoices/invoices.repository.ts";
+import type { ClientInvoiceStats } from "../invoices/invoices.repository.ts";
 
-/**
- * Dashboard landing page. For now it confirms the foundation is wired up and
- * outlines the monthly workflow; recent-invoice cards arrive with the invoice
- * core (Phase 3).
- */
-export function DashboardPage() {
+export type DashboardData = {
+  clients: Client[];
+  stats: Map<number, ClientInvoiceStats>;
+  recentInvoices: InvoiceListRow[];
+};
+
+/** Cross-client overview: client workspaces plus the most recent invoices. */
+export function DashboardPage({ clients, stats, recentInvoices }: DashboardData) {
   return (
     <div>
       <PageHeader
-        title="Dashboard"
-        description="Your monthly invoicing workflow at a glance."
+        title="Overview"
+        description="Your clients and recent invoicing activity."
         actions={
           <a href="/invoices/new" class="btn btn-primary btn-sm">
             New invoice
@@ -18,67 +25,72 @@ export function DashboardPage() {
         }
       />
 
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <WorkflowCard
-          step="1"
-          title="Create an invoice"
-          body="Pick a client and the invoice date shown on the PDF. The number is allocated per client."
-        />
-        <WorkflowCard
-          step="2"
-          title="Review line items"
-          body="The fixed monthly service item is added by default and stays editable per invoice."
-        />
-        <WorkflowCard
-          step="3"
-          title="Generate nota fiscal text"
-          body="Produce copyable NFS-e description text from the client template, then tweak as needed."
-        />
-        <WorkflowCard
-          step="4"
-          title="Download the PDF"
-          body="Render the commercial invoice PDF and send it to your client."
-        />
-        <WorkflowCard
-          step="5"
-          title="Link the nota fiscal"
-          body="After issuing the NFS-e, link its number, verification URL, and PDF/XML files."
-        />
-        <WorkflowCard
-          step="6"
-          title="Track status"
-          body="Move invoices through draft, sent, and paid as the month progresses."
-        />
-      </div>
+      {clients.length === 0 ? (
+        <div class="app-card lift-enter rounded-lg border-dashed p-10 text-center">
+          <p class="text-sm text-base-content/60">
+            No clients yet. Add a client to start invoicing.
+          </p>
+          <a href="/clients/new" class="btn btn-primary btn-sm mt-4">
+            New client
+          </a>
+        </div>
+      ) : (
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {clients.map((client) => (
+            <ClientCard client={client} stats={stats.get(client.id)} />
+          ))}
+        </div>
+      )}
 
-      <div class="mt-8 rounded-lg border border-dashed border-base-300 bg-base-100 p-8 text-center">
-        <p class="text-sm text-base-content/60">
-          No invoices yet. Recent invoices will appear here once the invoice
-          core is built.
-        </p>
-      </div>
+      <section class="mt-10">
+        <h2 class="mb-3 text-lg font-semibold">Recent invoices</h2>
+        <InvoicesTable invoices={recentInvoices} />
+      </section>
     </div>
   );
 }
 
-function WorkflowCard({
-  step,
-  title,
-  body,
+function ClientCard({
+  client,
+  stats,
 }: {
-  step: string;
-  title: string;
-  body: string;
+  client: Client;
+  stats?: ClientInvoiceStats;
 }) {
+  const count = stats?.invoiceCount ?? 0;
+  const outstanding = stats?.outstandingMinor ?? 0;
   return (
-    <div class="rounded-lg border border-base-300 bg-base-100 p-4">
+    <a
+      href={`/clients/${client.id}`}
+      class="app-card lift-enter block rounded-lg p-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl"
+    >
       <div class="flex items-center gap-2">
-        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-          {step}
+        <span class="font-medium">{client.name}</span>
+        {client.isDefault ? (
+          <span class="text-amber-400" title="Default client">
+            ★
+          </span>
+        ) : null}
+        <span class="badge badge-sm app-code-badge ml-auto font-mono">
+          {client.code}
         </span>
-        <h2 class="text-sm font-semibold">{title}</h2>
       </div>
-      <p class="mt-2 text-sm text-base-content/60">{body}</p>
-    </div>
+      <div class="mt-3 flex items-end justify-between">
+        <div>
+          <div class="text-xs uppercase tracking-wide text-base-content/50">
+            Invoices
+          </div>
+          <div class="text-xl font-semibold tabular-nums">{count}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs uppercase tracking-wide text-base-content/50">
+            Outstanding
+          </div>
+          <div class="text-xl font-semibold tabular-nums">
+            {formatMoney(outstanding, client.defaultCurrency)}
+          </div>
+        </div>
+      </div>
+    </a>
   );
 }

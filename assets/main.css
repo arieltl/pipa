@@ -1,10 +1,414 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-  themes: business --default, winter;
+  themes: invoice --default;
+}
+@plugin "daisyui/theme" {
+  name: "invoice";
+  default: true;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: oklch(20% 0.035 260);
+  --color-base-200: oklch(16% 0.032 260);
+  --color-base-300: oklch(34% 0.052 260);
+  --color-base-content: oklch(95% 0.02 255);
+  --color-primary: oklch(73% 0.17 246);
+  --color-primary-content: oklch(16% 0.035 260);
+  --color-secondary: oklch(70% 0.14 176);
+  --color-secondary-content: oklch(14% 0.032 176);
+  --color-accent: oklch(76% 0.16 72);
+  --color-accent-content: oklch(17% 0.04 70);
+  --color-neutral: oklch(24% 0.04 260);
+  --color-neutral-content: oklch(94% 0.015 255);
+  --color-info: oklch(70% 0.14 235);
+  --color-info-content: oklch(14% 0.035 235);
+  --color-success: oklch(70% 0.15 154);
+  --color-success-content: oklch(14% 0.035 154);
+  --color-warning: oklch(78% 0.16 78);
+  --color-warning-content: oklch(17% 0.04 78);
+  --color-error: oklch(68% 0.19 24);
+  --color-error-content: oklch(15% 0.035 24);
+  --radius-selector: 0.45rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.65rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 /* Tailwind v4 scans these for class usage. */
 @source "../src/**/*.{ts,tsx}";
+
+@layer base {
+  :root {
+    --app-ink: #eef4ff;
+    --app-muted: #c4cfdd;
+    --app-panel: rgba(22, 32, 53, 0.86);
+    --app-panel-strong: rgba(18, 28, 48, 0.98);
+    --app-line: rgba(148, 163, 184, 0.26);
+    --app-glow: rgba(56, 189, 248, 0.24);
+  }
+
+  html {
+    background: #070b13;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    min-width: 320px;
+    font-feature-settings: "cv02", "cv03", "cv04", "tnum";
+  }
+
+  ::selection {
+    background: rgba(56, 189, 248, 0.24);
+  }
+}
+
+@layer components {
+  .app-shell {
+    position: relative;
+    isolation: isolate;
+    background:
+      radial-gradient(circle at top left, rgba(37, 99, 235, 0.34), transparent 30rem),
+      radial-gradient(circle at 78% 8rem, rgba(20, 184, 166, 0.24), transparent 28rem),
+      radial-gradient(circle at 50% 110%, rgba(245, 158, 11, 0.14), transparent 30rem),
+      linear-gradient(135deg, #070b13 0%, #0e1626 46%, #101f2b 100%);
+  }
+
+  .app-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: linear-gradient(to bottom, black 0%, transparent 72%);
+  }
+
+  .app-header {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+    background: rgba(8, 13, 24, 0.86);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+  }
+
+  .app-sidebar {
+    background: rgba(8, 13, 24, 0.92);
+    backdrop-filter: blur(18px);
+    box-shadow: 18px 0 40px rgba(0, 0, 0, 0.26);
+  }
+
+  .brand-mark {
+    display: grid;
+    height: 2rem;
+    width: 2rem;
+    place-items: center;
+    border-radius: 0.6rem;
+    background: linear-gradient(135deg, #1d4ed8, #14b8a6 58%, #f59e0b);
+    color: white;
+    font-weight: 800;
+    box-shadow: 0 10px 24px rgba(56, 189, 248, 0.22);
+  }
+
+  .app-card {
+    border: 1px solid var(--app-line);
+    background:
+      linear-gradient(145deg, rgba(56, 189, 248, 0.055), transparent 42%),
+      var(--app-panel);
+    box-shadow:
+      0 22px 60px rgba(0, 0, 0, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(16px);
+  }
+
+  .app-table {
+    border: 1px solid var(--app-line);
+    background:
+      linear-gradient(120deg, rgba(20, 184, 166, 0.08), transparent 36%),
+      var(--app-panel-strong);
+    box-shadow:
+      0 18px 52px rgba(0, 0, 0, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .app-table .table :where(thead tr) {
+    border-bottom-color: rgba(148, 163, 184, 0.26);
+    color: #bfdbfe;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .app-table .table :where(tbody tr) {
+    color: rgba(241, 245, 249, 0.92);
+    transition: background-color 160ms ease, transform 160ms ease;
+  }
+
+  .app-table .table :where(tbody td) {
+    border-bottom-color: rgba(148, 163, 184, 0.12);
+  }
+
+  .app-table .table :where(tbody tr:hover) {
+    background: rgba(56, 189, 248, 0.14);
+  }
+
+  .app-form {
+    gap: 1.1rem;
+  }
+
+  .app-field .label {
+    padding-bottom: 0.35rem;
+  }
+
+  .app-field .label-text {
+    color: rgba(226, 232, 240, 0.88);
+    font-size: 0.82rem;
+  }
+
+  .app-control {
+    min-height: 2.75rem;
+    border-color: rgba(148, 163, 184, 0.3);
+    background-color: rgba(8, 13, 24, 0.8);
+    color: var(--app-ink);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease,
+      transform 150ms ease;
+  }
+
+  .app-control:focus,
+  .app-control:focus-within {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 4px var(--app-glow);
+    outline: none;
+  }
+
+  .app-control:hover {
+    border-color: rgba(56, 189, 248, 0.48);
+  }
+
+  .app-control::placeholder {
+    color: rgba(203, 213, 225, 0.78);
+  }
+
+  textarea.app-control {
+    line-height: 1.5;
+    min-height: 5.5rem;
+  }
+
+  .app-field.has-client-error .app-control,
+  .app-control.input-error,
+  .app-control.textarea-error,
+  .app-control.select-error {
+    border-color: #fb7185;
+    box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.14);
+  }
+
+  .app-hint {
+    color: rgba(203, 213, 225, 0.72);
+  }
+
+  .app-error {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    background: rgba(251, 113, 133, 0.13);
+    padding: 0.25rem 0.55rem;
+    color: #fecdd3;
+    font-weight: 600;
+  }
+
+  .app-error::before {
+    content: "!";
+    display: grid;
+    height: 1rem;
+    width: 1rem;
+    place-items: center;
+    border-radius: 999px;
+    background: #fb7185;
+    color: white;
+    font-size: 0.7rem;
+    line-height: 1;
+  }
+
+  .app-field.is-dirty [data-field-error] {
+    display: none;
+  }
+
+  /* Unsaved-changes affordance: an amber edge + a badge that appears only
+     while a savable section has pending edits. */
+  .is-dirty-section {
+    position: relative;
+    border-color: rgba(251, 191, 36, 0.55) !important;
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.28),
+      0 18px 44px rgba(180, 83, 9, 0.16) !important;
+  }
+
+  [data-dirty-badge] {
+    display: none;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    background: rgba(251, 191, 36, 0.14);
+    padding: 0.15rem 0.55rem;
+    color: #fde68a;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .is-dirty-section [data-dirty-badge] {
+    display: inline-flex;
+  }
+
+  .btn {
+    border-radius: 0.55rem;
+    letter-spacing: 0;
+    transition:
+      transform 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-primary {
+    border: 0;
+    background: linear-gradient(135deg, #1d4ed8, #2563eb 42%, #0891b2 72%, #14b8a6);
+    box-shadow: 0 14px 28px rgba(56, 189, 248, 0.22);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 18px 34px rgba(56, 189, 248, 0.3);
+  }
+
+  .btn-ghost:hover {
+    background: rgba(148, 163, 184, 0.1);
+  }
+
+  .app-status {
+    display: inline-flex;
+    min-height: 1.35rem;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 1px solid;
+    border-radius: 999px;
+    gap: 0.35rem;
+    padding-inline: 0.55rem 0.62rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .app-status::before {
+    content: "";
+    height: 0.42rem;
+    width: 0.42rem;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 0 10px currentColor;
+  }
+
+  .app-status-draft {
+    border-color: rgba(251, 191, 36, 0.62);
+    background:
+      linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(180, 83, 9, 0.12)),
+      rgba(30, 24, 14, 0.62);
+    color: #fde68a;
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.1), 0 8px 18px rgba(180, 83, 9, 0.18);
+  }
+
+  .app-status-sent {
+    border-color: rgba(96, 165, 250, 0.62);
+    background:
+      linear-gradient(135deg, rgba(96, 165, 250, 0.3), rgba(29, 78, 216, 0.12)),
+      rgba(15, 23, 42, 0.64);
+    color: #bae6fd;
+    box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.1), 0 8px 18px rgba(29, 78, 216, 0.16);
+  }
+
+  .app-status-paid {
+    border-color: rgba(74, 222, 128, 0.62);
+    background:
+      linear-gradient(135deg, rgba(74, 222, 128, 0.3), rgba(21, 128, 61, 0.12)),
+      rgba(12, 31, 25, 0.64);
+    color: #bbf7d0;
+    box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.1), 0 8px 18px rgba(21, 128, 61, 0.16);
+  }
+
+  .app-status-void {
+    border-color: rgba(251, 113, 133, 0.66);
+    background:
+      linear-gradient(135deg, rgba(251, 113, 133, 0.3), rgba(190, 18, 60, 0.12)),
+      rgba(38, 16, 24, 0.66);
+    color: #fecdd3;
+    box-shadow: 0 0 0 1px rgba(251, 113, 133, 0.1), 0 8px 18px rgba(190, 18, 60, 0.16);
+  }
+
+  .app-code-badge {
+    border-color: rgba(251, 191, 36, 0.42);
+    background: rgba(251, 191, 36, 0.14);
+    color: #fde68a;
+    font-weight: 700;
+  }
+
+  .page-enter {
+    animation: page-enter 360ms ease both;
+  }
+
+  .lift-enter {
+    animation: lift-enter 420ms ease both;
+  }
+
+  .htmx-request .submit-label {
+    opacity: 0.58;
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lift-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 /* htmx request indicators: show elements with `.htmx-indicator` only while a
    request is in flight. Kept small and app-specific per the styling notes. */

@@ -8,7 +8,7 @@ import type { InvoiceListRow } from "../invoices.repository.ts";
 export function InvoicesTable({ invoices }: { invoices: InvoiceListRow[] }) {
   if (invoices.length === 0) {
     return (
-      <div class="rounded-lg border border-dashed border-base-300 bg-base-100 p-10 text-center">
+      <div class="app-card lift-enter rounded-lg border-dashed p-10 text-center">
         <p class="text-sm text-base-content/60">
           No invoices yet. Create your first invoice to get started.
         </p>
@@ -20,7 +20,7 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceListRow[] }) {
   }
 
   return (
-    <div class="overflow-x-auto rounded-lg border border-base-300 bg-base-100">
+    <div class="app-table lift-enter overflow-x-auto rounded-lg">
       <table class="table">
         <thead>
           <tr>
@@ -43,7 +43,7 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceListRow[] }) {
                 </a>
               </td>
               <td>{inv.clientName}</td>
-              <td class="tabular-nums text-base-content/70">{inv.invoiceDate}</td>
+              <td class="tabular-nums text-base-content/84">{inv.invoiceDate}</td>
               <td>
                 <StatusBadge status={inv.status as InvoiceStatus} />
               </td>

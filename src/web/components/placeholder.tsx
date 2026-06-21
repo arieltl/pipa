@@ -14,7 +14,7 @@ export function Placeholder({
   return (
     <div>
       <PageHeader title={title} />
-      <div class="rounded-lg border border-dashed border-base-300 bg-base-100 p-10 text-center">
+      <div class="app-card lift-enter rounded-lg border-dashed p-10 text-center">
         <p class="text-sm text-base-content/60">
           This section arrives in {phase}.
         </p>

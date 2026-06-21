@@ -1,6 +1,7 @@
 import {
   Alert,
   Field,
+  SubmitButton,
   inputClass,
   selectClass,
   textareaClass,
@@ -40,7 +41,8 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
         hx-post="/settings/issuer"
         hx-target="#issuer-form"
         hx-swap="outerHTML"
-        class="grid gap-4 sm:grid-cols-2"
+        x-data="enhancedForm"
+        class="app-form grid sm:grid-cols-2"
       >
         <div class="sm:col-span-2">
           <Field label="Issuer name" name="name" required error={errors.name}>
@@ -50,7 +52,9 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
               type="text"
               value={values.name}
               class={inputClass(errors.name)}
-              autocomplete="off"
+              autocomplete="organization"
+              required
+              maxlength={200}
             />
           </Field>
         </div>
@@ -62,6 +66,8 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
             type="text"
             value={values.legalName}
             class={inputClass(errors.legalName)}
+            maxlength={200}
+            data-format="trim"
           />
         </Field>
 
@@ -72,6 +78,11 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
             type="text"
             value={values.cnpj}
             class={inputClass(errors.cnpj)}
+            inputmode="numeric"
+            maxlength={18}
+            pattern="^\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}$"
+            title="Use CNPJ format 00.000.000/0000-00."
+            data-format="cnpj"
           />
         </Field>
 
@@ -82,6 +93,8 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
               name="address"
               rows={2}
               class={textareaClass(errors.address)}
+              maxlength={1000}
+              data-format="trim"
             >
               {values.address}
             </textarea>
@@ -95,6 +108,9 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
             type="email"
             value={values.email}
             class={inputClass(errors.email)}
+            maxlength={254}
+            autocomplete="email"
+            placeholder="name@example.com"
           />
         </Field>
 
@@ -123,6 +139,8 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
             type="text"
             value={values.pixKey}
             class={inputClass(errors.pixKey)}
+            maxlength={200}
+            data-format="trim"
           />
         </Field>
 
@@ -139,6 +157,8 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
               type="text"
               value={values.defaultPdfFilenameTemplate}
               class={inputClass(errors.defaultPdfFilenameTemplate)}
+              maxlength={300}
+              data-format="trim"
             />
           </Field>
         </div>
@@ -154,6 +174,8 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
               name="bankDetails"
               rows={3}
               class={textareaClass(errors.bankDetails)}
+              maxlength={2000}
+              data-format="trim"
             >
               {values.bankDetails}
             </textarea>
@@ -161,9 +183,7 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
         </div>
 
         <div class="sm:col-span-2 flex justify-end">
-          <button type="submit" class="btn btn-primary">
-            Save settings
-          </button>
+          <SubmitButton label="Save settings" />
         </div>
       </form>
     </div>
