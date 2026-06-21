@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import {
   Document,
+  Font,
   Page,
   StyleSheet,
   Text,
@@ -15,6 +16,8 @@ import type { InvoicePdfViewModel } from "./view-model.ts";
  * components here. The whole file renders under React's JSX runtime (pragma
  * above) because the app's global JSX is `hono/jsx`.
  */
+
+Font.registerHyphenationCallback((word) => [word]);
 
 const styles = StyleSheet.create({
   page: {
@@ -32,12 +35,19 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 24,
   },
-  issuerName: { fontSize: 16, fontFamily: "Helvetica-Bold" },
+  headerLeft: { width: "62%", paddingRight: 24 },
+  headerRight: { width: "32%", alignItems: "flex-end" },
+  issuerName: { fontSize: 16, fontFamily: "Helvetica-Bold", lineHeight: 1.18 },
   muted: { color: "#6b7280" },
-  title: { fontSize: 20, fontFamily: "Helvetica-Bold", textAlign: "right" },
-  metaRight: { textAlign: "right" },
-  parties: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24 },
-  partyBlock: { width: "48%" },
+  title: {
+    fontSize: 20,
+    fontFamily: "Helvetica-Bold",
+    textAlign: "right",
+    lineHeight: 1,
+  },
+  metaRight: { textAlign: "right", marginTop: 5 },
+  parties: { marginBottom: 24 },
+  partyBlock: { width: "60%" },
   sectionLabel: {
     fontSize: 8,
     fontFamily: "Helvetica-Bold",
@@ -47,37 +57,70 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   partyName: { fontFamily: "Helvetica-Bold" },
-  table: { marginTop: 8 },
+  table: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+  },
   tableHead: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#d1d5db",
-    paddingBottom: 6,
-    marginBottom: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#f9fafb",
   },
   row: {
     flexDirection: "row",
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: "#d1d5db",
+    minHeight: 48,
   },
   colName: { flex: 1, paddingRight: 12 },
   colValue: { width: 120, textAlign: "right" },
   headCell: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#6b7280", textTransform: "uppercase" },
   totalRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 12,
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "#eff6ff",
   },
-  totalLabel: { fontFamily: "Helvetica-Bold", marginRight: 16, alignSelf: "center" },
+  totalLabel: { fontFamily: "Helvetica-Bold", color: "#1e3a8a" },
   totalValue: {
     fontSize: 14,
     fontFamily: "Helvetica-Bold",
     width: 120,
     textAlign: "right",
+    color: "#1e3a8a",
   },
   block: { marginTop: 24 },
   blockText: { marginTop: 2 },
+  paymentBlock: {
+    marginTop: 34,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#d1d5db",
+  },
+  paymentRow: {
+    flexDirection: "row",
+    marginTop: 4,
+  },
+  paymentLabel: {
+    width: 118,
+    color: "#374151",
+  },
+  paymentValue: {
+    flex: 1,
+    fontFamily: "Helvetica-Bold",
+  },
+  paymentNotes: {
+    marginTop: 6,
+    color: "#374151",
+  },
   link: { color: "#2563eb" },
 });
 
@@ -90,11 +133,11 @@ export function InvoiceDocument({ data }: { data: InvoicePdfViewModel }) {
     >
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerLeft}>
             <Text style={styles.issuerName}>{issuer?.name ?? "Invoice"}</Text>
             {issuer ? <IssuerLines issuer={issuer} /> : null}
           </View>
-          <View>
+          <View style={styles.headerRight}>
             <Text style={styles.title}>INVOICE</Text>
             <View style={styles.metaRight}>
               <Text>#{invoice.number}</Text>
@@ -105,18 +148,12 @@ export function InvoiceDocument({ data }: { data: InvoicePdfViewModel }) {
 
         <View style={styles.parties}>
           <View style={styles.partyBlock}>
-            <Text style={styles.sectionLabel}>Bill to</Text>
+            <Text style={styles.sectionLabel}>Billed to</Text>
             <Text style={styles.partyName}>{client.name}</Text>
             {client.legalName ? <Text>{client.legalName}</Text> : null}
             {client.address ? <Text>{client.address}</Text> : null}
             {client.country ? <Text>{client.country}</Text> : null}
             {client.email ? <Text style={styles.muted}>{client.email}</Text> : null}
-          </View>
-          <View style={styles.partyBlock}>
-            <Text style={styles.sectionLabel}>Details</Text>
-            <Text>Invoice number: {invoice.number}</Text>
-            <Text>Invoice date: {invoice.date}</Text>
-            <Text>Currency: {invoice.currency}</Text>
           </View>
         </View>
 
@@ -138,23 +175,14 @@ export function InvoiceDocument({ data }: { data: InvoicePdfViewModel }) {
               </View>
             ))
           )}
-        </View>
-
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>{total}</Text>
-        </View>
-
-        {issuer && (issuer.bankDetails || issuer.pixKey) ? (
-          <View style={styles.block}>
-            <Text style={styles.sectionLabel}>Payment details</Text>
-            {issuer.bankDetails ? (
-              <Text style={styles.blockText}>{issuer.bankDetails}</Text>
-            ) : null}
-            {issuer.pixKey ? (
-              <Text style={styles.blockText}>PIX: {issuer.pixKey}</Text>
-            ) : null}
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total ({invoice.currency})</Text>
+            <Text style={styles.totalValue}>{total}</Text>
           </View>
+        </View>
+
+        {issuer && hasPaymentDetails(issuer) ? (
+          <PaymentDetails issuer={issuer} />
         ) : null}
 
         {invoice.notes ? (
@@ -187,6 +215,53 @@ export function InvoiceDocument({ data }: { data: InvoicePdfViewModel }) {
         ) : null}
       </Page>
     </Document>
+  );
+}
+
+function PaymentDetails({
+  issuer,
+}: {
+  issuer: NonNullable<InvoicePdfViewModel["issuer"]>;
+}) {
+  const rows = [
+    ["Beneficiary", issuer.bankBeneficiary || issuer.legalName || issuer.name],
+    ["Beneficiary address", issuer.bankBeneficiaryAddress || issuer.address],
+    ["Account Number (IBAN)", issuer.bankIban || issuer.bankAccountNumber],
+    ["SWIFT / BIC", issuer.bankSwiftCode],
+    ["Bank name", issuer.bankName],
+    ["Bank address", issuer.bankAddress],
+    ["PIX", issuer.pixKey],
+  ].filter((row): row is [string, string] => Boolean(row[1]));
+
+  return (
+    <View style={styles.paymentBlock}>
+      <Text style={styles.sectionLabel}>Payment info</Text>
+      {rows.map(([label, value]) => (
+        <View style={styles.paymentRow} key={label}>
+          <Text style={styles.paymentLabel}>{label}:</Text>
+          <Text style={styles.paymentValue}>{value}</Text>
+        </View>
+      ))}
+      {issuer.bankDetails ? (
+        <Text style={styles.paymentNotes}>{issuer.bankDetails}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function hasPaymentDetails(
+  issuer: NonNullable<InvoicePdfViewModel["issuer"]>,
+): boolean {
+  return Boolean(
+    issuer.bankBeneficiary ||
+      issuer.bankBeneficiaryAddress ||
+      issuer.bankAccountNumber ||
+      issuer.bankIban ||
+      issuer.bankSwiftCode ||
+      issuer.bankName ||
+      issuer.bankAddress ||
+      issuer.bankDetails ||
+      issuer.pixKey,
   );
 }
 

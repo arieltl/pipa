@@ -22,6 +22,13 @@ export type InvoicePdfViewModel = {
     cnpj: string | null;
     address: string | null;
     email: string | null;
+    bankBeneficiary: string | null;
+    bankBeneficiaryAddress: string | null;
+    bankAccountNumber: string | null;
+    bankIban: string | null;
+    bankSwiftCode: string | null;
+    bankName: string | null;
+    bankAddress: string | null;
     bankDetails: string | null;
     pixKey: string | null;
   } | null;
@@ -72,6 +79,13 @@ export function buildInvoicePdfViewModel(
           cnpj: issuer.cnpj,
           address: issuer.address,
           email: issuer.email,
+          bankBeneficiary: issuer.bankBeneficiary,
+          bankBeneficiaryAddress: issuer.bankBeneficiaryAddress,
+          bankAccountNumber: issuer.bankAccountNumber,
+          bankIban: issuer.bankIban,
+          bankSwiftCode: issuer.bankSwiftCode,
+          bankName: issuer.bankName,
+          bankAddress: issuer.bankAddress,
           bankDetails: issuer.bankDetails,
           pixKey: issuer.pixKey,
         }

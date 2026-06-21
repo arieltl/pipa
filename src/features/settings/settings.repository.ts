@@ -13,11 +13,12 @@ export function getIssuerSettings(): IssuerSettings | null {
 export function saveIssuerSettings(input: IssuerFormInput): IssuerSettings {
   const existing = getIssuerSettings();
   const now = nowIso();
+  const values = normalizeIssuerSettingsInput(input);
 
   if (existing) {
     return db
       .update(issuerSettings)
-      .set({ ...input, updatedAt: now })
+      .set({ ...values, updatedAt: now })
       .where(eq(issuerSettings.id, existing.id))
       .returning()
       .get();
@@ -25,7 +26,32 @@ export function saveIssuerSettings(input: IssuerFormInput): IssuerSettings {
 
   return db
     .insert(issuerSettings)
-    .values({ ...input, createdAt: now, updatedAt: now })
+    .values({ ...values, createdAt: now, updatedAt: now })
     .returning()
     .get();
+}
+
+function nullable(value: string | undefined): string | null {
+  return value ?? null;
+}
+
+function normalizeIssuerSettingsInput(input: IssuerFormInput) {
+  return {
+    name: input.name,
+    legalName: nullable(input.legalName),
+    cnpj: nullable(input.cnpj),
+    address: nullable(input.address),
+    email: nullable(input.email),
+    bankBeneficiary: nullable(input.bankBeneficiary),
+    bankBeneficiaryAddress: nullable(input.bankBeneficiaryAddress),
+    bankAccountNumber: null,
+    bankIban: nullable(input.bankIban),
+    bankSwiftCode: nullable(input.bankSwiftCode),
+    bankName: nullable(input.bankName),
+    bankAddress: nullable(input.bankAddress),
+    bankDetails: nullable(input.bankDetails),
+    pixKey: nullable(input.pixKey),
+    defaultCurrency: input.defaultCurrency,
+    defaultPdfFilenameTemplate: nullable(input.defaultPdfFilenameTemplate),
+  };
 }

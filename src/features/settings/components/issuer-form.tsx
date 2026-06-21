@@ -15,6 +15,12 @@ export type IssuerFormValues = {
   cnpj: string;
   address: string;
   email: string;
+  bankBeneficiary: string;
+  bankBeneficiaryAddress: string;
+  bankIban: string;
+  bankSwiftCode: string;
+  bankName: string;
+  bankAddress: string;
   bankDetails: string;
   pixKey: string;
   defaultCurrency: string;
@@ -132,6 +138,72 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
           </select>
         </Field>
 
+        <div class="sm:col-span-2 border-t border-base-content/10 pt-5">
+          <div class="text-sm font-semibold text-base-content/80">
+            Bank payment details
+          </div>
+        </div>
+
+        <Field
+          label="Beneficiary"
+          name="bankBeneficiary"
+          error={errors.bankBeneficiary}
+        >
+          <input
+            id="bankBeneficiary"
+            name="bankBeneficiary"
+            type="text"
+            value={values.bankBeneficiary}
+            class={inputClass(errors.bankBeneficiary)}
+            maxlength={200}
+            data-format="trim"
+          />
+        </Field>
+
+        <Field label="Bank name" name="bankName" error={errors.bankName}>
+          <input
+            id="bankName"
+            name="bankName"
+            type="text"
+            value={values.bankName}
+            class={inputClass(errors.bankName)}
+            maxlength={200}
+            data-format="trim"
+          />
+        </Field>
+
+        <Field
+          label="Account Number (IBAN)"
+          name="bankIban"
+          error={errors.bankIban}
+        >
+          <input
+            id="bankIban"
+            name="bankIban"
+            type="text"
+            value={values.bankIban}
+            class={inputClass(errors.bankIban)}
+            maxlength={200}
+            data-format="trim"
+          />
+        </Field>
+
+        <Field
+          label="SWIFT / BIC"
+          name="bankSwiftCode"
+          error={errors.bankSwiftCode}
+        >
+          <input
+            id="bankSwiftCode"
+            name="bankSwiftCode"
+            type="text"
+            value={values.bankSwiftCode}
+            class={inputClass(errors.bankSwiftCode)}
+            maxlength={100}
+            data-format="trim"
+          />
+        </Field>
+
         <Field label="PIX key" name="pixKey" error={errors.pixKey}>
           <input
             id="pixKey"
@@ -143,6 +215,44 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
             data-format="trim"
           />
         </Field>
+
+        <div class="sm:col-span-2">
+          <Field
+            label="Beneficiary address"
+            name="bankBeneficiaryAddress"
+            error={errors.bankBeneficiaryAddress}
+          >
+            <textarea
+              id="bankBeneficiaryAddress"
+              name="bankBeneficiaryAddress"
+              rows={2}
+              class={textareaClass(errors.bankBeneficiaryAddress)}
+              maxlength={1000}
+              data-format="trim"
+            >
+              {values.bankBeneficiaryAddress}
+            </textarea>
+          </Field>
+        </div>
+
+        <div class="sm:col-span-2">
+          <Field
+            label="Bank address"
+            name="bankAddress"
+            error={errors.bankAddress}
+          >
+            <textarea
+              id="bankAddress"
+              name="bankAddress"
+              rows={2}
+              class={textareaClass(errors.bankAddress)}
+              maxlength={1000}
+              data-format="trim"
+            >
+              {values.bankAddress}
+            </textarea>
+          </Field>
+        </div>
 
         <div class="sm:col-span-2">
           <Field
@@ -165,7 +275,7 @@ export function IssuerForm({ values, errors = {}, saved }: IssuerFormProps) {
 
         <div class="sm:col-span-2">
           <Field
-            label="Bank / payment details"
+            label="Additional payment notes"
             name="bankDetails"
             error={errors.bankDetails}
           >
