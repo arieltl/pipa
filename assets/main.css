@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* Tailwind v4 scans these for class usage. */
+@source "../src/**/*.{ts,tsx}";
+
+/* htmx request indicators: show elements with `.htmx-indicator` only while a
+   request is in flight. Kept small and app-specific per the styling notes. */
+.htmx-indicator {
+  opacity: 0;
+  transition: opacity 150ms ease-in;
+}
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  opacity: 1;
+}

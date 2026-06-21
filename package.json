@@ -1,0 +1,37 @@
+{
+  "name": "invoice",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n css,server -c cyan,green \"bun run dev:css\" \"bun run dev:server\"",
+    "dev:server": "bun run --hot src/index.tsx",
+    "dev:css": "bun run build:css -- --watch",
+    "build": "bun run build:vendor && bun run build:css",
+    "build:css": "bunx @tailwindcss/cli -i assets/main.css -o src/public/app.css --minify",
+    "build:vendor": "bun run scripts/copy-vendor.ts",
+    "start": "bun run src/index.tsx",
+    "typecheck": "bunx tsc --noEmit",
+    "db:generate": "bunx drizzle-kit generate",
+    "db:migrate": "bun run src/db/migrate.ts",
+    "db:studio": "bunx drizzle-kit studio",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.8.0",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.26",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.1",
+    "@types/bun": "^1.3.14",
+    "alpinejs": "^3.15.12",
+    "concurrently": "^10.0.3",
+    "daisyui": "^5.5.23",
+    "drizzle-kit": "^0.31.10",
+    "htmx.org": "^2.0.10",
+    "tailwindcss": "^4.3.1",
+    "typescript": "^6.0.3"
+  }
+}
