@@ -204,6 +204,15 @@ export function updateInvoiceStatus(id: number, status: string): Invoice {
     .get();
 }
 
+export function updateInvoiceNotes(id: number, notes: string | null): Invoice {
+  return db
+    .update(invoices)
+    .set({ notes, updatedAt: nowIso() })
+    .where(eq(invoices.id, id))
+    .returning()
+    .get();
+}
+
 export function updateInvoiceNfse(id: number, text: string | null): Invoice {
   return db
     .update(invoices)

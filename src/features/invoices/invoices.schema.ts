@@ -2,6 +2,13 @@ import { z } from "zod";
 import { isValidDateString } from "../../domain/dates.ts";
 import { parseMoneyToMinor, SUPPORTED_CURRENCIES } from "../../domain/money.ts";
 import { optionalText, requiredText } from "../../web/form-schema.ts";
+import { INVOICE_STATUSES } from "../../domain/invoice-status.ts";
+
+/** Checkbox value → boolean: HTML sends "on"/"true" when checked, nothing otherwise. */
+const checkbox = z.preprocess(
+  (v) => v === "on" || v === "true" || v === true,
+  z.boolean(),
+);
 
 const idField = z.preprocess(
   (v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : undefined),
@@ -88,8 +95,10 @@ export const itemFormSchema = z
 
 export type ItemFormInput = z.infer<typeof itemFormSchema>;
 
-const STATUSES = ["draft", "sent", "paid", "void"] as const;
-export const statusSchema = z.object({ status: z.enum(STATUSES) });
+export const statusSchema = z.object({ status: z.enum(INVOICE_STATUSES) });
+
+/** Invoice notes — editable after creation, in any status. */
+export const notesSchema = z.object({ notes: optionalText(2000) });
 
 /** Optional `YYYY-MM-DD`; blank becomes undefined, otherwise must be valid. */
 const optionalDate = z.preprocess(
@@ -110,6 +119,8 @@ export const notaFiscalLinkSchema = z.object({
   verificationCode: optionalText(200),
   publicUrl: optionalUrl,
   notes: optionalText(2000),
+  /** When first linking from `issued`, advance the invoice to `sent`. */
+  markSent: checkbox.default(false),
 });
 
 export type NotaFiscalLinkFormInput = z.infer<typeof notaFiscalLinkSchema>;

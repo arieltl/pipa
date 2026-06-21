@@ -27,6 +27,8 @@ export type ItemsSectionProps = {
   currency: string;
   items: InvoiceItem[];
   total: number;
+  /** When true the invoice is not a draft: items are read-only (no add/edit). */
+  locked?: boolean;
   /** Item currently in inline-edit mode, if any. */
   editingItemId?: number;
   editValues?: ItemFormValues;
@@ -39,10 +41,11 @@ export type ItemsSectionProps = {
 /**
  * The `#invoice-items` fragment: line items table, total, and the add-item
  * form. Every item mutation re-renders this whole section so the total stays
- * consistent (spec §8). Editing swaps a single row for an inline form.
+ * consistent (spec §8). Editing swaps a single row for an inline form. When the
+ * invoice is locked (issued+), rows are read-only and the add form is hidden.
  */
 export function ItemsSection(props: ItemsSectionProps) {
-  const { invoiceId, currency, items, total } = props;
+  const { invoiceId, currency, items, total, locked = false } = props;
   return (
     <div id="invoice-items">
       <div class="app-table overflow-x-auto rounded-lg">
@@ -52,19 +55,22 @@ export function ItemsSection(props: ItemsSectionProps) {
               <th>Item</th>
               <th>Type</th>
               <th class="text-right">Value</th>
-              <th class="w-px"></th>
+              {locked ? null : <th class="w-px"></th>}
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colspan={4} class="text-center text-sm text-base-content/50">
-                  No items yet. Add one below.
+                <td
+                  colspan={locked ? 3 : 4}
+                  class="text-center text-sm text-base-content/50"
+                >
+                  {locked ? "No items." : "No items yet. Add one below."}
                 </td>
               </tr>
             ) : (
               items.map((item) =>
-                props.editingItemId === item.id ? (
+                !locked && props.editingItemId === item.id ? (
                   <ItemEditRow
                     invoiceId={invoiceId}
                     itemId={item.id}
@@ -77,6 +83,7 @@ export function ItemsSection(props: ItemsSectionProps) {
                     invoiceId={invoiceId}
                     item={item}
                     currency={currency}
+                    locked={locked}
                   />
                 ),
               )
@@ -88,18 +95,20 @@ export function ItemsSection(props: ItemsSectionProps) {
               <th class="text-right tabular-nums text-base">
                 {formatMoney(total, currency)}
               </th>
-              <th></th>
+              {locked ? null : <th></th>}
             </tr>
           </tfoot>
         </table>
       </div>
 
-      <AddItemForm
-        invoiceId={invoiceId}
-        currency={currency}
-        values={props.addValues}
-        errors={props.addErrors}
-      />
+      {locked ? null : (
+        <AddItemForm
+          invoiceId={invoiceId}
+          currency={currency}
+          values={props.addValues}
+          errors={props.addErrors}
+        />
+      )}
     </div>
   );
 }
@@ -117,10 +126,12 @@ function ItemDisplayRow({
   invoiceId,
   item,
   currency,
+  locked = false,
 }: {
   invoiceId: number;
   item: InvoiceItem;
   currency: string;
+  locked?: boolean;
 }) {
   return (
     <tr class="hover">
@@ -136,6 +147,7 @@ function ItemDisplayRow({
         </span>
       </td>
       <td class="text-right tabular-nums">{formatMoney(item.value, currency)}</td>
+      {locked ? null : (
       <td class="whitespace-nowrap text-right">
         <button
           type="button"
@@ -157,6 +169,7 @@ function ItemDisplayRow({
           Delete
         </button>
       </td>
+      )}
     </tr>
   );
 }

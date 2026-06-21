@@ -22,6 +22,8 @@ export type NfseLinkSectionProps = {
   values?: NfseLinkValues;
   errors?: FieldErrors;
   saved?: boolean;
+  /** Show the default-checked "mark as sent" toggle (first link from issued). */
+  offerMarkSent?: boolean;
 };
 
 export function nfseLinkValuesFromLink(
@@ -47,6 +49,7 @@ export function NfseLinkSection({
   values,
   errors,
   saved,
+  offerMarkSent,
 }: NfseLinkSectionProps) {
   const v = values ?? nfseLinkValuesFromLink(link);
   const pdfFileId = link?.pdfFileId ?? null;
@@ -177,6 +180,18 @@ export function NfseLinkSection({
               </a>
             ) : null}
           </div>
+        ) : null}
+
+        {offerMarkSent ? (
+          <label class="sm:col-span-2 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="markSent"
+              checked
+              class="checkbox checkbox-sm"
+            />
+            <span>Mark invoice as sent once the NFS-e is linked</span>
+          </label>
         ) : null}
 
         <div class="sm:col-span-2 flex justify-end">

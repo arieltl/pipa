@@ -31,7 +31,7 @@ export function PdfSection({
         <div class="min-w-0 text-sm">
           <code class="font-mono text-base-content/80 break-all">{filename}</code>
           <p class="mt-1 text-xs text-base-content/50">
-            Download is in the action bar above. Archive freezes the exact PDF
+            Issuing archives this automatically. Archive freezes the exact PDF
             sent.
           </p>
         </div>

@@ -12,7 +12,7 @@ import { ItemsSection } from "./components/items-section.tsx";
 import { NfseSection } from "./components/nfse-section.tsx";
 import { NfseLinkSection } from "./components/nfse-link-section.tsx";
 import { PdfSection } from "./components/pdf-section.tsx";
-import { StatusControl } from "./components/invoice-detail.tsx";
+import { NotesEditor, WorkflowHeader } from "./components/invoice-detail.tsx";
 import {
   InvoiceDetailPage,
   InvoicesListPage,
@@ -22,28 +22,36 @@ import {
   createInvoiceSchema,
   itemFormSchema,
   notaFiscalLinkSchema,
+  notesSchema,
   statusSchema,
 } from "./invoices.schema.ts";
+import { isDocumentEditable } from "../../domain/invoice-status.ts";
 import {
   addItem,
   archiveInvoicePdf,
+  changeStatus,
   ClientNotFoundError,
   clientInvoiceStats,
   composerContext,
   createInvoice,
   deleteItem,
+  EmptyInvoiceError,
   generateNfseDescription,
   getInvoiceDetail,
   getInvoiceFile,
   getItem,
+  InvalidStatusTransitionError,
   InvoiceNumberRequiredError,
   InvoiceNumberTakenError,
+  issueInvoice,
   linkNotaFiscal,
   listInvoices,
+  markSent,
   pdfFilename,
   renderInvoicePdf,
+  revertToDraft,
   saveNfseDescription,
-  setStatus,
+  saveNotes,
   updateItem,
   type NotaFiscalUpload,
 } from "./invoices.service.ts";
@@ -133,11 +141,101 @@ invoicesRoutes.post("/:id/status", async (c) => {
   const parsed = statusSchema.safeParse(body);
   if (!parsed.success) {
     c.status(422);
-    return c.html(<StatusControl invoice={detail.invoice} />);
+    return c.html(
+      <WorkflowHeader invoice={detail.invoice} error="Invalid status." />,
+    );
   }
 
-  const updated = setStatus(detail.invoice.id, parsed.data.status);
-  return c.html(<StatusControl invoice={updated} />);
+  try {
+    const updated = changeStatus(detail.invoice.id, parsed.data.status);
+    return c.html(<WorkflowHeader invoice={updated} />);
+  } catch (err) {
+    if (err instanceof InvalidStatusTransitionError) {
+      c.status(422);
+      return c.html(
+        <WorkflowHeader
+          invoice={detail.invoice}
+          error={`Can't move from ${err.from} to ${err.to}.`}
+        />,
+      );
+    }
+    throw err;
+  }
+});
+
+// Issue: archive the PDF and lock the document. Reloads the page (the lock
+// state changes across the whole view), so we redirect rather than swap.
+invoicesRoutes.post("/:id/issue", async (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+
+  try {
+    await issueInvoice(detail);
+    c.header("HX-Redirect", `/invoices/${detail.invoice.id}`);
+    return c.body(null, 200);
+  } catch (err) {
+    if (err instanceof EmptyInvoiceError) {
+      c.status(422);
+      return c.html(
+        <WorkflowHeader
+          invoice={detail.invoice}
+          error="Add at least one item before issuing."
+        />,
+      );
+    }
+    if (err instanceof InvalidStatusTransitionError) {
+      c.status(422);
+      return c.html(
+        <WorkflowHeader
+          invoice={detail.invoice}
+          error="This invoice can no longer be issued."
+        />,
+      );
+    }
+    throw err;
+  }
+});
+
+// Revert to draft: unlock editing. Also reloads the page.
+invoicesRoutes.post("/:id/revert", (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+
+  try {
+    revertToDraft(detail.invoice.id);
+    c.header("HX-Redirect", `/invoices/${detail.invoice.id}`);
+    return c.body(null, 200);
+  } catch (err) {
+    if (err instanceof InvalidStatusTransitionError) {
+      c.status(422);
+      return c.html(
+        <WorkflowHeader
+          invoice={detail.invoice}
+          error="This invoice is already a draft."
+        />,
+      );
+    }
+    throw err;
+  }
+});
+
+invoicesRoutes.post("/:id/notes", async (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+
+  const body = (await c.req.parseBody()) as FormBody;
+  const parsed = notesSchema.safeParse(body);
+  if (!parsed.success) {
+    c.status(422);
+    return c.html(
+      <NotesEditor invoiceId={detail.invoice.id} notes={detail.invoice.notes ?? ""} />,
+    );
+  }
+
+  const updated = saveNotes(detail.invoice.id, parsed.data.notes);
+  return c.html(
+    <NotesEditor invoiceId={updated.id} notes={updated.notes ?? ""} saved />,
+  );
 });
 
 // --- nota fiscal description ---------------------------------------------
@@ -211,6 +309,10 @@ invoicesRoutes.post("/:id/nfse-link", async (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
 
+  // The "mark as sent" toggle is only offered on the first link from `issued`.
+  const offerMarkSent =
+    detail.notaFiscal === null && detail.invoice.status === "issued";
+
   const body = (await c.req.parseBody()) as FormBody;
   const parsed = notaFiscalLinkSchema.safeParse(body);
   if (!parsed.success) {
@@ -220,6 +322,7 @@ invoicesRoutes.post("/:id/nfse-link", async (c) => {
         invoiceId={detail.invoice.id}
         link={detail.notaFiscal}
         errors={fieldErrorsFromZod(parsed.error)}
+        offerMarkSent={offerMarkSent}
       />,
     );
   }
@@ -228,12 +331,16 @@ invoicesRoutes.post("/:id/nfse-link", async (c) => {
     pdf: await uploadFrom(body.pdf),
     xml: await uploadFrom(body.xml),
   });
+
+  // Advancing to "sent" changes the workflow header too, so reload the page.
+  if (offerMarkSent && parsed.data.markSent) {
+    markSent(updated.invoice.id);
+    c.header("HX-Redirect", `/invoices/${updated.invoice.id}`);
+    return c.body(null, 200);
+  }
+
   return c.html(
-    <NfseLinkSection
-      invoiceId={updated.invoice.id}
-      link={updated.notaFiscal}
-      saved
-    />,
+    <NfseLinkSection invoiceId={updated.invoice.id} link={updated.notaFiscal} saved />,
   );
 });
 
@@ -264,6 +371,9 @@ invoicesRoutes.get("/:id/items", (c) => {
 invoicesRoutes.get("/:id/items/:itemId/edit", (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
+  if (!isDocumentEditable(detail.invoice.status)) {
+    return c.html(renderItems(detail));
+  }
   const item = itemForInvoice(c.req.param("itemId"), detail.invoice.id);
   if (!item) return c.notFound();
   return c.html(
@@ -277,6 +387,10 @@ invoicesRoutes.get("/:id/items/:itemId/edit", (c) => {
 invoicesRoutes.post("/:id/items", async (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
+  if (!isDocumentEditable(detail.invoice.status)) {
+    c.status(409);
+    return c.html(renderItems(detail));
+  }
 
   const body = (await c.req.parseBody()) as FormBody;
   const parsed = itemFormSchema.safeParse({
@@ -301,6 +415,10 @@ invoicesRoutes.post("/:id/items", async (c) => {
 invoicesRoutes.post("/:id/items/:itemId", async (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
+  if (!isDocumentEditable(detail.invoice.status)) {
+    c.status(409);
+    return c.html(renderItems(detail));
+  }
   const item = itemForInvoice(c.req.param("itemId"), detail.invoice.id);
   if (!item) return c.notFound();
 
@@ -328,6 +446,10 @@ invoicesRoutes.post("/:id/items/:itemId", async (c) => {
 invoicesRoutes.delete("/:id/items/:itemId", (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
+  if (!isDocumentEditable(detail.invoice.status)) {
+    c.status(409);
+    return c.html(renderItems(detail));
+  }
   const item = itemForInvoice(c.req.param("itemId"), detail.invoice.id);
   if (!item) return c.notFound();
 
@@ -355,6 +477,7 @@ function renderItems(
       currency={detail.invoice.currency}
       items={detail.items}
       total={detail.total}
+      locked={!isDocumentEditable(detail.invoice.status)}
       editingItemId={state.editingItemId}
       editValues={state.editValues}
       editErrors={state.editErrors}

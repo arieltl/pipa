@@ -53,7 +53,9 @@ Avoid adding Chromium/Puppeteer, MinIO/S3, Postgres, Prisma, or a full SPA unles
 - `created_at` is the actual database/app creation timestamp.
 - Invoice totals come from invoice item values.
 - Per-client invoice numbering must be transactional and unique.
-- Prefer commercial invoice status values `draft`, `sent`, `paid`, `void`; derive NFS-e linked state from related rows.
+- Invoice status lifecycle (`src/domain/invoice-status.ts`): `draft → issued → sent → paid`, plus `void`. PDF-archived and NFS-e-linked stay derived facts (related rows), not statuses.
+- The `draft ↔ issued` barrier has side effects (issuing archives the PDF and locks the document; reverting unlocks it), so it only crosses via the dedicated `issueInvoice`/`revertToDraft` actions — never the generic status control. The other statuses interchange freely.
+- The invoice document (line items + meta) is editable only while `draft`; enforce with `isDocumentEditable` in the service, not just the UI. Notes and nota fiscal info stay editable in any status.
 - Files are append-only by default: write temp file, hash, move atomically, insert metadata, supersede instead of overwrite.
 
 ## UI And htmx

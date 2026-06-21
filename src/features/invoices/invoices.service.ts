@@ -4,6 +4,7 @@ import type {
   FileRecord,
   Invoice,
   InvoiceItem,
+  IssuerSettings,
   NotaFiscalLink,
   NumberingProfile,
 } from "../../db/schema.ts";
@@ -19,6 +20,10 @@ import {
   renderNumberPattern,
 } from "../../domain/numbering.ts";
 import { renderTemplate } from "../../domain/template-engine.ts";
+import {
+  canManuallyTransition,
+  isDocumentEditable,
+} from "../../domain/invoice-status.ts";
 import { renderFilename } from "../../domain/filename-template.ts";
 import * as repo from "./invoices.repository.ts";
 import type { InvoiceListRow } from "./invoices.repository.ts";
@@ -55,9 +60,34 @@ export class ClientNotFoundError extends Error {
   }
 }
 
+/** Raised when a status change is not allowed by the lifecycle. */
+export class InvalidStatusTransitionError extends Error {
+  constructor(public from: string, public to: string) {
+    super(`Cannot change status from "${from}" to "${to}"`);
+    this.name = "InvalidStatusTransitionError";
+  }
+}
+
+/** Raised when editing the locked document of a non-draft invoice. */
+export class DocumentLockedError extends Error {
+  constructor() {
+    super("Invoice document is locked; revert to draft to edit");
+    this.name = "DocumentLockedError";
+  }
+}
+
+/** Raised when trying to issue an invoice with no line items. */
+export class EmptyInvoiceError extends Error {
+  constructor() {
+    super("Add at least one item before issuing");
+    this.name = "EmptyInvoiceError";
+  }
+}
+
 export type InvoiceDetail = {
   invoice: Invoice;
   client: Client;
+  issuer: IssuerSettings | null;
   items: InvoiceItem[];
   total: number;
   notaFiscal: NotaFiscalLink | null;
@@ -161,6 +191,7 @@ export function getInvoiceDetail(id: number): InvoiceDetail | null {
   return {
     invoice,
     client,
+    issuer: loadIssuerSettings(),
     items,
     total: sum(items),
     notaFiscal: repo.getNotaFiscalLink(id),
@@ -289,20 +320,78 @@ function toItemColumns(input: ItemFormInput): repo.ItemInput {
   };
 }
 
+/** Guard: line-item edits are only allowed while the invoice is a draft. */
+function assertDocumentEditable(invoiceId: number): void {
+  const invoice = repo.getInvoiceById(invoiceId);
+  if (!invoice || !isDocumentEditable(invoice.status)) {
+    throw new DocumentLockedError();
+  }
+}
+
 export function addItem(invoiceId: number, input: ItemFormInput): InvoiceItem {
+  assertDocumentEditable(invoiceId);
   return repo.insertItem(invoiceId, toItemColumns(input));
 }
 
 export function updateItem(id: number, input: ItemFormInput): InvoiceItem {
+  const item = repo.getItemById(id);
+  if (!item) throw new DocumentLockedError();
+  assertDocumentEditable(item.invoiceId);
   return repo.updateItem(id, toItemColumns(input));
 }
 
 export function deleteItem(id: number): void {
+  const item = repo.getItemById(id);
+  if (!item) throw new DocumentLockedError();
+  assertDocumentEditable(item.invoiceId);
   repo.deleteItem(id);
 }
 
-export function setStatus(id: number, status: string): Invoice {
+// --- status lifecycle ----------------------------------------------------
+
+/**
+ * Manual status change via the generic control. Only the loose cluster
+ * (issued/sent/paid/void) interchanges here; crossing the draft↔issued barrier
+ * must go through `issueInvoice` / `revertToDraft`.
+ */
+export function changeStatus(id: number, status: string): Invoice {
+  const invoice = repo.getInvoiceById(id);
+  if (!invoice) throw new InvalidStatusTransitionError("(missing)", status);
+  if (!canManuallyTransition(invoice.status, status)) {
+    throw new InvalidStatusTransitionError(invoice.status, status);
+  }
   return repo.updateInvoiceStatus(id, status);
+}
+
+/**
+ * Issue a draft invoice: freeze its PDF as the official archive and advance to
+ * `issued`, which locks document editing. Requires at least one line item.
+ */
+export async function issueInvoice(detail: InvoiceDetail): Promise<Invoice> {
+  if (detail.invoice.status !== "draft") {
+    throw new InvalidStatusTransitionError(detail.invoice.status, "issued");
+  }
+  if (detail.items.length === 0) throw new EmptyInvoiceError();
+  await archiveInvoicePdf(detail);
+  return repo.updateInvoiceStatus(detail.invoice.id, "issued");
+}
+
+/**
+ * Reopen a non-draft invoice for editing. The archived PDF is kept; re-issuing
+ * supersedes it (append-only). Allowed from any locked state.
+ */
+export function revertToDraft(id: number): Invoice {
+  const invoice = repo.getInvoiceById(id);
+  if (!invoice) throw new InvalidStatusTransitionError("(missing)", "draft");
+  if (invoice.status === "draft") {
+    throw new InvalidStatusTransitionError("draft", "draft");
+  }
+  return repo.updateInvoiceStatus(id, "draft");
+}
+
+/** Mark a freshly-linked invoice as sent (used by the NFS-e link's checkbox). */
+export function markSent(id: number): Invoice {
+  return repo.updateInvoiceStatus(id, "sent");
 }
 
 // --- nota fiscal description + filename ----------------------------------
@@ -335,6 +424,12 @@ export function generateNfseDescription(detail: InvoiceDetail): string {
 export function saveNfseDescription(id: number, text: string): Invoice {
   const trimmed = text.trim();
   return repo.updateInvoiceNfse(id, trimmed === "" ? null : trimmed);
+}
+
+/** Persist invoice notes; editable in any status. Blank clears them. */
+export function saveNotes(id: number, notes: string | undefined): Invoice {
+  const trimmed = (notes ?? "").trim();
+  return repo.updateInvoiceNotes(id, trimmed === "" ? null : trimmed);
 }
 
 /** Safe PDF basename for an invoice, from the client's filename template. */
@@ -408,7 +503,8 @@ export type NotaFiscalUpload = {
  */
 export function linkNotaFiscal(
   detail: InvoiceDetail,
-  input: NotaFiscalLinkFormInput,
+  // `markSent` is a route-only flag (status side effect), not link data.
+  input: Omit<NotaFiscalLinkFormInput, "markSent">,
   uploads: { pdf?: NotaFiscalUpload; xml?: NotaFiscalUpload } = {},
 ): InvoiceDetail {
   const year = detail.invoice.invoiceDate.slice(0, 4) || "unknown";

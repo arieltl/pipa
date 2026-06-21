@@ -10,6 +10,7 @@ import {
   textareaClass,
   type FieldErrors,
 } from "../../../web/components/forms.tsx";
+import { Caption, ClientBlock, IssuerBlock } from "./invoice-parties.tsx";
 
 export type InvoiceFormValues = {
   clientId: string;
@@ -71,28 +72,7 @@ export function InvoiceComposer({
 
         {/* FROM + invoice meta */}
         <div class="grid gap-6 border-b border-base-300/60 bg-base-200/25 p-6 sm:grid-cols-2">
-          <div>
-            <Caption>From</Caption>
-            {issuer ? (
-              <div class="mt-1 space-y-0.5">
-                <div class="font-semibold">{issuer.legalName || issuer.name}</div>
-                {issuer.cnpj ? (
-                  <div class="text-sm text-base-content/60">
-                    CNPJ {issuer.cnpj}
-                  </div>
-                ) : null}
-                {issuer.address ? (
-                  <div class="whitespace-pre-line text-sm text-base-content/60">
-                    {issuer.address}
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <a href="/settings/issuer" class="link link-hover mt-1 block text-sm">
-                Set up your issuer details →
-              </a>
-            )}
-          </div>
+          <IssuerBlock issuer={issuer} />
 
           <div class="sm:text-right">
             <div class="flex items-center gap-2 sm:justify-end">
@@ -123,26 +103,7 @@ export function InvoiceComposer({
 
         {/* BILL TO + currency */}
         <div class="grid gap-6 border-b border-base-300/60 p-6 sm:grid-cols-2">
-          <div>
-            <Caption>Bill to</Caption>
-            <div class="mt-1 flex items-center gap-2">
-              <span class="font-semibold">{client.name}</span>
-              <span class="badge badge-sm app-code-badge font-mono">
-                {client.code}
-              </span>
-            </div>
-            {client.legalName ? (
-              <div class="text-sm text-base-content/60">{client.legalName}</div>
-            ) : null}
-            {client.address ? (
-              <div class="whitespace-pre-line text-sm text-base-content/60">
-                {client.address}
-              </div>
-            ) : null}
-            {client.country ? (
-              <div class="text-sm text-base-content/60">{client.country}</div>
-            ) : null}
-          </div>
+          <ClientBlock client={client} />
 
           <div class="sm:text-right">
             <Caption>Currency</Caption>
@@ -213,14 +174,6 @@ export function InvoiceComposer({
           </div>
         </div>
       </form>
-    </div>
-  );
-}
-
-function Caption({ children }: { children: unknown }) {
-  return (
-    <div class="text-xs font-semibold uppercase tracking-wide text-base-content/45">
-      {children as never}
     </div>
   );
 }
