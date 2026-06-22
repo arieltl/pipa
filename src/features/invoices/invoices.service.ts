@@ -29,7 +29,11 @@ import { renderFilename } from "../../domain/filename-template.ts";
 import * as repo from "./invoices.repository.ts";
 import type { InvoiceListRow } from "./invoices.repository.ts";
 import { buildInvoiceContext } from "./invoice-template-context.ts";
-import type { CreateInvoiceInput, ItemFormInput } from "./invoices.schema.ts";
+import type {
+  CreateInvoiceInput,
+  EditInvoiceDocInput,
+  ItemFormInput,
+} from "./invoices.schema.ts";
 import { loadIssuerSettings } from "../settings/settings.service.ts";
 import { db } from "../../db/client.ts";
 import { numberingProfiles } from "../../db/schema.ts";
@@ -402,6 +406,45 @@ export function deleteItem(id: number): void {
   if (!item) throw new DocumentLockedError();
   assertDocumentEditable(item.invoiceId);
   repo.deleteItem(id);
+}
+
+// --- draft document edit + delete ----------------------------------------
+
+/**
+ * Edit a draft invoice's identity fields (number + date shown on the PDF).
+ * Only allowed while the document is editable (draft). The new number must not
+ * collide with another invoice.
+ */
+export function updateInvoiceDoc(
+  id: number,
+  input: EditInvoiceDocInput,
+): Invoice {
+  const invoice = repo.getInvoiceById(id);
+  if (!invoice || !isDocumentEditable(invoice.status)) {
+    throw new DocumentLockedError();
+  }
+  const existing = repo.getInvoiceByNumber(input.number);
+  if (existing && existing.id !== id) {
+    throw new InvoiceNumberTakenError(input.number);
+  }
+  return repo.updateInvoiceDoc(id, {
+    number: input.number,
+    invoiceDate: input.invoiceDate,
+  });
+}
+
+/**
+ * Delete a draft invoice and its dependent rows (items, nota fiscal link
+ * cascade). Only drafts can be deleted; locked documents must be reverted
+ * first. Stored files are append-only and remain on disk.
+ */
+export function deleteInvoice(id: number): void {
+  const invoice = repo.getInvoiceById(id);
+  if (!invoice) return;
+  if (!isDocumentEditable(invoice.status)) {
+    throw new DocumentLockedError();
+  }
+  repo.deleteInvoice(id);
 }
 
 // --- status lifecycle ----------------------------------------------------

@@ -13,12 +13,15 @@ import {
   addItem,
   clientSeed,
   createInvoice,
+  deleteInvoice,
   deleteItem,
+  DocumentLockedError,
   generateNfseDescription,
   getInvoiceDetail,
   InvoiceNumberRequiredError,
   InvoiceNumberTakenError,
   saveNfseDescription,
+  updateInvoiceDoc,
   updateItem,
 } from "./invoices.service.ts";
 
@@ -300,6 +303,89 @@ describe("templates (Phase 4)", () => {
     );
   });
 });
+
+describe("updateInvoiceDoc — edit draft number/date", () => {
+  test("updates the number and date of a draft", () => {
+    const clientId = makeClient({ code: "EDIT", numberingProfileId: null });
+    const inv = createInvoice({ ...base(clientId), manualNumber: "EDIT-1" });
+
+    const updated = updateInvoiceDoc(inv.id, {
+      number: "EDIT-2",
+      invoiceDate: "2026-07-15",
+    });
+
+    expect(updated.number).toBe("EDIT-2");
+    expect(updated.invoiceDate).toBe("2026-07-15");
+  });
+
+  test("rejects a number already used by another invoice", () => {
+    const clientId = makeClient({ code: "COLL", numberingProfileId: null });
+    createInvoice({ ...base(clientId), manualNumber: "COLL-1" });
+    const second = createInvoice({ ...base(clientId), manualNumber: "COLL-2" });
+
+    expect(() =>
+      updateInvoiceDoc(second.id, {
+        number: "COLL-1",
+        invoiceDate: "2026-06-30",
+      }),
+    ).toThrow(InvoiceNumberTakenError);
+  });
+
+  test("keeping the same number is allowed (no self-collision)", () => {
+    const clientId = makeClient({ code: "SAME", numberingProfileId: null });
+    const inv = createInvoice({ ...base(clientId), manualNumber: "SAME-1" });
+
+    const updated = updateInvoiceDoc(inv.id, {
+      number: "SAME-1",
+      invoiceDate: "2026-08-01",
+    });
+    expect(updated.invoiceDate).toBe("2026-08-01");
+  });
+
+  test("refuses to edit a non-draft invoice", () => {
+    const clientId = makeClient({ code: "LOCK" });
+    const inv = createInvoice(base(clientId));
+    markIssued(inv.id);
+
+    expect(() =>
+      updateInvoiceDoc(inv.id, {
+        number: "LOCK-X",
+        invoiceDate: "2026-06-30",
+      }),
+    ).toThrow(DocumentLockedError);
+  });
+});
+
+describe("deleteInvoice — delete draft", () => {
+  test("deletes a draft and its line items", () => {
+    const clientId = makeClient({ code: "DEL", numberingProfileId: null });
+    const inv = createInvoice({ ...base(clientId), manualNumber: "DEL-1" });
+
+    deleteInvoice(inv.id);
+
+    expect(getInvoiceDetail(inv.id)).toBeNull();
+    expect(
+      db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, inv.id)).all(),
+    ).toHaveLength(0);
+  });
+
+  test("refuses to delete a non-draft invoice", () => {
+    const clientId = makeClient({ code: "KEEP" });
+    const inv = createInvoice(base(clientId));
+    markIssued(inv.id);
+
+    expect(() => deleteInvoice(inv.id)).toThrow(DocumentLockedError);
+    expect(getInvoiceDetail(inv.id)).not.toBeNull();
+  });
+});
+
+/** Flip an invoice to `issued` directly, skipping the PDF-archive side effect. */
+function markIssued(id: number) {
+  db.update(invoices)
+    .set({ status: "issued" })
+    .where(eq(invoices.id, id))
+    .run();
+}
 
 /** A fixed monthly item draft worth 400000 minor units (GBP 4000.00). */
 function fixedItem() {

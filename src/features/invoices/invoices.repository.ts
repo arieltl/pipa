@@ -195,6 +195,31 @@ export function deleteItem(id: number): void {
   db.delete(invoiceItems).where(eq(invoiceItems.id, id)).run();
 }
 
+/** Update a draft invoice's identity fields (number + date shown on the PDF). */
+export function updateInvoiceDoc(
+  id: number,
+  input: { number: string; invoiceDate: string },
+): Invoice {
+  return db
+    .update(invoices)
+    .set({
+      number: input.number,
+      invoiceDate: input.invoiceDate,
+      updatedAt: nowIso(),
+    })
+    .where(eq(invoices.id, id))
+    .returning()
+    .get();
+}
+
+/**
+ * Delete an invoice and its dependent rows. Line items and the nota fiscal link
+ * cascade via foreign keys; stored files are append-only and left on disk.
+ */
+export function deleteInvoice(id: number): void {
+  db.delete(invoices).where(eq(invoices.id, id)).run();
+}
+
 export function updateInvoiceStatus(id: number, status: string): Invoice {
   return db
     .update(invoices)

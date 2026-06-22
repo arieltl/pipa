@@ -7,7 +7,11 @@ import {
   isDocumentEditable,
   manualStatusOptions,
 } from "../../../domain/invoice-status.ts";
-import { textareaClass } from "../../../web/components/forms.tsx";
+import {
+  inputClass,
+  textareaClass,
+  type FieldErrors,
+} from "../../../web/components/forms.tsx";
 import { Icon } from "../../../web/components/icons.tsx";
 import { Caption, ClientBlock, IssuerBlock } from "./invoice-parties.tsx";
 import { ItemsSection } from "./items-section.tsx";
@@ -128,6 +132,21 @@ export function WorkflowHeader({
         </div>
       </div>
 
+      {draft ? (
+        <div class="mt-2 flex justify-end">
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs text-error"
+            hx-delete={`/invoices/${id}`}
+            hx-swap="none"
+            hx-confirm="Delete this draft invoice? This permanently removes it and its line items."
+          >
+            <Icon name="trash" />
+            <span>Delete draft</span>
+          </button>
+        </div>
+      ) : null}
+
       {error ? <p class="app-error mt-3 text-sm">{error}</p> : null}
     </div>
   );
@@ -215,14 +234,7 @@ export function InvoiceDetailBody({
                   <span class="text-lg font-semibold tracking-tight">Invoice</span>
                   <InvoiceHeaderStatus status={invoice.status as InvoiceStatus} />
                 </div>
-                <div class="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-1">
-                  <DocMeta label="Number">
-                    <span class="font-mono">{invoice.number}</span>
-                  </DocMeta>
-                  <DocMeta label="Date">
-                    <span class="tabular-nums">{invoice.invoiceDate}</span>
-                  </DocMeta>
-                </div>
+                <InvoiceDocFields invoice={invoice} />
               </div>
             </div>
 
@@ -353,6 +365,111 @@ export function NotesEditor({
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Number + date shown on the document. For drafts these are inline-editable
+ * (`#invoice-doc`); the save posts to `/invoices/:id/doc` and reloads the page
+ * on success (the number/date feed the PDF filename, title, and templates).
+ * Locked invoices show the static values only.
+ */
+export function InvoiceDocFields({
+  invoice,
+  errors,
+}: {
+  invoice: Invoice;
+  errors?: FieldErrors;
+}) {
+  const editable = isDocumentEditable(invoice.status);
+  const hasErrors = Boolean(errors && Object.keys(errors).length > 0);
+
+  if (!editable) {
+    return (
+      <div class="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-1">
+        <DocMeta label="Number">
+          <span class="font-mono">{invoice.number}</span>
+        </DocMeta>
+        <DocMeta label="Date">
+          <span class="tabular-nums">{invoice.invoiceDate}</span>
+        </DocMeta>
+      </div>
+    );
+  }
+
+  return (
+    <div id="invoice-doc" x-data={`{ editing: ${hasErrors ? "true" : "false"} }`}>
+      <div
+        x-show="!editing"
+        style={hasErrors ? "display:none" : ""}
+        class="mt-3"
+      >
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-1">
+          <DocMeta label="Number">
+            <span class="font-mono">{invoice.number}</span>
+          </DocMeta>
+          <DocMeta label="Date">
+            <span class="tabular-nums">{invoice.invoiceDate}</span>
+          </DocMeta>
+        </div>
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs mt-2"
+          x-on:click="editing = true"
+        >
+          <Icon name="edit" />
+          <span>Edit</span>
+        </button>
+      </div>
+
+      <form
+        x-show="editing"
+        style={hasErrors ? "" : "display:none"}
+        class="mt-3 grid gap-2 text-left"
+        hx-post={`/invoices/${invoice.id}/doc`}
+        hx-target="#invoice-doc"
+        hx-swap="outerHTML"
+      >
+        <label class="form-control">
+          <span class="label-text text-xs font-medium">Number</span>
+          <input
+            name="number"
+            value={invoice.number}
+            class={`${inputClass(errors?.number)} input-sm font-mono`}
+            maxlength={60}
+            required
+          />
+          {errors?.number ? (
+            <p class="app-error mt-1 text-xs">{errors.number}</p>
+          ) : null}
+        </label>
+        <label class="form-control">
+          <span class="label-text text-xs font-medium">Date</span>
+          <input
+            type="date"
+            name="invoiceDate"
+            value={invoice.invoiceDate}
+            class={`${inputClass(errors?.invoiceDate)} input-sm tabular-nums`}
+            required
+          />
+          {errors?.invoiceDate ? (
+            <p class="app-error mt-1 text-xs">{errors.invoiceDate}</p>
+          ) : null}
+        </label>
+        <div class="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs"
+            x-on:click="editing = false"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary btn-xs">
+            Save
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

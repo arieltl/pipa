@@ -13,6 +13,7 @@ import { NfseSection } from "./components/nfse-section.tsx";
 import { NfseLinkSection } from "./components/nfse-link-section.tsx";
 import { PdfSection } from "./components/pdf-section.tsx";
 import {
+  InvoiceDocFields,
   InvoiceHeaderStatus,
   NotesEditor,
   WorkflowHeader,
@@ -24,6 +25,7 @@ import {
 } from "./invoices.pages.tsx";
 import {
   createInvoiceSchema,
+  editInvoiceDocSchema,
   itemFormSchema,
   notaFiscalLinkSchema,
   notesSchema,
@@ -41,7 +43,10 @@ import {
   clientInvoiceStats,
   composerContext,
   createInvoice,
+  deleteInvoice,
   deleteItem,
+  DocumentLockedError,
+  updateInvoiceDoc,
   EmptyInvoiceError,
   generateNfseDescription,
   getInvoiceDetail,
@@ -240,6 +245,71 @@ invoicesRoutes.post("/:id/revert", (c) => {
           invoice={detail.invoice}
           archivedPdf={detail.archivedPdf}
           error="This invoice is already a draft."
+        />,
+      );
+    }
+    throw err;
+  }
+});
+
+// Edit a draft's number/date. Reloads the page on success (the values feed the
+// PDF filename, page title, and templates); returns the fragment with errors on
+// validation failure.
+invoicesRoutes.post("/:id/doc", async (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+
+  const body = (await c.req.parseBody()) as FormBody;
+  const parsed = editInvoiceDocSchema.safeParse(body);
+  if (!parsed.success) {
+    c.status(422);
+    return c.html(
+      <InvoiceDocFields
+        invoice={detail.invoice}
+        errors={fieldErrorsFromZod(parsed.error)}
+      />,
+    );
+  }
+
+  try {
+    updateInvoiceDoc(detail.invoice.id, parsed.data);
+    c.header("HX-Redirect", `/invoices/${detail.invoice.id}`);
+    return c.body(null, 200);
+  } catch (err) {
+    if (err instanceof InvoiceNumberTakenError) {
+      c.status(422);
+      return c.html(
+        <InvoiceDocFields
+          invoice={detail.invoice}
+          errors={{ number: "That invoice number is already in use" }}
+        />,
+      );
+    }
+    if (err instanceof DocumentLockedError) {
+      c.status(409);
+      return c.html(<InvoiceDocFields invoice={detail.invoice} />);
+    }
+    throw err;
+  }
+});
+
+// Delete a draft invoice (confirmed in the UI). Redirects to the list.
+invoicesRoutes.delete("/:id", (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+
+  try {
+    deleteInvoice(detail.invoice.id);
+    c.header("HX-Redirect", "/invoices");
+    return c.body(null, 200);
+  } catch (err) {
+    if (err instanceof DocumentLockedError) {
+      c.status(409);
+      return c.html(
+        <WorkflowHeader
+          invoice={detail.invoice}
+          archivedPdf={detail.archivedPdf}
+          error="Only draft invoices can be deleted. Revert to draft first."
         />,
       );
     }

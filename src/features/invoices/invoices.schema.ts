@@ -126,6 +126,23 @@ export const itemFormSchema = z
 
 export type ItemFormInput = z.infer<typeof itemFormSchema>;
 
+/** Required invoice number; trimmed, uppercased, never blank. */
+const requiredNumber = z.preprocess(
+  (v) => (typeof v === "string" ? v.trim().toUpperCase() : v),
+  z
+    .string({ message: "Enter an invoice number" })
+    .min(1, "Enter an invoice number")
+    .max(60, "Number is too long"),
+);
+
+/** Edit a draft invoice's identity fields (number + date shown on the PDF). */
+export const editInvoiceDocSchema = z.object({
+  number: requiredNumber,
+  invoiceDate,
+});
+
+export type EditInvoiceDocInput = z.infer<typeof editInvoiceDocSchema>;
+
 export const statusSchema = z.object({ status: z.enum(INVOICE_STATUSES) });
 
 /** Invoice notes — editable after creation, in any status. */
