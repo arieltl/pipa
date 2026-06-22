@@ -6,6 +6,7 @@ import { Placeholder } from "./web/components/placeholder.tsx";
 import { dashboardRoutes } from "./features/dashboard/dashboard.routes.tsx";
 import { clientsRoutes } from "./features/clients/clients.routes.tsx";
 import { invoicesRoutes } from "./features/invoices/invoices.routes.tsx";
+import { numberingRoutes } from "./features/numbering/numbering.routes.tsx";
 import { settingsRoutes } from "./features/settings/settings.routes.tsx";
 import { paths } from "./config/paths.ts";
 import { existsSync } from "node:fs";
@@ -40,6 +41,7 @@ export function createApp() {
   app.route("/", dashboardRoutes);
   app.route("/clients", clientsRoutes);
   app.route("/invoices", invoicesRoutes);
+  app.route("/settings/numbering", numberingRoutes);
   app.route("/settings", settingsRoutes);
 
   app.notFound((c) => {

@@ -60,6 +60,7 @@ import {
   revertToDraft,
   saveNfseDescription,
   saveNotes,
+  SequenceOverrideUnavailableError,
   updateItem,
   type NotaFiscalUpload,
 } from "./invoices.service.ts";
@@ -105,6 +106,7 @@ invoicesRoutes.post("/", async (c) => {
     if (err instanceof InvoiceNumberTakenError) {
       return renderInvoiceFormError(c, body, {
         manualNumber: "That invoice number is already in use",
+        sequenceOverride: "That invoice number is already in use",
         _form: "That invoice number is already in use",
       });
     }
@@ -115,6 +117,11 @@ invoicesRoutes.post("/", async (c) => {
     }
     if (err instanceof ClientNotFoundError) {
       return renderInvoiceFormError(c, body, { clientId: "Select a client" });
+    }
+    if (err instanceof SequenceOverrideUnavailableError) {
+      return renderInvoiceFormError(c, body, {
+        sequenceOverride: "This profile does not use a sequence token",
+      });
     }
     throw err;
   }

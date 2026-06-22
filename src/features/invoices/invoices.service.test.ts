@@ -116,6 +116,54 @@ describe("createInvoice — manual numbering", () => {
       createInvoice({ ...base(clientId), manualNumber: "DUP-1" }),
     ).toThrow(InvoiceNumberTakenError);
   });
+
+  test("uses a specific sequence and advances future numbering", () => {
+    const clientId = makeClient({ code: "CATCHUP" });
+    const inv = createInvoice({
+      ...base(clientId),
+      numberingMode: "sequence",
+      sequenceOverride: 7,
+      advanceSequence: true,
+    });
+    const next = createInvoice(base(clientId));
+
+    expect(inv.number).toBe("CATCHUP-202606-07");
+    expect(next.number).toBe("CATCHUP-202606-08");
+  });
+
+  test("specific sequence advance never moves the counter backward", () => {
+    const clientId = makeClient({ code: "MAXSEQ" });
+    createInvoice({
+      ...base(clientId),
+      numberingMode: "sequence",
+      sequenceOverride: 10,
+      advanceSequence: true,
+    });
+    const inv = createInvoice({
+      ...base(clientId),
+      numberingMode: "sequence",
+      sequenceOverride: 5,
+      advanceSequence: true,
+    });
+    const next = createInvoice(base(clientId));
+
+    expect(inv.number).toBe("MAXSEQ-202606-05");
+    expect(next.number).toBe("MAXSEQ-202606-11");
+  });
+
+  test("specific sequence can leave future numbering unchanged", () => {
+    const clientId = makeClient({ code: "NOSKIP" });
+    const inv = createInvoice({
+      ...base(clientId),
+      numberingMode: "sequence",
+      sequenceOverride: 7,
+      advanceSequence: false,
+    });
+    const next = createInvoice(base(clientId));
+
+    expect(inv.number).toBe("NOSKIP-202606-07");
+    expect(next.number).toBe("NOSKIP-202606-01");
+  });
 });
 
 describe("createInvoice — items", () => {

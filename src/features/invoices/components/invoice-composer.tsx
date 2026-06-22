@@ -16,7 +16,10 @@ export type InvoiceFormValues = {
   clientId: string;
   invoiceDate: string;
   currency: string;
+  numberingMode: string;
   manualNumber: string;
+  sequenceOverride: string;
+  advanceSequence: boolean;
   notes: string;
   items: ItemDraft[];
 };
@@ -54,6 +57,7 @@ export function InvoiceComposer({
   const config = {
     currency: values.currency,
     items: values.items,
+    numberingMode: hasProfile ? values.numberingMode : "manual",
   };
   return (
     <div id="invoice-form">
@@ -178,7 +182,7 @@ export function InvoiceComposer({
   );
 }
 
-/** Invoice number: auto by default (with a manual toggle), or required manual. */
+/** Invoice number: auto, sequence override, or full manual. */
 function NumberField({
   values,
   hasProfile,
@@ -206,6 +210,7 @@ function NumberField({
     return (
       <label class="block">
         <Caption>Number</Caption>
+        <input type="hidden" name="numberingMode" value="manual" />
         {manualInput}
         <span class="app-hint mt-1 block text-xs">
           This client has no numbering profile — enter a number.
@@ -220,22 +225,60 @@ function NumberField({
   }
 
   return (
-    <div x-data={`{ manual: ${values.manualNumber ? "true" : "false"} }`}>
-      <div class="flex items-center gap-2 sm:justify-end">
-        <Caption>Number</Caption>
-        <button
-          type="button"
-          class="text-xs text-base-content/55 hover:text-base-content"
-          x-on:click="manual = !manual"
-          x-text="manual ? 'use auto' : 'set manually'"
-        >
-          set manually
-        </button>
+    <div class="text-left sm:text-right">
+      <Caption>Number</Caption>
+      <div class="mt-2 grid gap-2 text-sm">
+        <NumberModeOption
+          mode="auto"
+          label="Auto-generate next number"
+          selected={values.numberingMode === "auto"}
+        />
+        <NumberModeOption
+          mode="sequence"
+          label="Use a specific sequence number"
+          selected={values.numberingMode === "sequence"}
+        />
+        <NumberModeOption
+          mode="manual"
+          label="Enter full invoice number manually"
+          selected={values.numberingMode === "manual"}
+        />
       </div>
-      <div x-show="!manual" class="mt-1 text-sm text-base-content/70 sm:text-right">
+
+      <div
+        x-show="numberingMode === 'auto'"
+        class="mt-2 text-sm text-base-content/70 sm:text-right"
+      >
         Auto-generated on create
       </div>
-      <div x-show="manual" style="display:none">
+
+      <div x-show="numberingMode === 'sequence'" class="mt-2" style="display:none">
+        <input
+          name="sequenceOverride"
+          type="number"
+          min="1"
+          step="1"
+          value={values.sequenceOverride}
+          placeholder="e.g. 7"
+          class={`${inputClass(errors.sequenceOverride)} mt-1 sm:text-right`}
+        />
+        <label class="mt-2 flex items-center gap-2 text-xs text-base-content/70 sm:justify-end">
+          <input
+            type="checkbox"
+            name="advanceSequence"
+            class="checkbox checkbox-xs"
+            checked={values.advanceSequence}
+          />
+          <span>Continue future numbering after this sequence</span>
+        </label>
+        {errors.sequenceOverride ? (
+          <span class="app-error mt-1 inline-flex text-xs">
+            {errors.sequenceOverride}
+          </span>
+        ) : null}
+      </div>
+
+      <div x-show="numberingMode === 'manual'" class="mt-2" style="display:none">
         {manualInput}
         {errors.manualNumber ? (
           <span class="app-error mt-1 inline-flex text-xs">
@@ -244,6 +287,30 @@ function NumberField({
         ) : null}
       </div>
     </div>
+  );
+}
+
+function NumberModeOption({
+  mode,
+  label,
+  selected,
+}: {
+  mode: string;
+  label: string;
+  selected: boolean;
+}) {
+  return (
+    <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-base-300 bg-base-100/70 px-3 py-2 text-left transition hover:border-primary/35">
+      <input
+        type="radio"
+        name="numberingMode"
+        value={mode}
+        class="radio radio-xs"
+        checked={selected}
+        x-model="numberingMode"
+      />
+      <span>{label}</span>
+    </label>
   );
 }
 

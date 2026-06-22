@@ -119,6 +119,7 @@
     window.Alpine.data("invoiceCompose", (config) => ({
       currency: config.currency || "GBP",
       items: Array.isArray(config.items) ? config.items : [],
+      numberingMode: config.numberingMode || "auto",
 
       get total() {
         return this.items.reduce((acc, item) => {

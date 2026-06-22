@@ -13,7 +13,10 @@ export function emptyInvoiceFormValues(
     clientId: "",
     invoiceDate: todayDate(),
     currency: defaultCurrency,
+    numberingMode: "auto",
     manualNumber: "",
+    sequenceOverride: "",
+    advanceSequence: true,
     notes: "",
     items: [],
   };
@@ -24,7 +27,10 @@ export function invoiceFormValuesFromBody(body: FormBody): InvoiceFormValues {
     clientId: formString(body.clientId),
     invoiceDate: formString(body.invoiceDate) || todayDate(),
     currency: formString(body.currency) || "GBP",
+    numberingMode: formString(body.numberingMode) || "auto",
     manualNumber: formString(body.manualNumber),
+    sequenceOverride: formString(body.sequenceOverride),
+    advanceSequence: body.advanceSequence === "on" || body.advanceSequence === "true",
     notes: formString(body.notes),
     items: parseItemDrafts(body.items),
   };

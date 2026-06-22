@@ -15,6 +15,7 @@ import { supersedeFile } from "../files/files.service.ts";
 import type { NotaFiscalLinkFormInput } from "./invoices.schema.ts";
 import { minorToDecimalString, parseMoneyToMinor } from "../../domain/money.ts";
 import {
+  hasSequenceToken,
   isResetPeriod,
   periodKeyFor,
   renderNumberPattern,
@@ -49,6 +50,13 @@ export class InvoiceNumberRequiredError extends Error {
   constructor() {
     super("A manual invoice number is required when the client has no profile");
     this.name = "InvoiceNumberRequiredError";
+  }
+}
+
+export class SequenceOverrideUnavailableError extends Error {
+  constructor() {
+    super("The selected numbering profile does not use a sequence token");
+    this.name = "SequenceOverrideUnavailableError";
   }
 }
 
@@ -253,8 +261,9 @@ export function createInvoice(input: CreateInvoiceInput): Invoice {
   }));
   const buildItems = () => items;
 
+  const numberingMode = input.numberingMode ?? "auto";
   const profile = getProfile(client.numberingProfileId);
-  const useManual = input.manualNumber !== undefined || profile === null;
+  const useManual = numberingMode === "manual" || profile === null;
 
   if (useManual) {
     const number = input.manualNumber;
@@ -275,6 +284,47 @@ export function createInvoice(input: CreateInvoiceInput): Invoice {
       },
       items: buildItems(),
     });
+  }
+
+  if (numberingMode === "sequence") {
+    if (!hasSequenceToken(profile.pattern)) {
+      throw new SequenceOverrideUnavailableError();
+    }
+    if (input.sequenceOverride === undefined) {
+      throw new InvoiceNumberRequiredError();
+    }
+    const resetPeriod = isResetPeriod(profile.resetPeriod)
+      ? profile.resetPeriod
+      : "monthly";
+    const periodKey = periodKeyFor(resetPeriod, input.invoiceDate);
+    try {
+      return repo.createInvoiceWithSequenceOverride({
+        clientId: client.id,
+        numberingProfileId: profile.id,
+        periodKey,
+        sequence: input.sequenceOverride,
+        advanceSequence: input.advanceSequence ?? true,
+        numberFor: (seq) =>
+          renderNumberPattern(profile.pattern, {
+            clientCode: client.code,
+            invoiceDate: input.invoiceDate,
+            seq,
+          }),
+        invoice: {
+          invoiceDate: input.invoiceDate,
+          currency: input.currency,
+          status: "draft",
+          nfseDescription: null,
+          notes: input.notes ?? null,
+        },
+        buildItems,
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new InvoiceNumberTakenError("(generated)");
+      }
+      throw err;
+    }
   }
 
   const resetPeriod = isResetPeriod(profile.resetPeriod)

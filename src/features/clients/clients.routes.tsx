@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { fieldErrorsFromZod } from "../../web/validation.ts";
 import type { FieldErrors } from "../../web/components/forms.tsx";
-import type { FormBody } from "../../web/form-values.ts";
+import { formString, type FormBody } from "../../web/form-values.ts";
 import { ClientForm } from "./components/client-form.tsx";
 import {
   ClientsListPage,
@@ -16,7 +16,7 @@ import {
   listInvoicesByClient,
 } from "../invoices/invoices.service.ts";
 import { emptyInvoiceFormValues } from "../invoices/invoices.view.ts";
-import { todayDate } from "../../domain/dates.ts";
+import { isValidDateString, todayDate } from "../../domain/dates.ts";
 import { clientFormSchema } from "./clients.schema.ts";
 import {
   ClientCodeTakenError,
@@ -31,6 +31,13 @@ import {
   clientFormValuesFromRow,
   emptyClientFormValues,
 } from "./clients.view.ts";
+import { ClientSequenceCard } from "../numbering/components/client-sequence-card.tsx";
+import {
+  getProfile,
+  previewForClient,
+  setClientNextSequence,
+} from "../numbering/numbering.service.ts";
+import { sequenceFormSchema } from "../numbering/numbering.schema.ts";
 
 export const clientsRoutes = new Hono();
 
@@ -112,11 +119,17 @@ clientsRoutes.get("/:id/invoices/new", (c) => {
 clientsRoutes.get("/:id/edit", (c) => {
   const client = getClientFromParam(c.req.param("id"));
   if (!client) return c.notFound();
+  const sequenceDate = todayDate();
+  const profile = client.numberingProfileId
+    ? getProfile(client.numberingProfileId)
+    : null;
   return c.render(
     <EditClientPage
       client={client}
       values={clientFormValuesFromRow(client)}
       profiles={listNumberingProfiles()}
+      numberingPreview={profile ? previewForClient(client, profile, sequenceDate) : null}
+      sequenceDate={sequenceDate}
     />,
     { title: client.name },
   );
@@ -153,6 +166,62 @@ clientsRoutes.post("/:id", async (c) => {
     }
     throw err;
   }
+});
+
+clientsRoutes.post("/:id/numbering-sequence", async (c) => {
+  const client = getClientFromParam(c.req.param("id"));
+  if (!client) return c.notFound();
+
+  const body = (await c.req.parseBody()) as FormBody;
+  const invoiceDate = formString(body.invoiceDate) || todayDate();
+  const profile = client.numberingProfileId
+    ? getProfile(client.numberingProfileId)
+    : null;
+  if (!profile) {
+    c.status(422);
+    return c.html(
+      <ClientSequenceCard
+        client={client}
+        preview={null}
+        invoiceDate={invoiceDate}
+      />,
+    );
+  }
+
+  if (!isValidDateString(invoiceDate)) {
+    c.status(422);
+    return c.html(
+      <ClientSequenceCard
+        client={client}
+        preview={previewForClient(client, profile, todayDate())}
+        invoiceDate={invoiceDate}
+        errors={{ invoiceDate: "Enter a valid date" }}
+      />,
+    );
+  }
+
+  const parsed = sequenceFormSchema.safeParse(body);
+  if (!parsed.success) {
+    c.status(422);
+    return c.html(
+      <ClientSequenceCard
+        client={client}
+        preview={previewForClient(client, profile, invoiceDate)}
+        invoiceDate={invoiceDate}
+        errors={fieldErrorsFromZod(parsed.error)}
+      />,
+    );
+  }
+
+  setClientNextSequence(client, profile, invoiceDate, parsed.data);
+  return c.html(
+    <ClientSequenceCard
+      client={client}
+      preview={previewForClient(client, profile, invoiceDate)}
+      invoiceDate={invoiceDate}
+      saved
+    />,
+  );
 });
 
 // --- helpers -------------------------------------------------------------

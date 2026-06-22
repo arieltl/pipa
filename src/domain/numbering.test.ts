@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { periodKeyFor, renderNumberPattern } from "./numbering.ts";
+import {
+  hasSequenceToken,
+  periodKeyFor,
+  renderNumberPattern,
+  unknownNumberPatternTokens,
+} from "./numbering.ts";
 
 describe("periodKeyFor", () => {
   test("buckets by reset period", () => {
@@ -41,9 +46,26 @@ describe("renderNumberPattern", () => {
     expect(renderNumberPattern("{SEQ:02}", { ...ctx, seq: 1234 })).toBe("1234");
   });
 
+  test("four digit padding is a minimum width", () => {
+    expect(renderNumberPattern("{SEQ:04}", { ...ctx, seq: 7 })).toBe("0007");
+    expect(renderNumberPattern("{SEQ:04}", { ...ctx, seq: 12345 })).toBe(
+      "12345",
+    );
+  });
+
   test("unknown tokens are left verbatim", () => {
     expect(renderNumberPattern("{CLIENT_CODE}-{BOGUS}", ctx)).toBe(
       "LONDONCO-{BOGUS}",
     );
+  });
+});
+
+describe("numbering pattern validation", () => {
+  test("detects sequence tokens and unsupported tokens", () => {
+    expect(hasSequenceToken("{CLIENT_CODE}-{YYYY}-{SEQ:04}")).toBe(true);
+    expect(hasSequenceToken("{CLIENT_CODE}-{YYYY}")).toBe(false);
+    expect(unknownNumberPatternTokens("{CLIENT_CODE}-{NOPE}-{SEQ:02}")).toEqual([
+      "NOPE",
+    ]);
   });
 });

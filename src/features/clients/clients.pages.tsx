@@ -8,6 +8,8 @@ import {
   type ClientFormValues,
 } from "./components/client-form.tsx";
 import { ClientsTable } from "./components/clients-table.tsx";
+import { ClientSequenceCard } from "../numbering/components/client-sequence-card.tsx";
+import type { NumberingPreview } from "../numbering/numbering.service.ts";
 
 export function ClientsListPage({ clients }: { clients: Client[] }) {
   return (
@@ -128,10 +130,14 @@ export function EditClientPage({
   client,
   values,
   profiles,
+  numberingPreview,
+  sequenceDate,
 }: {
   client: Client;
   values: ClientFormValues;
   profiles: NumberingProfile[];
+  numberingPreview: NumberingPreview | null;
+  sequenceDate: string;
 }) {
   return (
     <div>
@@ -150,6 +156,13 @@ export function EditClientPage({
           values={values}
           profiles={profiles}
           submitLabel="Save changes"
+        />
+      </div>
+      <div class="mt-6">
+        <ClientSequenceCard
+          client={client}
+          preview={numberingPreview}
+          invoiceDate={sequenceDate}
         />
       </div>
     </div>

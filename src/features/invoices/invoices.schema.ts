@@ -27,6 +27,15 @@ const manualNumber = z.preprocess(
   z.string().max(60, "Number is too long").optional(),
 );
 
+const numberingMode = z
+  .enum(["auto", "sequence", "manual"])
+  .default("auto");
+
+const sequenceOverride = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : undefined),
+  z.number().int().positive().optional(),
+);
+
 export const ITEM_SOURCES = ["fixed_monthly", "expense", "other"] as const;
 export type ItemSource = (typeof ITEM_SOURCES)[number];
 
@@ -56,11 +65,28 @@ export const createInvoiceSchema = z
     clientId: idField,
     invoiceDate,
     currency: z.enum(SUPPORTED_CURRENCIES),
+    numberingMode,
     manualNumber,
+    sequenceOverride,
+    advanceSequence: checkbox.default(true),
     notes: optionalText(2000),
     items: itemsField,
   })
   .superRefine((data, ctx) => {
+    if (data.numberingMode === "manual" && data.manualNumber === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["manualNumber"],
+        message: "Enter an invoice number",
+      });
+    }
+    if (data.numberingMode === "sequence" && data.sequenceOverride === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sequenceOverride"],
+        message: "Enter a sequence number",
+      });
+    }
     data.items.forEach((item, i) => {
       if (parseMoneyToMinor(item.value, data.currency) === null) {
         ctx.addIssue({
@@ -72,7 +98,13 @@ export const createInvoiceSchema = z
     });
   });
 
-export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
+type CreateInvoiceFormOutput = z.infer<typeof createInvoiceSchema>;
+
+export type CreateInvoiceInput = Omit<
+  CreateInvoiceFormOutput,
+  "numberingMode" | "advanceSequence"
+> &
+  Partial<Pick<CreateInvoiceFormOutput, "numberingMode" | "advanceSequence">>;
 
 export const itemFormSchema = z
   .object({

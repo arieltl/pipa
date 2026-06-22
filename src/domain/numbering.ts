@@ -21,8 +21,22 @@ const RESET_PERIODS: readonly ResetPeriod[] = [
   "daily",
 ];
 
+const KNOWN_TOKENS = new Set([
+  "CLIENT_CODE",
+  "YYYY",
+  "YY",
+  "MM",
+  "DD",
+  "YYYYMM",
+  "SEQ",
+]);
+
 export function isResetPeriod(value: string): value is ResetPeriod {
   return (RESET_PERIODS as readonly string[]).includes(value);
+}
+
+export function resetPeriods(): readonly ResetPeriod[] {
+  return RESET_PERIODS;
 }
 
 /**
@@ -90,4 +104,25 @@ export function renderNumberPattern(
         return whole;
     }
   });
+}
+
+export function numberPatternTokens(pattern: string): string[] {
+  const tokens: string[] = [];
+  for (const match of pattern.matchAll(/\{([^}]+)\}/g)) {
+    tokens.push(match[1] ?? "");
+  }
+  return tokens;
+}
+
+export function hasSequenceToken(pattern: string): boolean {
+  return numberPatternTokens(pattern).some((token) => /^SEQ(?::0?\d+)?$/.test(token));
+}
+
+export function unknownNumberPatternTokens(pattern: string): string[] {
+  const unknown = new Set<string>();
+  for (const token of numberPatternTokens(pattern)) {
+    if (/^SEQ(?::0?\d+)?$/.test(token)) continue;
+    if (!KNOWN_TOKENS.has(token)) unknown.add(token);
+  }
+  return [...unknown];
 }

@@ -396,6 +396,72 @@ export function allocateAndCreateInvoice(args: {
   });
 }
 
+export function createInvoiceWithSequenceOverride(args: {
+  clientId: number;
+  numberingProfileId: number;
+  periodKey: string;
+  sequence: number;
+  advanceSequence: boolean;
+  numberFor: (seq: number) => string;
+  invoice: Omit<CreateInvoiceRow, "number" | "numberingProfileId" | "clientId">;
+  buildItems: (
+    number: string,
+  ) => Array<Omit<NewInvoiceItem, "id" | "invoiceId" | "createdAt" | "updatedAt">>;
+}): Invoice {
+  return db.transaction((tx) => {
+    const now = nowIso();
+    const number = args.numberFor(args.sequence);
+    const invoice = tx
+      .insert(invoices)
+      .values({
+        ...args.invoice,
+        clientId: args.clientId,
+        numberingProfileId: args.numberingProfileId,
+        number,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+      .get();
+
+    insertItemsTx(tx, invoice.id, args.buildItems(number), now);
+
+    if (args.advanceSequence) {
+      const existing = tx
+        .select()
+        .from(invoiceSequences)
+        .where(
+          and(
+            eq(invoiceSequences.clientId, args.clientId),
+            eq(invoiceSequences.numberingProfileId, args.numberingProfileId),
+            eq(invoiceSequences.periodKey, args.periodKey),
+          ),
+        )
+        .get();
+      const nextSeq = Math.max(existing?.nextSeq ?? 1, args.sequence + 1);
+      if (existing) {
+        tx.update(invoiceSequences)
+          .set({ nextSeq, updatedAt: now })
+          .where(eq(invoiceSequences.id, existing.id))
+          .run();
+      } else {
+        tx.insert(invoiceSequences)
+          .values({
+            clientId: args.clientId,
+            numberingProfileId: args.numberingProfileId,
+            periodKey: args.periodKey,
+            nextSeq,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+      }
+    }
+
+    return invoice;
+  });
+}
+
 /**
  * Create a manually-numbered invoice (no profile / no sequence allocation) with
  * its initial items, transactionally. The UNIQUE index enforces no collision.

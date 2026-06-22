@@ -168,7 +168,12 @@ function Sidebar({
         <div class="mt-5 border-t border-base-300/60 pt-3">
           <NavLink
             href="/settings/issuer"
-            label="Settings"
+            label="Issuer settings"
+            currentPath={currentPath}
+          />
+          <NavLink
+            href="/settings/numbering"
+            label="Numbering profiles"
             currentPath={currentPath}
           />
         </div>
