@@ -15,6 +15,7 @@ src/public/htmx.min.js
 src/public/alpine.min.js
 
 # Environment / secrets
+.personal/
 .env
 .env.*
 !.env.example

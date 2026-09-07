@@ -8,39 +8,45 @@ The invoice PDF is only part of that monthly routine. Reusable text templates ca
 
 This is a beta application. It has no built-in authentication. Run it on localhost or a trusted private LAN, or put it behind an authenticated reverse proxy (for example, Cloudflare Access) before allowing remote access. Do not publish port 3000 directly to the public Internet.
 
-## Try it locally
-
-Requirements: [Bun](https://bun.sh/) and a writable working directory.
-
-```sh
-bun install
-bun run db:migrate
-bun run dev
-```
-
-Open <http://localhost:3000>. On first use, configure the issuer, create a client, then create an invoice. See [the user guide](docs/user-guide.md).
-
 The current beta includes basic client and invoice editors, reusable text generators, numbering profiles, PDF generation, revisioned PDF templates, and local supporting records/files. It does not provide tax compliance advice or replace the official Brazilian NFS-e process.
 
-## Run with Docker Compose
+## Install with Docker Compose (GHCR)
 
-The default deployment uses React PDF and one app container:
+Use the prebuilt image from GHCR; no Bun installation or local image build is required. Download or clone this repository to obtain `compose.yml` (and `compose.gotenberg.yml` if wanted), then run from that directory:
 
 ```sh
 mkdir -p data
 chown -R 1000:1000 data
-docker compose -f docker-compose.yml up --build -d
+docker compose -f compose.yml pull
+docker compose -f compose.yml up -d
 ```
+
+Open <http://localhost:3000>. On first use, configure the issuer, create a client, then create an invoice. See [the user guide](docs/user-guide.md).
+
+`compose.yml` pins `ghcr.io/arieltl/invoice:0.1.2` by default. That published version predates the beta features described here; the new beta image has not been released yet. Set `INVOICE_IMAGE_TAG` to the desired published version when upgrading. While the repository/image is private, pulling may require GHCR access.
 
 Both Compose files bind to `127.0.0.1` by default. Set `INVOICE_BIND_ADDRESS` to a trusted LAN interface only when you intend to allow network access. Remote access needs an authenticating proxy or private-network gateway.
 
 For the optional HTML/Liquid renderer, start the private Gotenberg service:
 
 ```sh
-docker compose -f docker-compose.yml -f compose.gotenberg.yml up --build -d
+docker compose -f compose.yml -f compose.gotenberg.yml pull
+docker compose -f compose.yml -f compose.gotenberg.yml up -d
 ```
 
 Gotenberg uses Chromium and needs substantially more memory and CPU than React PDF. It is not a fallback: an unavailable Gotenberg render fails clearly and does not alter the invoice or its archived PDF. See [self-hosting operations](docs/self-hosting.md) for configuration, backups, upgrades, and proxy guidance.
+
+## Development or unreleased code
+
+To work on the source, install [Bun](https://bun.sh/) and run:
+
+```sh
+bun install --frozen-lockfile
+bun run db:migrate
+bun run dev
+```
+
+Alternatively, build an image locally with `docker compose -f docker-compose.yml up --build -d`. This is optional, not the normal self-hosting installation path. Do not run source-build and prebuilt stacks against the same data directory at the same time.
 
 ## Documentation
 

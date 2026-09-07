@@ -1,6 +1,7 @@
 node_modules
 data
 .git
+.personal
 .env*
 !.env.example
 *.md
