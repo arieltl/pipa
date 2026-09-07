@@ -1,14 +1,31 @@
 # Invoice
 
-Invoice is a lightweight, self-hosted invoicing workspace for freelancers, independent developers, and small service businesses. It is designed for a low volume of recurring or occasional invoices, with reusable client details, editable text templates, and supporting documents kept together.
+Invoice is a lightweight invoicing workspace for freelancers, independent developers, and small service businesses. Create professional invoice PDFs and keep client details, correspondence, and supporting documents together.
 
-It stores data in SQLite and local files and generates commercial invoice PDFs. You can configure client fields, numbering, currencies, document templates, and supporting records to fit your workflow, whether your clients are local or overseas.
+Built for a small number of recurring or occasional invoices, it helps you reuse the details and text you need each month—whether your clients are local or overseas.
 
-The invoice PDF is only part of that monthly routine. Reusable text templates can help prepare an email to a client, a message, or a note for a bookkeeper using invoice information, while supporting records keep related details and attachments together. Generated text stays editable; the app does not send messages or submit tax documents on your behalf.
+![Overview with fictional clients and invoices](docs/images/overview.png)
 
-This is a beta application. It has no built-in authentication. Run it on localhost or a trusted private LAN, or put it behind an authenticated reverse proxy (for example, Cloudflare Access) before allowing remote access. Do not publish port 3000 directly to the public Internet.
+## Features
 
-The current beta includes client and invoice editors, reusable text generators, numbering profiles, PDF generation, versioned PDF templates, and supporting records/files. It is not a full accounting system and does not guarantee compliance with any country's tax or electronic-invoicing requirements.
+- Create, preview, and download invoice PDFs with customizable templates.
+- Reuse client details, currencies, numbering rules, and recurring line items.
+- Generate editable emails, messages, and bookkeeping notes from invoice information.
+- Keep supporting records, references, and attachments beside each invoice.
+- Track invoices from draft through issued, sent, and paid, with a void option.
+- Preserve issued PDFs and historical invoice details when client defaults change.
+
+## Planned features
+
+- Built-in authentication.
+- An improved template text editor.
+- Better invoice and template previews.
+- Simpler configuration and onboarding.
+- Easier setup for the optional HTML-to-PDF renderer (Gotenberg).
+- Backup and restore assistance.
+- Data export.
+
+See the [roadmap](docs/roadmap.md) for direction; no release dates are promised.
 
 ## Why I built it
 
@@ -35,6 +52,8 @@ An actual generated invoice PDF, shown here as an image:
 See the [screenshot gallery and demo setup](docs/demo.md) for client configuration and images rendered from actual generated invoice PDFs.
 
 ## Install with Docker Compose (GHCR)
+
+This beta has no built-in authentication. Use localhost, a trusted private network, or an authenticating reverse proxy—never expose it directly to the public internet. Read the [deployment security guidance](docs/self-hosting.md#security-boundary) before enabling remote access.
 
 Use the prebuilt image from GHCR; no Bun installation or local image build is required. Download or clone this repository to obtain `compose.yml` (and `compose.gotenberg.yml` if wanted), then run from that directory:
 
