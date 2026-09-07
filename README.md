@@ -10,6 +10,18 @@ This is a beta application. It has no built-in authentication. Run it on localho
 
 The current beta includes basic client and invoice editors, reusable text generators, numbering profiles, PDF generation, revisioned PDF templates, and local supporting records/files. It does not provide tax compliance advice or replace the official Brazilian NFS-e process.
 
+## A look inside
+
+Client workspaces and recent invoicing activity. All pictured data is fictional.
+
+![Overview with fictional clients and invoices](docs/images/overview.png)
+
+An invoice workspace with editable generated text, status controls, and supporting records:
+
+![Invoice workspace with fictional overseas client and line items](docs/images/invoice-workspace.png)
+
+See the [screenshot gallery and demo setup](docs/demo.md) for client configuration and images rendered from actual generated invoice PDFs.
+
 ## Install with Docker Compose (GHCR)
 
 Use the prebuilt image from GHCR; no Bun installation or local image build is required. Download or clone this repository to obtain `compose.yml` (and `compose.gotenberg.yml` if wanted), then run from that directory:
