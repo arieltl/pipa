@@ -15,6 +15,8 @@ export type NfseSectionProps = {
   saved?: boolean;
   /** Text was just generated from the template but not yet saved. */
   generated?: boolean;
+  error?: string;
+  sourceSnapshot?: string;
 };
 
 /**
@@ -28,6 +30,8 @@ export function NfseSection({
   hasTemplate,
   saved,
   generated,
+  error,
+  sourceSnapshot,
 }: NfseSectionProps) {
   const generateLabel = value.trim() === "" ? "Generate from template" : "Regenerate";
   return (
@@ -35,6 +39,7 @@ export function NfseSection({
       {saved ? (
         <Alert kind="success" message="Nota fiscal description saved." />
       ) : null}
+      {error ? <Alert kind="error" message={error} /> : null}
       {generated ? (
         <div class="mb-3 text-sm text-info">
           Generated from the template — review and click Save to store it.
@@ -47,6 +52,7 @@ export function NfseSection({
         hx-swap="outerHTML"
         x-data="enhancedForm"
       >
+        <input type="hidden" name="sourceSnapshot" value={sourceSnapshot ?? ""} />
         <textarea
           name="nfseDescription"
           x-ref="nfse"
@@ -88,7 +94,7 @@ export function NfseSection({
         <p class="mt-2 text-sm text-base-content/50">
           This client has no nota fiscal template.{" "}
           <a href={`/clients`} class="link link-hover">
-            Add one
+            Open the client settings
           </a>{" "}
           to generate text automatically.
         </p>

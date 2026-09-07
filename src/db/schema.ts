@@ -46,6 +46,8 @@ export const issuerSettings = sqliteTable("issuer_settings", {
   pixKey: text("pix_key"),
   defaultCurrency: text("default_currency").notNull().default("GBP"),
   defaultPdfFilenameTemplate: text("default_pdf_filename_template"),
+  partyFieldsJson: text("party_fields_json").notNull().default("[]"),
+  defaultPdfTemplateId: integer("default_pdf_template_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -75,6 +77,8 @@ export const clients = sqliteTable(
       () => numberingProfiles.id,
       { onDelete: "set null" },
     ),
+    partyFieldsJson: text("party_fields_json").notNull().default("[]"),
+    defaultPdfTemplateId: integer("default_pdf_template_id"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -114,6 +118,9 @@ export const invoices = sqliteTable(
       { onDelete: "set null" },
     ),
     notes: text("notes"),
+    issuerSnapshotJson: text("issuer_snapshot_json"),
+    clientSnapshotJson: text("client_snapshot_json"),
+    pdfTemplateRevisionId: integer("pdf_template_revision_id"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -125,6 +132,117 @@ export const invoices = sqliteTable(
     ),
     index("invoices_client_idx").on(table.clientId),
   ],
+);
+
+export const pdfTemplates = sqliteTable("pdf_templates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  stableKey: text("stable_key").unique(),
+  name: text("name").notNull(),
+  engine: text("engine").notNull(),
+  sourceKind: text("source_kind").notNull(),
+  currentRevisionId: integer("current_revision_id"),
+  archivedAt: text("archived_at"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const pdfTemplateRevisions = sqliteTable(
+  "pdf_template_revisions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    templateId: integer("template_id").notNull().references(() => pdfTemplates.id, { onDelete: "restrict" }),
+    revision: integer("revision").notNull(),
+    rendererKey: text("renderer_key"),
+    source: text("source"),
+    configurationJson: text("configuration_json").notNull().default("{}"),
+    contentSha256: text("content_sha256").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [uniqueIndex("pdf_template_revisions_template_revision_unique").on(table.templateId, table.revision)],
+);
+
+export const clientTextGenerators = sqliteTable(
+  "client_text_generators",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    clientId: integer("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    /** nfse-description | custom */
+    purpose: text("purpose").notNull().default("custom"),
+    source: text("source").notNull(),
+    position: integer("position").notNull().default(0),
+    archivedAt: text("archived_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [uniqueIndex("client_text_generators_client_key_unique").on(table.clientId, table.key)],
+);
+
+export const invoiceGeneratedTexts = sqliteTable(
+  "invoice_generated_texts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+    generatorId: integer("generator_id").references(() => clientTextGenerators.id, { onDelete: "set null" }),
+    generatorKey: text("generator_key").notNull(),
+    generatorName: text("generator_name").notNull(),
+    sourceSnapshot: text("source_snapshot").notNull(),
+    content: text("content").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [uniqueIndex("invoice_generated_texts_invoice_key_unique").on(table.invoiceId, table.generatorKey)],
+);
+
+export const clientInvoiceRecordTypes = sqliteTable(
+  "client_invoice_record_types",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    clientId: integer("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    /** nfse | custom; purpose affects presets/placement, never persistence. */
+    purpose: text("purpose").notNull().default("custom"),
+    fieldDefinitionsJson: text("field_definitions_json").notNull().default("[]"),
+    attachmentDefinitionsJson: text("attachment_definitions_json").notNull().default("[]"),
+    allowMultiple: integer("allow_multiple", { mode: "boolean" }).notNull().default(false),
+    position: integer("position").notNull().default(0),
+    archivedAt: text("archived_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [uniqueIndex("client_invoice_record_types_client_key_unique").on(table.clientId, table.key)],
+);
+
+export const invoiceRecords = sqliteTable(
+  "invoice_records",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+    recordTypeId: integer("record_type_id").references(() => clientInvoiceRecordTypes.id, { onDelete: "set null" }),
+    recordTypeKey: text("record_type_key").notNull(),
+    recordTypeName: text("record_type_name").notNull(),
+    purpose: text("purpose").notNull(),
+    definitionsSnapshotJson: text("definitions_snapshot_json").notNull(),
+    valuesJson: text("values_json").notNull().default("{}"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("invoice_records_invoice_idx").on(table.invoiceId)],
+);
+
+export const invoiceRecordAttachments = sqliteTable(
+  "invoice_record_attachments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    invoiceRecordId: integer("invoice_record_id").notNull().references(() => invoiceRecords.id, { onDelete: "cascade" }),
+    definitionKey: text("definition_key"),
+    storedFileId: integer("stored_file_id").notNull().references(() => files.id, { onDelete: "restrict" }),
+    supersedesAttachmentId: integer("supersedes_attachment_id"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("invoice_record_attachments_record_idx").on(table.invoiceRecordId)],
 );
 
 /**
@@ -255,3 +373,12 @@ export type FileRecord = typeof files.$inferSelect;
 export type NewFileRecord = typeof files.$inferInsert;
 export type NotaFiscalLink = typeof notaFiscalLinks.$inferSelect;
 export type NewNotaFiscalLink = typeof notaFiscalLinks.$inferInsert;
+export type PdfTemplate = typeof pdfTemplates.$inferSelect;
+export type PdfTemplateRevision = typeof pdfTemplateRevisions.$inferSelect;
+export type ClientTextGenerator = typeof clientTextGenerators.$inferSelect;
+export type NewClientTextGenerator = typeof clientTextGenerators.$inferInsert;
+export type InvoiceGeneratedText = typeof invoiceGeneratedTexts.$inferSelect;
+export type ClientInvoiceRecordType = typeof clientInvoiceRecordTypes.$inferSelect;
+export type NewClientInvoiceRecordType = typeof clientInvoiceRecordTypes.$inferInsert;
+export type InvoiceRecord = typeof invoiceRecords.$inferSelect;
+export type InvoiceRecordAttachment = typeof invoiceRecordAttachments.$inferSelect;

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { loadIssuerSettings, updateIssuerSettings } from "./settings.service.ts";
+import { parsePartyFields } from "../../domain/party-fields/index.ts";
 
 const requiredSettings = {
   name: "Ariel",
@@ -7,21 +8,20 @@ const requiredSettings = {
 } as const;
 
 describe("issuer settings", () => {
-  test("clearing optional payment notes persists as empty", () => {
+  test("clearing generalized payment fields persists as empty", () => {
     updateIssuerSettings({
       ...requiredSettings,
-      bankDetails: "Previous payment notes",
-      bankIban: "BR1607679404001676134874874C1",
+      partyFields: [
+        { key: "iban", definitionKey: "iban", label: "IBAN", value: "BR1607679404001676134874874C1", section: "payment", visibility: "document", position: 0 },
+      ],
     });
 
     updateIssuerSettings({
       ...requiredSettings,
-      bankDetails: undefined,
-      bankIban: undefined,
+      partyFields: [],
     });
 
     const saved = loadIssuerSettings();
-    expect(saved?.bankDetails).toBeNull();
-    expect(saved?.bankIban).toBeNull();
+    expect(parsePartyFields(saved!.partyFieldsJson)).toEqual([]);
   });
 });

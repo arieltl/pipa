@@ -18,6 +18,8 @@ services:
       DB_PATH: /data/app.db
       FILES_DIR: /data/files
       TMP_DIR: /tmp
+      GOTENBERG_URL: ${GOTENBERG_URL:-}
+      GOTENBERG_TIMEOUT_MS: ${GOTENBERG_TIMEOUT_MS:-15000}
 
     volumes:
       - ./data:/data

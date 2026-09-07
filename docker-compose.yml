@@ -19,6 +19,8 @@ services:
       - FILES_DIR=/data/files
       # SQLite needs a writable dir for the WAL/SHM sidecars; /tmp is tmpfs.
       - TMP_DIR=/tmp
+      - GOTENBERG_URL=${GOTENBERG_URL:-}
+      - GOTENBERG_TIMEOUT_MS=${GOTENBERG_TIMEOUT_MS:-15000}
 
     volumes:
       - ./data:/data

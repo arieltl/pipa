@@ -19,6 +19,7 @@ export function emptyInvoiceFormValues(
     advanceSequence: true,
     notes: "",
     items: [],
+    pdfTemplateId: "",
   };
 }
 
@@ -33,6 +34,7 @@ export function invoiceFormValuesFromBody(body: FormBody): InvoiceFormValues {
     advanceSequence: body.advanceSequence === "on" || body.advanceSequence === "true",
     notes: formString(body.notes),
     items: parseItemDrafts(body.items),
+    pdfTemplateId: formString(body.pdfTemplateId),
   };
 }
 

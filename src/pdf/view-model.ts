@@ -7,6 +7,8 @@ import type {
 } from "../db/schema.ts";
 import { formatDateBr } from "../domain/dates.ts";
 import { formatMoney } from "../domain/money.ts";
+import { parsePartySnapshot, fieldValue } from "../domain/party-fields/snapshot.ts";
+import type { InvoiceDocumentModel } from "./document-model.ts";
 
 /**
  * Stable PDF view model (spec §17, architecture plan §"PDF Generation"). The
@@ -70,9 +72,21 @@ export function buildInvoicePdfViewModel(
 ): InvoicePdfViewModel {
   const { invoice, client, items, total, issuer, notaFiscal } = input;
   const currency = invoice.currency;
+  const issuerSnapshot = invoice.issuerSnapshotJson ? parsePartySnapshot(invoice.issuerSnapshotJson) : null;
+  const clientSnapshot = invoice.clientSnapshotJson ? parsePartySnapshot(invoice.clientSnapshotJson) : null;
+  const sf = (key: string) => issuerSnapshot ? fieldValue(issuerSnapshot.fields, key) : null;
+  const cf = (key: string) => clientSnapshot ? fieldValue(clientSnapshot.fields, key) : null;
 
   return {
-    issuer: issuer
+    issuer: issuerSnapshot
+      ? {
+          name: issuerSnapshot.name, legalName: sf("legal_name"), cnpj: sf("br_cnpj") ?? sf("tax_id"),
+          address: sf("address"), email: sf("email"), bankBeneficiary: sf("payment_beneficiary"),
+          bankBeneficiaryAddress: sf("beneficiary_address"), bankAccountNumber: sf("account_number"),
+          bankIban: sf("iban"), bankSwiftCode: sf("swift_bic"), bankName: sf("bank_name"),
+          bankAddress: sf("bank_address"), bankDetails: sf("payment_instructions"), pixKey: sf("pix"),
+        }
+      : issuer
       ? {
           name: issuer.name,
           legalName: issuer.legalName,
@@ -91,11 +105,11 @@ export function buildInvoicePdfViewModel(
         }
       : null,
     client: {
-      name: client.name,
-      legalName: client.legalName,
-      address: client.address,
-      country: client.country,
-      email: client.email,
+      name: clientSnapshot?.name ?? client.name,
+      legalName: clientSnapshot ? cf("legal_name") : client.legalName,
+      address: clientSnapshot ? cf("address") : client.address,
+      country: clientSnapshot ? cf("country") : client.country,
+      email: clientSnapshot ? cf("email") : client.email,
     },
     invoice: {
       number: invoice.number,
@@ -130,4 +144,61 @@ function hasNotaFiscalDetails(link: NotaFiscalLink | null | undefined): boolean 
         link.verificationCode ||
         link.publicUrl),
   );
+}
+
+/** Compatibility adapter for the built-in classic React PDF template. */
+export function classicViewModelFromDocument(
+  document: InvoiceDocumentModel,
+): InvoicePdfViewModel {
+  const issuerField = (key: string) => document.issuer.field[key]?.value ?? null;
+  const customerField = (key: string) => document.customer.field[key]?.value ?? null;
+  const hasIssuer = Boolean(
+    document.issuer.name || document.issuer.fields.length,
+  );
+  return {
+    issuer: hasIssuer
+      ? {
+          name: document.issuer.name,
+          legalName: issuerField("legal_name"),
+          cnpj: issuerField("br_cnpj") ?? issuerField("tax_id"),
+          address: issuerField("address"),
+          email: issuerField("email"),
+          bankBeneficiary: issuerField("payment_beneficiary"),
+          bankBeneficiaryAddress: issuerField("beneficiary_address"),
+          bankAccountNumber: issuerField("account_number"),
+          bankIban: issuerField("iban"),
+          bankSwiftCode: issuerField("swift_bic"),
+          bankName: issuerField("bank_name"),
+          bankAddress: issuerField("bank_address"),
+          bankDetails: issuerField("payment_instructions"),
+          pixKey: issuerField("pix"),
+        }
+      : null,
+    client: {
+      name: document.customer.name,
+      legalName: customerField("legal_name"),
+      address: customerField("address"),
+      country: customerField("country"),
+      email: customerField("email"),
+    },
+    invoice: {
+      number: document.invoice.number,
+      date: document.invoice.dateDisplay,
+      currency: document.invoice.currency,
+      notes: document.invoice.notes,
+    },
+    items: document.items.map((item) => ({
+      name: item.name,
+      value: item.valueDisplay,
+    })),
+    total: document.total.display,
+    notaFiscal: document.notaFiscal
+      ? {
+          number: document.notaFiscal.number,
+          issueDate: document.notaFiscal.issueDateDisplay,
+          verificationCode: document.notaFiscal.verificationCode,
+          publicUrl: document.notaFiscal.publicUrl,
+        }
+      : null,
+  };
 }

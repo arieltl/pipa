@@ -6,15 +6,22 @@ import file1 from "../../drizzle/0001_wooden_joseph.sql" with { type: "file" };
 import file2 from "../../drizzle/0002_volatile_wither.sql" with { type: "file" };
 import file3 from "../../drizzle/0003_lazy_night_thrasher.sql" with { type: "file" };
 import file4 from "../../drizzle/0004_structured_bank_details.sql" with { type: "file" };
-import file5 from "../../drizzle/meta/0000_snapshot.json" with { type: "file" };
-import file6 from "../../drizzle/meta/0001_snapshot.json" with { type: "file" };
-import file7 from "../../drizzle/meta/0002_snapshot.json" with { type: "file" };
-import file8 from "../../drizzle/meta/0003_snapshot.json" with { type: "file" };
-import file9 from "../../drizzle/meta/_journal.json" with { type: "file" };
-import file10 from "../public/alpine.min.js" with { type: "file" };
-import file11 from "../public/app.css" with { type: "file" };
-import file12 from "../public/app.js" with { type: "file" };
-import file13 from "../public/htmx.min.js" with { type: "file" };
+import file5 from "../../drizzle/0005_fresh_warhawk.sql" with { type: "file" };
+import file6 from "../../drizzle/0006_woozy_beyonder.sql" with { type: "file" };
+import file7 from "../../drizzle/0007_builtin_html_classic.sql" with { type: "file" };
+import file8 from "../../drizzle/0008_bizarre_valeria_richards.sql" with { type: "file" };
+import file9 from "../../drizzle/meta/0000_snapshot.json" with { type: "file" };
+import file10 from "../../drizzle/meta/0001_snapshot.json" with { type: "file" };
+import file11 from "../../drizzle/meta/0002_snapshot.json" with { type: "file" };
+import file12 from "../../drizzle/meta/0003_snapshot.json" with { type: "file" };
+import file13 from "../../drizzle/meta/0005_snapshot.json" with { type: "file" };
+import file14 from "../../drizzle/meta/0006_snapshot.json" with { type: "file" };
+import file15 from "../../drizzle/meta/0008_snapshot.json" with { type: "file" };
+import file16 from "../../drizzle/meta/_journal.json" with { type: "file" };
+import file17 from "../public/alpine.min.js" with { type: "file" };
+import file18 from "../public/app.css" with { type: "file" };
+import file19 from "../public/app.js" with { type: "file" };
+import file20 from "../public/htmx.min.js" with { type: "file" };
 
 export const embeddedRuntimeFiles = [
   { source: file0, target: "drizzle/0000_mushy_the_call.sql" },
@@ -22,13 +29,20 @@ export const embeddedRuntimeFiles = [
   { source: file2, target: "drizzle/0002_volatile_wither.sql" },
   { source: file3, target: "drizzle/0003_lazy_night_thrasher.sql" },
   { source: file4, target: "drizzle/0004_structured_bank_details.sql" },
-  { source: file5, target: "drizzle/meta/0000_snapshot.json" },
-  { source: file6, target: "drizzle/meta/0001_snapshot.json" },
-  { source: file7, target: "drizzle/meta/0002_snapshot.json" },
-  { source: file8, target: "drizzle/meta/0003_snapshot.json" },
-  { source: file9, target: "drizzle/meta/_journal.json" },
-  { source: file10, target: "src/public/alpine.min.js" },
-  { source: file11, target: "src/public/app.css" },
-  { source: file12, target: "src/public/app.js" },
-  { source: file13, target: "src/public/htmx.min.js" },
+  { source: file5, target: "drizzle/0005_fresh_warhawk.sql" },
+  { source: file6, target: "drizzle/0006_woozy_beyonder.sql" },
+  { source: file7, target: "drizzle/0007_builtin_html_classic.sql" },
+  { source: file8, target: "drizzle/0008_bizarre_valeria_richards.sql" },
+  { source: file9, target: "drizzle/meta/0000_snapshot.json" },
+  { source: file10, target: "drizzle/meta/0001_snapshot.json" },
+  { source: file11, target: "drizzle/meta/0002_snapshot.json" },
+  { source: file12, target: "drizzle/meta/0003_snapshot.json" },
+  { source: file13, target: "drizzle/meta/0005_snapshot.json" },
+  { source: file14, target: "drizzle/meta/0006_snapshot.json" },
+  { source: file15, target: "drizzle/meta/0008_snapshot.json" },
+  { source: file16, target: "drizzle/meta/_journal.json" },
+  { source: file17, target: "src/public/alpine.min.js" },
+  { source: file18, target: "src/public/app.css" },
+  { source: file19, target: "src/public/app.js" },
+  { source: file20, target: "src/public/htmx.min.js" },
 ] as const;

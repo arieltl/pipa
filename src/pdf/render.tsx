@@ -1,7 +1,9 @@
 /** @jsxImportSource react */
 import { renderToBuffer } from "@react-pdf/renderer";
 import { InvoiceDocument } from "./invoice-document.tsx";
-import type { InvoicePdfViewModel } from "./view-model.ts";
+import { classicViewModelFromDocument } from "./view-model.ts";
+import type { PdfRenderRequest } from "./renderer.ts";
+import { PdfRendererUnavailableError } from "./renderer.ts";
 
 /**
  * Render an invoice view model to PDF bytes. Isolated so callers (download
@@ -9,7 +11,14 @@ import type { InvoicePdfViewModel } from "./view-model.ts";
  * internals.
  */
 export async function renderInvoicePdfBuffer(
-  data: InvoicePdfViewModel,
+  request: PdfRenderRequest,
 ): Promise<Buffer> {
-  return renderToBuffer(<InvoiceDocument data={data} />);
+  if (request.template.rendererKey !== "classic") {
+    throw new PdfRendererUnavailableError(
+      `Unknown React PDF renderer: ${request.template.rendererKey ?? "(none)"}`,
+    );
+  }
+  return renderToBuffer(
+    <InvoiceDocument data={classicViewModelFromDocument(request.document)} />,
+  );
 }

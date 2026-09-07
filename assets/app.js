@@ -140,6 +140,71 @@
         this.items.splice(i, 1);
       },
     }));
+
+    window.Alpine.data("partyFieldEditor", (encoded) => {
+      const config = JSON.parse(decodeURIComponent(encoded));
+      return {
+        fields: Array.isArray(config.fields) ? config.fields : [],
+        definitions: config.definitions || {},
+        sets: config.sets || {},
+        selectedSet: "",
+        activeSection: (config.fields || [])[0]?.section || 'identity',
+        pickerOpen: false,
+        search: '',
+        customName: '',
+        namingCustom: false,
+        presetOpen: false,
+        matchingDefinitions() { return Object.values(this.definitions).filter(d => !this.fields.some(f => f.key === d.key) && (this.search ? (d.defaultLabel + ' ' + d.key + ' ' + d.section).toLowerCase().includes(this.search.toLowerCase()) : d.section === this.activeSection)); },
+        openPicker() { this.search = ''; this.namingCustom = false; this.customName = ''; this.pickerOpen = true; this.$nextTick(() => this.$refs.fieldSearch.focus()); },
+        startCustom() { this.customName = this.search.trim().slice(0, 120); this.namingCustom = true; this.$nextTick(() => this.$refs.customName.focus()); },
+        confirmCustom() { if (!this.customName.trim()) return; this.addCustom(this.activeSection, this.customName); this.pickerOpen = false; this.namingCustom = false; this.$el.closest('[data-dirty-section]')?.classList.add('is-dirty-section'); },
+        chooseField(key) { this.addSuggested(key); this.activeSection = this.definitions[key].section; this.pickerOpen = false; this.$el.dispatchEvent(new Event('input', { bubbles: true })); },
+        sectionToAdd: "",
+        sections: Object.fromEntries(["identity", "contact", "address", "payment", "other"].map((section) => [section, (config.fields || []).some((field) => field.section === section)])),
+        selectedBySection: { identity: "", contact: "", address: "", payment: "", other: "" },
+        fieldsFor(section) { return this.fields.filter((field) => field.section === section).sort((a, b) => a.position - b.position); },
+        sectionVisible(section) { return this.sections[section] === true; },
+        showSection(section) { this.sections[section] = true; },
+        addSection() { if (!this.sectionToAdd) return; this.showSection(this.sectionToAdd); this.sectionToAdd = ""; },
+        removeSection(section) { if (this.fieldsFor(section).length === 0) this.sections[section] = false; },
+        sectionHelp(section) { return ({ identity: "Names, registrations, and tax identifiers.", contact: "Ways to contact this party.", address: "Postal address and country.", payment: "Banking and payment instructions.", other: "Additional document or internal details." })[section] || ""; },
+        inputKind(field) { return field.definitionKey && this.definitions[field.definitionKey] ? this.definitions[field.definitionKey].inputKind : "multiline"; },
+        htmlInputType(field) { const kind = this.inputKind(field); return kind === "email" ? "email" : kind === "url" ? "url" : kind === "phone" ? "tel" : "text"; },
+        addSuggested(key) {
+          const definition = this.definitions[key];
+          if (!definition || this.fields.some((field) => field.key.toLowerCase() === definition.key.toLowerCase())) return;
+          this.showSection(definition.section);
+          this.fields.push({ key: definition.key, definitionKey: definition.key, label: definition.defaultLabel, value: "", section: definition.section, visibility: "document", position: this.fieldsFor(definition.section).length });
+        },
+        applySelectedSet() {
+          for (const key of this.sets[this.selectedSet] || []) this.addSuggested(key);
+          this.selectedSet = "";
+        },
+        addToSection(section) {
+          const selected = this.selectedBySection[section];
+          if (selected === "__custom") this.addCustom(section); else this.addSuggested(selected);
+          this.selectedBySection[section] = "";
+        },
+        addCustom(section, name) {
+          if (!name?.trim()) { this.openPicker(); this.startCustom(); return; }
+          const label = name.trim().slice(0, 120);
+          let base = label.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+          if (!/^[a-z]/.test(base)) base = 'field_' + base;
+          base = base.slice(0, 56) || 'custom_field';
+          let key = base, n = 2;
+          while (this.fields.some(field => field.key.toLowerCase() === key)) key = `${base}_${n++}`;
+          this.showSection(section);
+          this.fields.push({ key, definitionKey: null, label, value: "", section, visibility: "document", position: this.fieldsFor(section).length });
+        },
+        remove(field) { this.fields = this.fields.filter((candidate) => candidate !== field); this.normalizePositions(); },
+        move(field, delta) {
+          const sectionFields = this.fieldsFor(field.section); const index = sectionFields.indexOf(field); const other = sectionFields[index + delta];
+          if (!other) return; const position = field.position; field.position = other.position; other.position = position;
+        },
+        normalizePositions() { for (const section of ["identity", "contact", "address", "payment", "other"]) this.fieldsFor(section).forEach((field, index) => { field.position = index; }); },
+        serialized() { return JSON.stringify(this.fields); },
+      };
+    });
   });
 
   /** Flag the nearest savable section as having unsaved changes. */

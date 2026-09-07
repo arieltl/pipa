@@ -1,4 +1,4 @@
-import type { Client, IssuerSettings } from "../../../db/schema.ts";
+import type { Client, IssuerSettings, PdfTemplate } from "../../../db/schema.ts";
 import { SUPPORTED_CURRENCIES } from "../../../domain/money.ts";
 import { ITEM_SOURCES } from "../invoices.schema.ts";
 import type { ItemDraft } from "../invoices.service.ts";
@@ -22,6 +22,7 @@ export type InvoiceFormValues = {
   advanceSequence: boolean;
   notes: string;
   items: ItemDraft[];
+  pdfTemplateId: string;
 };
 
 export type InvoiceComposerProps = {
@@ -32,6 +33,8 @@ export type InvoiceComposerProps = {
   currencyDefault: string;
   /** Whether the client has a numbering profile (auto numbers) or needs manual. */
   hasProfile: boolean;
+  pdfTemplates: PdfTemplate[];
+  templateError?: string;
   errors?: FieldErrors;
 };
 
@@ -52,6 +55,8 @@ export function InvoiceComposer({
   values,
   currencyDefault,
   hasProfile,
+  pdfTemplates,
+  templateError,
   errors = {},
 }: InvoiceComposerProps) {
   const config = {
@@ -109,7 +114,27 @@ export function InvoiceComposer({
         <div class="grid gap-6 border-b border-base-300/60 p-6 sm:grid-cols-2">
           <ClientBlock client={client} />
 
-          <div class="sm:text-right">
+          <div class="grid gap-4 sm:text-right">
+            <label class="block">
+              <Caption>PDF template</Caption>
+              <select
+                name="pdfTemplateId"
+                class={`${selectClass(errors.pdfTemplateId ?? templateError)} mt-1 sm:ml-auto sm:max-w-[18rem]`}
+                required
+              >
+                <option value="" selected={!values.pdfTemplateId}>Select a template</option>
+                {pdfTemplates.map((template) => (
+                  <option value={String(template.id)} selected={values.pdfTemplateId === String(template.id)}>
+                    {template.name} ({template.engine === "react-pdf" ? "React PDF" : "HTML"})
+                  </option>
+                ))}
+              </select>
+              {errors.pdfTemplateId || templateError ? (
+                <span class="app-error mt-1 block text-xs">{errors.pdfTemplateId ?? templateError}</span>
+              ) : (
+                <span class="app-hint mt-1 block text-xs">This exact revision is saved with the draft.</span>
+              )}
+            </label>
             <Caption>Currency</Caption>
             <select
               name="currency"
@@ -122,7 +147,7 @@ export function InvoiceComposer({
                 </option>
               ))}
             </select>
-            <div class="app-hint mt-1 text-xs">
+            <div class="app-hint -mt-3 text-xs">
               Client default: {currencyDefault}
             </div>
           </div>

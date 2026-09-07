@@ -19,9 +19,9 @@ Database: SQLite
 DB layer: Drizzle ORM + Drizzle Kit migrations
 SQLite driver: bun:sqlite through drizzle-orm/bun-sqlite
 Validation: Zod schemas, wired at route boundaries via @hono/zod-validator
-PDF: @react-pdf/renderer on the server
+PDF: renderer registry; @react-pdf/renderer always available, optional HTML/Liquid through Gotenberg
 Files: local filesystem under DATA_DIR
-Deployment: single Docker container through Docker Compose
+Deployment: single app container by default; optional private Gotenberg container through a Compose override
 ```
 
 Why this is still the right shape:
@@ -32,6 +32,8 @@ Why this is still the right shape:
 - Tailwind CSS v4 and daisyUI are already close to the older CRM experiment and keep styling fast without building a custom design system.
 - Drizzle currently has first-class Bun SQLite support, including the `drizzle-orm/bun-sqlite` adapter and Drizzle Kit migrations.
 - `@react-pdf/renderer` supports Node/server rendering APIs; we should keep PDF components separate from web UI components.
+- HTML templates use the same constrained Liquid document model as named client
+  text generators. Gotenberg is optional and is never a fallback target.
 
 Checked docs:
 
@@ -411,11 +413,14 @@ Rules:
 - Return validation errors in settings screens.
 - Sanitize separately for filename output.
 
-Use the same helper for:
+Use the small interpolation helper for:
 
 - Fixed monthly item names.
-- Nota fiscal descriptions.
 - PDF filenames.
+
+Use constrained Liquid for named customer text generators (including the NFS-e
+description purpose) and HTML PDF templates. Both consume immutable invoice
+party snapshots through the shared document model.
 
 Keep formatting helpers outside the template language. For example, expose `invoice.dateMonthNamePt` as a context value instead of allowing helper calls in templates.
 
@@ -428,9 +433,11 @@ Do not reuse web UI components inside PDF components. React PDF has its own prim
 Flow:
 
 ```text
-route/service loads invoice aggregate
--> map to InvoicePDFViewModel
--> render with @react-pdf/renderer
+route/service loads invoice aggregate and selected immutable template revision
+-> map invoice snapshots to shared InvoiceDocumentModel
+-> dispatch through renderer registry
+     -> @react-pdf/renderer
+     -> HTML/Liquid then Gotenberg
 -> return download response or archive file
 ```
 
@@ -676,4 +683,3 @@ Data export:
 8. Implement template rendering for item names, NFS-e descriptions, and filenames.
 9. Implement PDF download.
 10. Implement file archive and NFS-e linking.
-

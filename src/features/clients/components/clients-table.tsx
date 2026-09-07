@@ -1,5 +1,7 @@
 import type { Client } from "../../../db/schema.ts";
 import { formatMoney } from "../../../domain/money.ts";
+import { parsePartyFields } from "../../../domain/party-fields/index.ts";
+import { fieldValue } from "../../../domain/party-fields/snapshot.ts";
 
 export function ClientsTable({ clients }: { clients: Client[] }) {
   if (clients.length === 0) {
@@ -42,7 +44,9 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
                   {client.code}
                 </span>
               </td>
-              <td class="text-base-content/84">{client.country ?? "—"}</td>
+              <td class="text-base-content/84">
+                {fieldValue(parsePartyFields(client.partyFieldsJson), "country") ?? "—"}
+              </td>
               <td class="text-right tabular-nums">
                 {client.defaultFixedMonthlyValue != null
                   ? formatMoney(

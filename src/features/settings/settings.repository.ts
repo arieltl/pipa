@@ -3,6 +3,7 @@ import { db } from "../../db/client.ts";
 import { issuerSettings, type IssuerSettings } from "../../db/schema.ts";
 import { nowIso } from "../../domain/dates.ts";
 import type { IssuerFormInput } from "./settings.schema.ts";
+import { serializePartyFields } from "../../domain/party-fields/index.ts";
 
 /** Issuer settings are a singleton row. */
 export function getIssuerSettings(): IssuerSettings | null {
@@ -13,7 +14,7 @@ export function getIssuerSettings(): IssuerSettings | null {
 export function saveIssuerSettings(input: IssuerFormInput): IssuerSettings {
   const existing = getIssuerSettings();
   const now = nowIso();
-  const values = normalizeIssuerSettingsInput(input);
+  const values = normalizeIssuerSettingsInput(input, existing?.partyFieldsJson);
 
   if (existing) {
     return db
@@ -31,27 +32,14 @@ export function saveIssuerSettings(input: IssuerFormInput): IssuerSettings {
     .get();
 }
 
-function nullable(value: string | undefined): string | null {
-  return value ?? null;
-}
-
-function normalizeIssuerSettingsInput(input: IssuerFormInput) {
+function normalizeIssuerSettingsInput(input: IssuerFormInput, currentFields?: string) {
   return {
     name: input.name,
-    legalName: nullable(input.legalName),
-    cnpj: nullable(input.cnpj),
-    address: nullable(input.address),
-    email: nullable(input.email),
-    bankBeneficiary: nullable(input.bankBeneficiary),
-    bankBeneficiaryAddress: nullable(input.bankBeneficiaryAddress),
-    bankAccountNumber: null,
-    bankIban: nullable(input.bankIban),
-    bankSwiftCode: nullable(input.bankSwiftCode),
-    bankName: nullable(input.bankName),
-    bankAddress: nullable(input.bankAddress),
-    bankDetails: nullable(input.bankDetails),
-    pixKey: nullable(input.pixKey),
     defaultCurrency: input.defaultCurrency,
-    defaultPdfFilenameTemplate: nullable(input.defaultPdfFilenameTemplate),
+    defaultPdfFilenameTemplate: input.defaultPdfFilenameTemplate ?? null,
+    defaultPdfTemplateId: input.defaultPdfTemplateId ?? null,
+    partyFieldsJson: input.partyFields
+      ? serializePartyFields(input.partyFields)
+      : currentFields ?? "[]",
   };
 }

@@ -10,6 +10,7 @@ import { numberingRoutes } from "./features/numbering/numbering.routes.tsx";
 import { settingsRoutes } from "./features/settings/settings.routes.tsx";
 import { paths } from "./config/paths.ts";
 import { existsSync } from "node:fs";
+import { pdfTemplatesRoutes } from "./features/pdf-templates/pdf-templates.routes.tsx";
 
 function staticRoot(): string {
   return existsSync(paths.runtimeStaticRoot) ? paths.runtimeStaticRoot : "./src";
@@ -42,6 +43,7 @@ export function createApp() {
   app.route("/clients", clientsRoutes);
   app.route("/invoices", invoicesRoutes);
   app.route("/settings/numbering", numberingRoutes);
+  app.route("/settings/pdf-templates", pdfTemplatesRoutes);
   app.route("/settings", settingsRoutes);
 
   app.notFound((c) => {

@@ -21,9 +21,13 @@ import {
   InvoiceNumberRequiredError,
   InvoiceNumberTakenError,
   saveNfseDescription,
+  savedTextFor,
+  refreshPartyDetails,
   updateInvoiceDoc,
   updateItem,
 } from "./invoices.service.ts";
+import { parsePartySnapshot } from "../../domain/party-fields/snapshot.ts";
+import { serializePartyFields } from "../../domain/party-fields/index.ts";
 
 /** Insert a client directly; returns its id. Profile 1 = monthly per client. */
 function makeClient(overrides: Partial<typeof clients.$inferInsert> = {}): number {
@@ -203,6 +207,26 @@ describe("createInvoice — items", () => {
   });
 });
 
+describe("invoice party snapshots", () => {
+  const partyFields = (legalName: string) => serializePartyFields([{ key: "legal_name", definitionKey: "legal_name", label: "Legal name", value: legalName, section: "identity", visibility: "document", position: 0 }]);
+
+  test("new invoices retain party details until an explicit draft refresh", () => {
+    const clientId = makeClient({ partyFieldsJson: partyFields("Original Ltd") });
+    const invoice = createInvoice(base(clientId));
+    db.update(clients).set({ partyFieldsJson: partyFields("Current Ltd") }).where(eq(clients.id, clientId)).run();
+    expect(parsePartySnapshot(getInvoiceDetail(invoice.id)!.invoice.clientSnapshotJson!).fields[0]?.value).toBe("Original Ltd");
+    refreshPartyDetails(invoice.id);
+    expect(parsePartySnapshot(getInvoiceDetail(invoice.id)!.invoice.clientSnapshotJson!).fields[0]?.value).toBe("Current Ltd");
+  });
+
+  test("refresh is rejected after the document is locked", () => {
+    const clientId = makeClient({ partyFieldsJson: partyFields("Locked Ltd") });
+    const invoice = createInvoice(base(clientId));
+    db.update(invoices).set({ status: "issued" }).where(eq(invoices.id, invoice.id)).run();
+    expect(() => refreshPartyDetails(invoice.id)).toThrow(DocumentLockedError);
+  });
+});
+
 describe("clientSeed — create-form defaults", () => {
   test("seeds currency and a fixed monthly item rendered from the template", () => {
     const clientId = makeClient({
@@ -273,7 +297,8 @@ describe("templates (Phase 4)", () => {
     );
 
     saveNfseDescription(inv.id, generated);
-    expect(getInvoiceDetail(inv.id)!.invoice.nfseDescription).toBe(generated);
+    const saved = getInvoiceDetail(inv.id)!;
+    expect(savedTextFor(saved, "nfse_description")?.content).toBe(generated);
   });
 
   test("saving blank clears the nota fiscal description", () => {
@@ -281,7 +306,8 @@ describe("templates (Phase 4)", () => {
     const inv = createInvoice({ ...base(clientId), items: [] });
     saveNfseDescription(inv.id, "something");
     saveNfseDescription(inv.id, "   ");
-    expect(getInvoiceDetail(inv.id)!.invoice.nfseDescription).toBeNull();
+    const saved = getInvoiceDetail(inv.id)!;
+    expect(savedTextFor(saved, "nfse_description")?.content).toBe("");
   });
 
   test("saved nota fiscal text is not mutated by later client template edits", () => {
@@ -298,7 +324,8 @@ describe("templates (Phase 4)", () => {
       .where(eq(clients.id, clientId))
       .run();
 
-    expect(getInvoiceDetail(inv.id)!.invoice.nfseDescription).toBe(
+    const saved = getInvoiceDetail(inv.id)!;
+    expect(savedTextFor(saved, "nfse_description")?.content).toBe(
       `Original ${inv.number}`,
     );
   });

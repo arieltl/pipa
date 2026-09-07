@@ -47,7 +47,7 @@ UI: server-rendered JSX + htmx
 Database: SQLite
 DB helper/ORM: Drizzle
 SQLite driver: bun:sqlite
-PDF generation: server-side @react-pdf/renderer
+PDF generation: server-side @react-pdf/renderer, with optional HTML/Liquid via Gotenberg
 Storage: local filesystem
 Deployment: Docker Compose
 ```
@@ -57,7 +57,6 @@ Avoid for MVP:
 ```text
 Chromium
 Puppeteer
-Gotenberg
 MinIO
 S3
 Postgres
@@ -67,7 +66,7 @@ Full SPA architecture
 
 Reasoning:
 
-- No headless browser for PDF generation.
+- No headless browser is required for the default React PDF deployment.
 - No extra DB container.
 - No local S3 service.
 - Single app container.
@@ -83,7 +82,9 @@ Browser
 Bun/Hono app
   -> Drizzle + SQLite
   -> local /data folder
-  -> react-pdf for invoice PDFs
+  -> renderer registry
+       -> react-pdf (always available)
+       -> HTML/Liquid + private Gotenberg service (optional)
 ```
 
 ---
@@ -94,25 +95,25 @@ Bun/Hono app
 
 The app should support multiple clients from the start.
 
-Client fields:
+Client behavior/default fields:
 
 ```text
 Name
-Legal/company name
 Client code
-Address
-Country
-Email
 Default currency
 Default payment terms / notes, optional
 Default fixed monthly value
 Default fixed monthly item name template
-Default nota fiscal description template
+Named Liquid text generators (including an optional NFS-e description purpose)
 Default invoice PDF filename template
 Invoice numbering profile
 Created at
 Updated at
 ```
+
+Document identity, contact, address, payment, and other values are generalized
+ordered party fields. Invoice creation snapshots document-visible issuer and
+client fields so later settings changes do not change historical documents.
 
 Example client codes:
 
@@ -419,7 +420,9 @@ Global uniqueness is recommended to avoid confusion.
 
 ## 12. Nota fiscal description templating
 
-The app should include a simple templating engine for generating nota fiscal / NFS-e description text.
+The app should allow each client to define named Liquid text generators. An
+NFS-e description is one built-in purpose rather than a dedicated hard-coded
+template field.
 
 This is **not** an API integration. The output is just editable, copyable text.
 
@@ -439,7 +442,8 @@ The generated text should be copied/saved into the invoice. Later changes to the
 
 ## 13. Nota fiscal template variables
 
-The nota fiscal description template should support invoice number as a variable.
+Text generators share the invoice document model with HTML PDF templates and
+support invoice number as a variable.
 
 Useful variables:
 
@@ -1054,7 +1058,8 @@ Manage:
 Client details
 Default fixed monthly value
 Default fixed monthly item name template
-Default nota fiscal template
+Named text generators
+Default PDF template
 Default PDF filename template
 Invoice numbering profile
 Currency
@@ -1118,10 +1123,9 @@ On create:
 1. Allocate invoice number per client
 2. Copy current client fixed monthly item if enabled
 3. Render fixed monthly item name template
-4. Render current client nota fiscal template
-5. Save editable final nota fiscal description on invoice
-6. Create invoice as draft
-7. Store actual created_at timestamp
+4. Snapshot current issuer/client document fields and the resolved PDF revision
+5. Create invoice as draft
+6. Store actual created_at timestamp
 ```
 
 ---

@@ -1,0 +1,20 @@
+services:
+  invoice:
+    environment:
+      GOTENBERG_URL: http://gotenberg:3000
+      GOTENBERG_TIMEOUT_MS: ${GOTENBERG_TIMEOUT_MS:-15000}
+    depends_on:
+      gotenberg:
+        condition: service_healthy
+
+  gotenberg:
+    image: gotenberg/gotenberg:8-chromium
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true

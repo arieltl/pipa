@@ -212,6 +212,18 @@ export function updateInvoiceDoc(
     .get();
 }
 
+export function updateInvoicePdfTemplateRevision(
+  id: number,
+  pdfTemplateRevisionId: number,
+): Invoice {
+  return db
+    .update(invoices)
+    .set({ pdfTemplateRevisionId, updatedAt: nowIso() })
+    .where(eq(invoices.id, id))
+    .returning()
+    .get();
+}
+
 /**
  * Delete an invoice and its dependent rows. Line items and the nota fiscal link
  * cascade via foreign keys; stored files are append-only and left on disk.
@@ -257,6 +269,10 @@ export function updateInvoiceArchivedPdf(
     .where(eq(invoices.id, id))
     .returning()
     .get();
+}
+
+export function updateInvoicePartySnapshots(id: number, issuerSnapshotJson: string, clientSnapshotJson: string): Invoice {
+  return db.update(invoices).set({ issuerSnapshotJson, clientSnapshotJson, updatedAt: nowIso() }).where(eq(invoices.id, id)).returning().get();
 }
 
 export function getFileById(id: number): FileRecord | null {

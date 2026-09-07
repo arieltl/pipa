@@ -16,12 +16,20 @@ import { Icon } from "../../../web/components/icons.tsx";
 import { Caption, ClientBlock, IssuerBlock } from "./invoice-parties.tsx";
 import { ItemsSection } from "./items-section.tsx";
 import { NfseSection } from "./nfse-section.tsx";
+import { GeneratedTextsSection } from "./generated-texts-section.tsx";
 import { NfseLinkSection } from "./nfse-link-section.tsx";
+import { InvoiceRecordsSection } from "../../invoice-records/components/invoice-records-section.tsx";
 import { PdfQuickAction, PdfSection } from "./pdf-section.tsx";
 import { emptyItemFormValues } from "../invoices.view.ts";
 import type { InvoiceDetail } from "../invoices.service.ts";
+import { parsePartySnapshot } from "../../../domain/party-fields/snapshot.ts";
 
-export type NfseInitial = { value: string; autofilled: boolean };
+export type NfseInitial = {
+  value: string;
+  autofilled: boolean;
+  error?: string;
+  sourceSnapshot?: string;
+};
 
 /** Ordered happy-path stages; `void` sits outside the line. */
 const STEPS: { key: InvoiceStatus; label: string }[] = [
@@ -57,10 +65,12 @@ export function WorkflowHeader({
   invoice,
   archivedPdf,
   error,
+  renderBlockedReason,
 }: {
   invoice: Invoice;
   archivedPdf: FileRecord | null;
   error?: string;
+  renderBlockedReason?: string;
 }) {
   const status = invoice.status as InvoiceStatus;
   const draft = status === "draft";
@@ -128,7 +138,7 @@ export function WorkflowHeader({
             </button>
           )}
 
-          <PdfQuickAction invoice={invoice} archivedPdf={archivedPdf} />
+          <PdfQuickAction invoice={invoice} archivedPdf={archivedPdf} renderBlockedReason={renderBlockedReason} />
         </div>
       </div>
 
@@ -212,15 +222,23 @@ export function InvoiceDetailBody({
   detail,
   pdfFilename,
   nfse,
+  pdfRenderBlockedReason,
 }: {
   detail: InvoiceDetail;
   pdfFilename: string;
   /** Initial nota fiscal text (saved value, or auto-generated when empty). */
   nfse: NfseInitial;
+  pdfRenderBlockedReason?: string;
 }) {
   const { invoice, client, issuer, items, total, notaFiscal, archivedPdf } =
     detail;
   const editable = isDocumentEditable(invoice.status);
+  const issuerSnapshot = invoice.issuerSnapshotJson
+    ? parsePartySnapshot(invoice.issuerSnapshotJson)
+    : undefined;
+  const clientSnapshot = invoice.clientSnapshotJson
+    ? parsePartySnapshot(invoice.clientSnapshotJson)
+    : undefined;
 
   return (
     <div class="mx-auto max-w-7xl">
@@ -228,7 +246,7 @@ export function InvoiceDetailBody({
         <main class="min-w-0">
           <div class="app-card overflow-hidden rounded-xl">
             <div class="grid gap-5 border-b border-base-300/60 bg-base-200/25 p-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-              <IssuerBlock issuer={issuer} />
+              <IssuerBlock issuer={issuer} snapshot={issuerSnapshot} />
               <div class="lg:text-right">
                 <div class="flex items-center gap-2 lg:justify-end">
                   <span class="text-lg font-semibold tracking-tight">Invoice</span>
@@ -239,7 +257,7 @@ export function InvoiceDetailBody({
             </div>
 
             <div class="grid gap-5 border-b border-base-300/60 p-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-              <ClientBlock client={client} />
+              <ClientBlock client={client} snapshot={clientSnapshot} />
               <div class="lg:text-right">
                 <Caption>Currency</Caption>
                 <div class="mt-1 font-medium">{invoice.currency}</div>
@@ -278,12 +296,15 @@ export function InvoiceDetailBody({
               invoice={invoice}
               archivedPdf={archivedPdf}
               filename={pdfFilename}
+              currentTemplate={detail.pdfTemplate}
+              templates={detail.pdfTemplateOptions}
+              renderBlockedReason={pdfRenderBlockedReason}
             />
           </section>
         </main>
 
         <aside class="grid gap-4 self-start xl:sticky xl:top-6">
-          <WorkflowHeader invoice={invoice} archivedPdf={archivedPdf} />
+          <WorkflowHeader invoice={invoice} archivedPdf={archivedPdf} renderBlockedReason={pdfRenderBlockedReason} />
 
           <section class="app-card rounded-lg p-5">
             <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/55">
@@ -292,12 +313,22 @@ export function InvoiceDetailBody({
             <NfseSection
               invoiceId={invoice.id}
               value={nfse.value}
-              hasTemplate={Boolean(client.defaultNfseDescriptionTemplate)}
+              hasTemplate={detail.textGenerators.some((generator) => generator.purpose === "nfse-description") || Boolean(client.defaultNfseDescriptionTemplate)}
               generated={nfse.autofilled}
+              error={nfse.error}
+              sourceSnapshot={nfse.sourceSnapshot}
             />
           </section>
 
-          <section>
+          <GeneratedTextsSection
+            invoiceId={invoice.id}
+            generators={detail.textGenerators}
+            savedTexts={detail.generatedTexts}
+          />
+
+          <InvoiceRecordsSection invoiceId={invoice.id} recordTypes={detail.recordTypes} records={detail.records} />
+
+          {!detail.recordTypes.some((type) => type.purpose === "nfse") ? <section>
             <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-base-content/55">
               NFS-e link
             </h2>
@@ -308,7 +339,7 @@ export function InvoiceDetailBody({
               xmlFile={detail.notaFiscalXml}
               offerMarkSent={invoice.status === "issued" && notaFiscal === null}
             />
-          </section>
+          </section> : null}
         </aside>
       </div>
     </div>

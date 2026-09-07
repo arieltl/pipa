@@ -34,8 +34,8 @@ export function Layout({
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{pageTitle}</title>
-        <link rel="stylesheet" href="/public/app.css" />
-        <script src="/public/app.js" defer></script>
+        <link rel="stylesheet" href="/public/app.css?v=client-experience-7" />
+        <script src="/public/app.js?v=custom-field-name-8" defer></script>
         <script src="/public/htmx.min.js" defer></script>
         <script src="/public/alpine.min.js" defer></script>
       </head>
@@ -174,6 +174,11 @@ function Sidebar({
           <NavLink
             href="/settings/numbering"
             label="Numbering profiles"
+            currentPath={currentPath}
+          />
+          <NavLink
+            href="/settings/pdf-templates"
+            label="PDF templates"
             currentPath={currentPath}
           />
         </div>

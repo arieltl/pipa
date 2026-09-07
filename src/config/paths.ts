@@ -20,6 +20,7 @@ export const paths = {
   generatedInvoicesDir: join(env.filesDir, "generated", "invoices"),
   nfseDir: join(env.filesDir, "nfse"),
   expenseAttachmentsDir: join(env.filesDir, "attachments", "expenses"),
+  invoiceRecordAttachmentsDir: join(env.filesDir, "attachments", "invoice-records"),
 } as const;
 
 /**
@@ -35,6 +36,7 @@ export function ensureDataDirs(): void {
     paths.generatedInvoicesDir,
     paths.nfseDir,
     paths.expenseAttachmentsDir,
+    paths.invoiceRecordAttachmentsDir,
   ]) {
     mkdirSync(dir, { recursive: true });
   }

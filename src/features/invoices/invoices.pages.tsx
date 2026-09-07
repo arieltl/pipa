@@ -1,4 +1,4 @@
-import type { Client, IssuerSettings } from "../../db/schema.ts";
+import type { Client, IssuerSettings, PdfTemplate } from "../../db/schema.ts";
 import { PageHeader } from "../../web/components/page-header.tsx";
 import {
   InvoiceComposer,
@@ -94,6 +94,8 @@ export function ComposeInvoicePage({
   currencyDefault,
   hasProfile,
   errors,
+  pdfTemplates,
+  templateError,
 }: {
   client: Client;
   issuer: IssuerSettings | null;
@@ -101,6 +103,8 @@ export function ComposeInvoicePage({
   currencyDefault: string;
   hasProfile: boolean;
   errors?: FieldErrors;
+  pdfTemplates: PdfTemplate[];
+  templateError?: string;
 }) {
   return (
     <div>
@@ -121,6 +125,8 @@ export function ComposeInvoicePage({
           currencyDefault={currencyDefault}
           hasProfile={hasProfile}
           errors={errors}
+          pdfTemplates={pdfTemplates}
+          templateError={templateError}
         />
       </div>
     </div>
@@ -131,10 +137,12 @@ export function InvoiceDetailPage({
   detail,
   pdfFilename,
   nfse,
+  pdfRenderBlockedReason,
 }: {
   detail: InvoiceDetail;
   pdfFilename: string;
   nfse: NfseInitial;
+  pdfRenderBlockedReason?: string;
 }) {
   return (
     <div>
@@ -147,7 +155,7 @@ export function InvoiceDetailPage({
           </a>
         }
       />
-      <InvoiceDetailBody detail={detail} pdfFilename={pdfFilename} nfse={nfse} />
+      <InvoiceDetailBody detail={detail} pdfFilename={pdfFilename} nfse={nfse} pdfRenderBlockedReason={pdfRenderBlockedReason} />
     </div>
   );
 }

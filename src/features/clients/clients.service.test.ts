@@ -14,6 +14,7 @@ import {
 } from "./clients.service.ts";
 import { emptyClientFormValues } from "./clients.view.ts";
 import { clientFormSchema } from "./clients.schema.ts";
+import { parsePartyFields, type PartyField } from "../../domain/party-fields/index.ts";
 
 /** Build a validated client input from form-value overrides. */
 function input(overrides: Record<string, unknown> = {}) {
@@ -63,5 +64,20 @@ describe("default client", () => {
     expect(getDefaultClient()?.id).toBe(b.id);
     expect(db.select().from(clients).all().filter((c) => c.isDefault)).toHaveLength(1);
     expect(a.id).not.toBe(b.id);
+  });
+});
+
+describe("generalized party fields", () => {
+  test("persists custom fields without writing through the legacy fixed schema", () => {
+    const partyFields: PartyField[] = [{ key: "purchase_order_contact", definitionKey: null, label: "PO contact", value: "Morgan", section: "other", visibility: "document", position: 0 }];
+    const client = createClient(input({ partyFields }));
+    expect(parsePartyFields(client.partyFieldsJson)).toEqual(partyFields);
+    expect(client.legalName).toBeNull();
+  });
+
+  test("requires acknowledgement for advisory format warnings", () => {
+    const partyFields = [{ key: "iban", definitionKey: "iban", label: "IBAN", value: "not-an-iban", section: "payment", visibility: "document", position: 0 }];
+    expect(clientFormSchema.safeParse({ ...emptyClientFormValues(), name: "Acme", code: "ACME", partyFields }).success).toBe(false);
+    expect(clientFormSchema.safeParse({ ...emptyClientFormValues(), name: "Acme", code: "ACME", partyFields, acknowledgePartyWarnings: "on" }).success).toBe(true);
   });
 });

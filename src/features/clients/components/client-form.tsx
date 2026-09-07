@@ -8,22 +8,21 @@ import {
   type FieldErrors,
 } from "../../../web/components/forms.tsx";
 import { SUPPORTED_CURRENCIES } from "../../../domain/money.ts";
-import type { NumberingProfile } from "../../../db/schema.ts";
+import type { NumberingProfile, PdfTemplate } from "../../../db/schema.ts";
+import type { PartyField } from "../../../domain/party-fields/index.ts";
+import { PartyFieldEditor } from "../../../web/components/party-field-editor.tsx";
 
 export type ClientFormValues = {
   name: string;
-  legalName: string;
   code: string;
-  address: string;
-  country: string;
-  email: string;
   defaultCurrency: string;
   defaultFixedMonthlyValue: string;
   defaultFixedMonthlyItemNameTemplate: string;
-  defaultNfseDescriptionTemplate: string;
   defaultPdfFilenameTemplate: string;
   numberingProfileId: string;
+  defaultPdfTemplateId: string;
   isDefault: boolean;
+  partyFields: PartyField[];
 };
 
 export type ClientFormProps = {
@@ -31,6 +30,7 @@ export type ClientFormProps = {
   action: string;
   values: ClientFormValues;
   profiles: NumberingProfile[];
+  pdfTemplates: PdfTemplate[];
   errors?: FieldErrors;
   submitLabel: string;
   saved?: boolean;
@@ -40,22 +40,29 @@ export function ClientForm({
   action,
   values,
   profiles,
+  pdfTemplates,
   errors = {},
   submitLabel,
   saved,
 }: ClientFormProps) {
   return (
-    <div id="client-form">
+    <div id="client-form" >
       {saved ? <Alert kind="success" message="Client saved." /> : null}
 
       <form
+        id="client-details-form"
         hx-post={action}
         hx-target="#client-form"
         hx-swap="outerHTML"
         x-data="enhancedForm"
         data-dirty-section
-        class="app-form grid sm:grid-cols-2"
+        class="app-form client-settings-form space-y-4"
+        {...{"x-on:invalid.capture": "workspace = $event.target.closest('[data-panel]')?.dataset.panel || workspace"}}
       >
+        {action === "/clients" ? <input type="hidden" name="configureSection" x-bind:value="workspace" /> : null}
+        {Object.keys(errors).length ? <Alert kind="error" message="Please review the highlighted fields. Select the section with the highlighted field before saving." /> : null}
+        <section data-panel="overview" x-show="workspace === 'overview'" class="app-card grid gap-5 rounded-xl p-6 sm:grid-cols-2">
+        <div class="sm:col-span-2"><h2 class="font-semibold">Client</h2><p class="text-xs text-base-content/50">Application identity and defaults.</p></div>
         <Field label="Name" name="name" required error={errors.name}>
           <input
             id="name"
@@ -85,47 +92,9 @@ export function ClientForm({
             autocomplete="off"
             required
             maxlength={30}
-            pattern="[A-Za-z0-9_-]+"
+            pattern="[A-Za-z0-9_\-]+"
             title="Use letters, numbers, dashes, or underscores."
             data-format="upper"
-          />
-        </Field>
-
-        <Field label="Legal name" name="legalName" error={errors.legalName}>
-          <input
-            id="legalName"
-            name="legalName"
-            type="text"
-            value={values.legalName}
-            class={inputClass(errors.legalName)}
-            maxlength={200}
-            data-format="trim"
-          />
-        </Field>
-
-        <Field label="Country" name="country" error={errors.country}>
-          <input
-            id="country"
-            name="country"
-            type="text"
-            value={values.country}
-            class={inputClass(errors.country)}
-            maxlength={100}
-            autocomplete="country-name"
-            data-format="trim"
-          />
-        </Field>
-
-        <Field label="Email" name="email" error={errors.email}>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            value={values.email}
-            class={inputClass(errors.email)}
-            maxlength={254}
-            autocomplete="email"
-            placeholder="billing@example.com"
           />
         </Field>
 
@@ -148,20 +117,24 @@ export function ClientForm({
         </Field>
 
         <div class="sm:col-span-2">
-          <Field label="Address" name="address" error={errors.address}>
-            <textarea
-              id="address"
-              name="address"
-              rows={2}
-              class={textareaClass(errors.address)}
-              maxlength={1000}
-              data-format="trim"
-            >
-              {values.address}
-            </textarea>
-          </Field>
+          <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-4 transition hover:border-primary/30">
+            <input
+              type="checkbox"
+              name="isDefault"
+              class="checkbox checkbox-sm"
+              checked={values.isDefault}
+            />
+            <span class="text-sm">
+              Make this the default client for new invoices
+            </span>
+          </label>
         </div>
+        </section>
 
+        <div data-panel="details" x-show="workspace === 'details'" x-cloak><PartyFieldEditor fields={values.partyFields} error={errors.partyFields} /></div>
+
+        <section data-panel="billing" x-show="workspace === 'billing'" x-cloak class="app-card grid gap-5 rounded-xl p-6 sm:grid-cols-2">
+        <div class="sm:col-span-2"><h2 class="font-semibold">Invoice defaults</h2><p class="text-xs text-base-content/50">Copied into new invoices and always editable there.</p></div>
         <Field
           label="Default fixed monthly value"
           name="defaultFixedMonthlyValue"
@@ -181,6 +154,30 @@ export function ClientForm({
           />
         </Field>
 
+
+
+        <div class="sm:col-span-2">
+          <Field
+            label="Fixed monthly item name template"
+            name="defaultFixedMonthlyItemNameTemplate"
+            hint="e.g. {{client.name}} - Software development services - {{invoice.dateMonthName}} {{invoice.dateYear}}"
+            error={errors.defaultFixedMonthlyItemNameTemplate}
+          >
+            <input
+              id="defaultFixedMonthlyItemNameTemplate"
+              name="defaultFixedMonthlyItemNameTemplate"
+              type="text"
+              value={values.defaultFixedMonthlyItemNameTemplate}
+              class={inputClass(errors.defaultFixedMonthlyItemNameTemplate)}
+              maxlength={500}
+              data-format="trim"
+            />
+          </Field>
+        </div>
+
+        </section>
+        <section data-panel="numbering" x-show="workspace === 'numbering'" x-cloak class="app-card grid gap-5 rounded-xl p-6">
+          <div><h2 class="font-semibold">Numbering</h2><p class="text-xs text-base-content/50">Choose how invoice numbers are assigned for this client.</p></div>
         <Field
           label="Numbering profile"
           name="numberingProfileId"
@@ -202,43 +199,32 @@ export function ClientForm({
             ))}
           </select>
         </Field>
-
+          <p class="text-xs text-base-content/50">{action === "/clients" ? "Create this client to preview and manage its live sequence." : "Save a profile change before adjusting the sequence below."}</p>
+        </section>
+        <section data-panel="pdf" x-show="workspace === 'pdf'" x-cloak class="app-card grid gap-5 rounded-xl p-6 sm:grid-cols-2">
+          <div class="sm:col-span-2"><h2 class="font-semibold">PDF appearance</h2><p class="text-xs text-base-content/50">Choose the invoice design and download filename.</p></div>
         <div class="sm:col-span-2">
           <Field
-            label="Fixed monthly item name template"
-            name="defaultFixedMonthlyItemNameTemplate"
-            hint="e.g. {{client.name}} - Software development services - {{invoice.dateMonthName}} {{invoice.dateYear}}"
-            error={errors.defaultFixedMonthlyItemNameTemplate}
+            label="Default invoice template"
+            name="defaultPdfTemplateId"
+            hint="New invoices snapshot the current revision. Leave inherited to use the issuer default. HTML options require configured Gotenberg."
+            error={errors.defaultPdfTemplateId}
           >
-            <input
-              id="defaultFixedMonthlyItemNameTemplate"
-              name="defaultFixedMonthlyItemNameTemplate"
-              type="text"
-              value={values.defaultFixedMonthlyItemNameTemplate}
-              class={inputClass(errors.defaultFixedMonthlyItemNameTemplate)}
-              maxlength={500}
-              data-format="trim"
-            />
-          </Field>
-        </div>
-
-        <div class="sm:col-span-2">
-          <Field
-            label="Nota fiscal description template"
-            name="defaultNfseDescriptionTemplate"
-            hint="Default NFS-e description text. Editable per invoice later."
-            error={errors.defaultNfseDescriptionTemplate}
-          >
-            <textarea
-              id="defaultNfseDescriptionTemplate"
-              name="defaultNfseDescriptionTemplate"
-              rows={3}
-              class={textareaClass(errors.defaultNfseDescriptionTemplate)}
-              maxlength={2000}
-              data-format="trim"
+            <select
+              id="defaultPdfTemplateId"
+              name="defaultPdfTemplateId"
+              class={selectClass(errors.defaultPdfTemplateId)}
             >
-              {values.defaultNfseDescriptionTemplate}
-            </textarea>
+              <option value="">Use issuer default</option>
+              {pdfTemplates.map((template) => (
+                <option
+                  value={String(template.id)}
+                  selected={values.defaultPdfTemplateId === String(template.id)}
+                >
+                  {template.name} ({template.engine === "react-pdf" ? "React PDF" : "HTML"})
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
 
@@ -261,21 +247,10 @@ export function ClientForm({
           </Field>
         </div>
 
-        <div class="sm:col-span-2">
-          <label class="app-card flex cursor-pointer items-start gap-3 rounded-lg p-4 transition hover:border-primary/30">
-            <input
-              type="checkbox"
-              name="isDefault"
-              class="checkbox checkbox-sm"
-              checked={values.isDefault}
-            />
-            <span class="text-sm">
-              Make this the default client for new invoices
-            </span>
-          </label>
-        </div>
 
-        <div class="sm:col-span-2 flex items-center justify-end gap-2">
+        </section>
+
+        <div x-show="!['text', 'records'].includes(workspace)" class="client-save-bar flex items-center justify-end gap-2">
           <span data-dirty-badge class="mr-auto">Unsaved changes</span>
           <a href="/clients" class="btn btn-ghost">
             Cancel

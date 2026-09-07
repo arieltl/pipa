@@ -1,4 +1,4 @@
-import type { FileRecord, Invoice } from "../../../db/schema.ts";
+import type { FileRecord, Invoice, PdfTemplate } from "../../../db/schema.ts";
 import { Icon, type IconName } from "../../../web/components/icons.tsx";
 
 export type PdfSectionProps = {
@@ -9,6 +9,11 @@ export type PdfSectionProps = {
   filename: string;
   /** Show the "archived" confirmation banner after a fresh archive. */
   archived?: boolean;
+  currentTemplate: PdfTemplate;
+  templates: PdfTemplate[];
+  templateError?: string;
+  renderError?: string;
+  renderBlockedReason?: string;
 };
 
 /**
@@ -18,7 +23,8 @@ export type PdfSectionProps = {
 export function PdfQuickAction({
   invoice,
   archivedPdf,
-}: Pick<PdfSectionProps, "invoice" | "archivedPdf">) {
+  renderBlockedReason,
+}: Pick<PdfSectionProps, "invoice" | "archivedPdf" | "renderBlockedReason">) {
   const prefersArchive = invoice.status !== "draft" && archivedPdf !== null;
   const primary = prefersArchive
     ? {
@@ -27,7 +33,9 @@ export function PdfQuickAction({
         busy: "Downloading archive...",
         icon: "download" as IconName,
       }
-    : {
+    : renderBlockedReason
+      ? null
+      : {
         href: `/invoices/${invoice.id}/pdf`,
         label: "Regen PDF",
         busy: "Generating PDF...",
@@ -36,19 +44,25 @@ export function PdfQuickAction({
 
   return (
     <div class="join relative z-50 flex w-full" x-data="{ busy: '' }">
-      <a
-        href={primary.href}
-        class="btn btn-primary btn-sm join-item min-w-0 flex-1 justify-center"
-        x-on:click={`busy = '${primary.busy}'`}
-      >
-        <span x-show="!busy" class="inline-flex items-center justify-center gap-1.5">
-          <Icon name={primary.icon} />
-          <span>{primary.label}</span>
-        </span>
-        <span x-show="busy" x-text="busy" style="display:none">
-          {primary.busy}
-        </span>
-      </a>
+      {primary ? (
+        <a
+          href={primary.href}
+          class="btn btn-primary btn-sm join-item min-w-0 flex-1 justify-center"
+          x-on:click={`busy = '${primary.busy}'`}
+        >
+          <span x-show="!busy" class="inline-flex items-center justify-center gap-1.5">
+            <Icon name={primary.icon} />
+            <span>{primary.label}</span>
+          </span>
+          <span x-show="busy" x-text="busy" style="display:none">
+            {primary.busy}
+          </span>
+        </a>
+      ) : (
+        <button type="button" class="btn btn-primary btn-sm join-item min-w-0 flex-1" disabled title={renderBlockedReason}>
+          PDF unavailable
+        </button>
+      )}
       <div class="dropdown dropdown-end">
         <button
           type="button"
@@ -63,13 +77,20 @@ export function PdfQuickAction({
           class="menu dropdown-content z-[100] mt-1 w-80 rounded-box border border-base-300 bg-base-100 p-2 text-sm shadow-2xl"
         >
           <li>
-            <a
-              href={`/invoices/${invoice.id}/pdf`}
-              x-on:click="busy = 'Generating PDF...'"
-            >
-              <Icon name="refresh" />
-              <span>Regen PDF</span>
-            </a>
+            {renderBlockedReason ? (
+              <button type="button" disabled title={renderBlockedReason}>
+                <Icon name="refresh" />
+                <span>Regen PDF unavailable</span>
+              </button>
+            ) : (
+              <a
+                href={`/invoices/${invoice.id}/pdf`}
+                x-on:click="busy = 'Generating PDF...'"
+              >
+                <Icon name="refresh" />
+                <span>Regen PDF</span>
+              </a>
+            )}
           </li>
           {archivedPdf ? (
             <li>
@@ -82,7 +103,7 @@ export function PdfQuickAction({
               </a>
             </li>
           ) : null}
-          <li>
+          <li class={renderBlockedReason ? "hidden" : undefined}>
             <form
               method="post"
               action={`/invoices/${invoice.id}/pdf/archive-download`}
@@ -113,6 +134,11 @@ export function PdfSection({
   archivedPdf,
   filename,
   archived,
+  currentTemplate,
+  templates,
+  templateError,
+  renderError,
+  renderBlockedReason,
 }: PdfSectionProps) {
   const actionGrid = archivedPdf
     ? "sm:grid-cols-2 xl:grid-cols-4"
@@ -122,6 +148,15 @@ export function PdfSection({
     <div id="invoice-pdf" class="app-card rounded-lg p-4" x-data="{ busy: '' }">
       {archived ? (
         <div class="mb-3 text-sm text-success">PDF archived.</div>
+      ) : null}
+      {renderError ? (
+        <div class="alert alert-error mb-3 py-2 text-sm" role="alert">
+          <span>{renderError}</span>
+        </div>
+      ) : renderBlockedReason ? (
+        <div class="alert alert-warning mb-3 py-2 text-sm" role="alert">
+          <span>{renderBlockedReason}</span>
+        </div>
       ) : null}
 
       <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
@@ -139,25 +174,78 @@ export function PdfSection({
         <ArchiveStatus archivedPdf={archivedPdf} />
       </div>
 
+      <div class="mt-3 rounded-md border border-base-300/80 bg-base-200/35 p-3">
+        {invoice.status === "draft" ? (
+          <form
+            class="flex flex-wrap items-end gap-2"
+            hx-post={`/invoices/${invoice.id}/pdf-template`}
+            hx-target="#invoice-pdf"
+            hx-swap="outerHTML"
+          >
+            <label class="min-w-56 flex-1 text-sm">
+              <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-base-content/45">
+                PDF template
+              </span>
+              <select
+                name="templateId"
+                class={`select select-bordered select-sm w-full ${templateError ? "select-error" : ""}`}
+              >
+                {templates.map((template) => (
+                  <option
+                    value={String(template.id)}
+                    selected={template.id === currentTemplate.id}
+                  >
+                    {template.name} ({template.engine === "react-pdf" ? "React PDF" : "HTML"})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" class="btn btn-ghost btn-sm">
+              Use template
+            </button>
+            {templateError ? (
+              <p class="w-full text-xs text-error">{templateError}</p>
+            ) : null}
+          </form>
+        ) : (
+          <div class="text-sm">
+            <span class="text-base-content/50">PDF template: </span>
+            <span class="font-medium">{currentTemplate.name}</span>
+          </div>
+        )}
+      </div>
+
       {archivedPdf ? (
         <ArchiveDetails invoice={invoice} archivedPdf={archivedPdf} />
       ) : null}
 
       <div class="mt-4 grid gap-2">
+        {invoice.status === "draft" ? (
+          <button type="button" class="btn btn-ghost btn-sm w-full" hx-post={`/invoices/${invoice.id}/refresh-party-details`} hx-target="#invoice-pdf" hx-swap="outerHTML" hx-confirm="Replace this draft's issuer and customer details with current settings?">
+            Refresh party details
+          </button>
+        ) : null}
         <span
           x-show="busy"
           x-text="busy"
           class="text-sm text-info"
         ></span>
         <div class={`grid gap-2 ${actionGrid}`}>
-          <a
-            href={`/invoices/${invoice.id}/pdf`}
-            class="btn btn-ghost btn-sm w-full"
-            x-on:click="busy = 'Generating live PDF...'"
-          >
-            <Icon name="refresh" />
-            <span>Live PDF</span>
-          </a>
+          {renderBlockedReason ? (
+            <button type="button" class="btn btn-ghost btn-sm w-full" disabled title={renderBlockedReason}>
+              <Icon name="refresh" />
+              <span>Live PDF unavailable</span>
+            </button>
+          ) : (
+            <a
+              href={`/invoices/${invoice.id}/pdf`}
+              class="btn btn-ghost btn-sm w-full"
+              x-on:click="busy = 'Generating live PDF...'"
+            >
+              <Icon name="refresh" />
+              <span>Live PDF</span>
+            </a>
+          )}
           <button
             type="button"
             class={`btn btn-sm w-full ${archivedPdf ? "btn-warning" : "btn-secondary"}`}
@@ -170,6 +258,8 @@ export function PdfSection({
                 : "Freeze the current PDF as an immutable archive?"
             }
             x-on:click="busy = 'Archiving PDF...'"
+            disabled={Boolean(renderBlockedReason)}
+            title={renderBlockedReason}
           >
             <Icon name="archive" />
             <span>{archivedPdf ? "Re-archive" : "Archive"}</span>
@@ -193,6 +283,8 @@ export function PdfSection({
               type="submit"
               class="btn btn-primary btn-sm w-full"
               x-on:click="busy = 'Re-archiving PDF...'"
+              disabled={Boolean(renderBlockedReason)}
+              title={renderBlockedReason}
             >
               <Icon name="archive" />
               <span>Re-archive + download</span>

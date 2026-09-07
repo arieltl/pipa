@@ -14,6 +14,10 @@ const idField = z.preprocess(
   (v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : undefined),
   z.number({ message: "Select a client" }).int().positive(),
 );
+const optionalIdField = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : undefined),
+  z.number().int().positive().optional(),
+);
 
 const invoiceDate = z
   .string({ message: "Invoice date is required" })
@@ -63,6 +67,7 @@ const itemsField = z.preprocess((v) => {
 export const createInvoiceSchema = z
   .object({
     clientId: idField,
+    pdfTemplateId: optionalIdField,
     invoiceDate,
     currency: z.enum(SUPPORTED_CURRENCIES),
     numberingMode,
@@ -147,6 +152,13 @@ export const statusSchema = z.object({ status: z.enum(INVOICE_STATUSES) });
 
 /** Invoice notes — editable after creation, in any status. */
 export const notesSchema = z.object({ notes: optionalText(2000) });
+
+export const pdfTemplateSelectionSchema = z.object({
+  templateId: z.preprocess(
+    (value) => (typeof value === "string" ? Number(value) : value),
+    z.number().int().positive("Select a PDF template"),
+  ),
+});
 
 /** Optional `YYYY-MM-DD`; blank becomes undefined, otherwise must be valid. */
 const optionalDate = z.preprocess(

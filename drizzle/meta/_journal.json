@@ -36,6 +36,34 @@
       "when": 1782060000000,
       "tag": "0004_structured_bank_details",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788230056898,
+      "tag": "0005_fresh_warhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788231946805,
+      "tag": "0006_woozy_beyonder",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788235200000,
+      "tag": "0007_builtin_html_classic",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788722157534,
+      "tag": "0008_bizarre_valeria_richards",
+      "breakpoints": true
     }
   ]
 }

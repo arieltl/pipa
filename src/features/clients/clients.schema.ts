@@ -2,10 +2,15 @@ import { z } from "zod";
 import { parseMoneyToMinor, SUPPORTED_CURRENCIES } from "../../domain/money.ts";
 import { templateFieldError } from "../invoices/invoice-template-context.ts";
 import {
-  optionalEmail,
   optionalText,
   requiredText,
 } from "../../web/form-schema.ts";
+import { partyFieldsSchema, validatePartyFieldValues } from "../../domain/party-fields/index.ts";
+
+const partyFields = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  try { return JSON.parse(value); } catch { return value; }
+}, partyFieldsSchema).optional();
 
 /** Client code: uppercased, used in invoice numbers / filenames / templates. */
 const clientCode = z.preprocess(
@@ -21,6 +26,10 @@ const numberingProfileId = z.preprocess(
   (v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : undefined),
   z.number().int().positive().optional(),
 );
+const defaultPdfTemplateId = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : undefined),
+  z.number().int().positive().optional(),
+);
 
 /** htmx checkboxes submit "on" when checked and are absent otherwise. */
 const checkbox = z.preprocess((v) => v === "on" || v === "true", z.boolean());
@@ -28,20 +37,24 @@ const checkbox = z.preprocess((v) => v === "on" || v === "true", z.boolean());
 export const clientFormSchema = z
   .object({
     name: requiredText("Name", 200),
-    legalName: optionalText(200),
     code: clientCode,
-    address: optionalText(1000),
-    country: optionalText(100),
-    email: optionalEmail(),
     defaultCurrency: z.enum(SUPPORTED_CURRENCIES),
     defaultFixedMonthlyValue: optionalText(30),
     defaultFixedMonthlyItemNameTemplate: optionalText(500),
-    defaultNfseDescriptionTemplate: optionalText(2000),
     defaultPdfFilenameTemplate: optionalText(300),
     numberingProfileId,
+    defaultPdfTemplateId,
     isDefault: checkbox,
+    partyFields,
+    acknowledgePartyWarnings: checkbox.optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.partyFields) {
+      try {
+        const warnings = validatePartyFieldValues(data.partyFields);
+        if (warnings.length && !data.acknowledgePartyWarnings) ctx.addIssue({ code: "custom", path: ["partyFields"], message: `${warnings.map((w) => w.message).join("; ")}. Check “save anyway” to keep these exact values.` });
+      } catch (error) { ctx.addIssue({ code: "custom", path: ["partyFields"], message: error instanceof Error ? error.message : "Invalid document field" }); }
+    }
     if (
       data.defaultFixedMonthlyValue !== undefined &&
       parseMoneyToMinor(data.defaultFixedMonthlyValue, data.defaultCurrency) ===
@@ -56,7 +69,6 @@ export const clientFormSchema = z
 
     const templateFields = [
       "defaultFixedMonthlyItemNameTemplate",
-      "defaultNfseDescriptionTemplate",
       "defaultPdfFilenameTemplate",
     ] as const;
     for (const field of templateFields) {

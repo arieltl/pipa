@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { db } from "../../db/client.ts";
+import { eq } from "drizzle-orm";
 import {
   clients,
   files,
@@ -19,7 +20,10 @@ import {
   getInvoiceFile,
   linkNotaFiscal,
   renderInvoicePdf,
+  issueInvoice,
 } from "./invoices.service.ts";
+import { createHtmlTemplate } from "../pdf-templates/pdf-templates.service.ts";
+import { GotenbergConnectionError } from "../../pdf/html/gotenberg-client.ts";
 
 function makeClient(): number {
   const now = nowIso();
@@ -74,6 +78,48 @@ describe("renderInvoicePdf", () => {
     expect(buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
     expect(filename.endsWith(".pdf")).toBe(true);
   });
+
+  test("dispatches an HTML revision through Gotenberg with the shared document model", async () => {
+    const originalUrl = process.env.GOTENBERG_URL;
+    const originalTimeout = process.env.GOTENBERG_TIMEOUT_MS;
+    let renderedHtml = "";
+    const server = Bun.serve({
+      port: 0,
+      async fetch(request) {
+        const form = await request.formData();
+        const file = form.get("files");
+        if (file instanceof File) renderedHtml = await file.text();
+        return new Response("%PDF-1.7\nhtml-render", {
+          headers: { "content-type": "application/pdf" },
+        });
+      },
+    });
+    try {
+      process.env.GOTENBERG_URL = `http://127.0.0.1:${server.port}`;
+      process.env.GOTENBERG_TIMEOUT_MS = "1000";
+      const template = createHtmlTemplate(
+        `HTML contract ${crypto.randomUUID()}`,
+        "<!doctype html><html><head><title>Invoice</title></head><body>{{ customer.name }} — {{ invoice.number }} — {{ total.display }}</body></html>",
+      );
+      const detail = newInvoice();
+      db.update(invoices)
+        .set({ pdfTemplateRevisionId: template.currentRevisionId })
+        .where(eq(invoices.id, detail.invoice.id))
+        .run();
+
+      const { buffer } = await renderInvoicePdf(getInvoiceDetail(detail.invoice.id)!);
+      expect(buffer.subarray(0, 5).toString()).toBe("%PDF-");
+      expect(renderedHtml).toContain("London Co");
+      expect(renderedHtml).toContain(detail.invoice.number);
+      expect(renderedHtml).toContain("£4,000.00");
+    } finally {
+      server.stop(true);
+      if (originalUrl === undefined) delete process.env.GOTENBERG_URL;
+      else process.env.GOTENBERG_URL = originalUrl;
+      if (originalTimeout === undefined) delete process.env.GOTENBERG_TIMEOUT_MS;
+      else process.env.GOTENBERG_TIMEOUT_MS = originalTimeout;
+    }
+  });
 });
 
 describe("archiveInvoicePdf", () => {
@@ -103,6 +149,37 @@ describe("archiveInvoicePdf", () => {
     // Both archived files remain on disk.
     expect(existsSync(absolutePath(first))).toBe(true);
     expect(existsSync(absolutePath(second))).toBe(true);
+  });
+
+  test("a failed HTML render does not archive or advance issue status", async () => {
+    const originalUrl = process.env.GOTENBERG_URL;
+    const originalTimeout = process.env.GOTENBERG_TIMEOUT_MS;
+    try {
+      process.env.GOTENBERG_URL = "http://127.0.0.1:1";
+      process.env.GOTENBERG_TIMEOUT_MS = "1000";
+      const template = createHtmlTemplate(
+        `Unavailable ${crypto.randomUUID()}`,
+        "<!doctype html><html><head><title>Invoice</title></head><body>{{ invoice.number }}</body></html>",
+      );
+      const detail = newInvoice();
+      db.update(invoices)
+        .set({ pdfTemplateRevisionId: template.currentRevisionId })
+        .where(eq(invoices.id, detail.invoice.id))
+        .run();
+      const htmlDetail = getInvoiceDetail(detail.invoice.id)!;
+
+      await expect(issueInvoice(htmlDetail)).rejects.toBeInstanceOf(
+        GotenbergConnectionError,
+      );
+      const unchanged = getInvoiceDetail(detail.invoice.id)!;
+      expect(unchanged.invoice.status).toBe("draft");
+      expect(unchanged.invoice.archivedPdfFileId).toBeNull();
+    } finally {
+      if (originalUrl === undefined) delete process.env.GOTENBERG_URL;
+      else process.env.GOTENBERG_URL = originalUrl;
+      if (originalTimeout === undefined) delete process.env.GOTENBERG_TIMEOUT_MS;
+      else process.env.GOTENBERG_TIMEOUT_MS = originalTimeout;
+    }
   });
 });
 

@@ -1,16 +1,22 @@
 import { join } from "node:path";
 import type {
   Client,
+  ClientInvoiceRecordType,
+  ClientTextGenerator,
   FileRecord,
   Invoice,
   InvoiceItem,
+  InvoiceGeneratedText,
   IssuerSettings,
   NotaFiscalLink,
   NumberingProfile,
+  PdfTemplate,
+  PdfTemplateRevision,
 } from "../../db/schema.ts";
+import { applicableRecordTypes, listInvoiceRecords, type InvoiceRecordView } from "../invoice-records/invoice-records.instances.ts";
 import { paths } from "../../config/paths.ts";
-import { buildInvoicePdfViewModel } from "../../pdf/view-model.ts";
-import { renderInvoicePdfBuffer } from "../../pdf/render.tsx";
+import { buildInvoiceDocumentModel } from "../../pdf/document-model.ts";
+import { renderPdf } from "../../pdf/renderer-registry.ts";
 import { supersedeFile } from "../files/files.service.ts";
 import type { NotaFiscalLinkFormInput } from "./invoices.schema.ts";
 import { minorToDecimalString, parseMoneyToMinor } from "../../domain/money.ts";
@@ -38,6 +44,25 @@ import { loadIssuerSettings } from "../settings/settings.service.ts";
 import { db } from "../../db/client.ts";
 import { numberingProfiles } from "../../db/schema.ts";
 import { eq } from "drizzle-orm";
+import { createPartySnapshot, serializePartySnapshot } from "../../domain/party-fields/snapshot.ts";
+import {
+  getRevision,
+  getTemplate,
+  listSelectableTemplates,
+  resolveTemplateRevision,
+  PdfTemplateArchivedError,
+  PdfTemplateNotFoundError,
+  PdfEngineNotConfiguredError,
+} from "../pdf-templates/pdf-templates.service.ts";
+import {
+  generateText,
+  getNfseTextGenerator,
+  getSavedGeneratedText,
+  listClientTextGenerators,
+  listSavedGeneratedTexts,
+  saveGeneratedText,
+  saveGeneratedTextSnapshot,
+} from "../text-generators/text-generators.service.ts";
 
 type ItemRow = { name: string; value: number; source: string; notes: string | null };
 
@@ -106,6 +131,13 @@ export type InvoiceDetail = {
   notaFiscalPdf: FileRecord | null;
   notaFiscalXml: FileRecord | null;
   archivedPdf: FileRecord | null;
+  textGenerators: ClientTextGenerator[];
+  generatedTexts: InvoiceGeneratedText[];
+  recordTypes: ClientInvoiceRecordType[];
+  records: InvoiceRecordView[];
+  pdfTemplate: PdfTemplate;
+  pdfTemplateRevision: PdfTemplateRevision;
+  pdfTemplateOptions: PdfTemplate[];
 };
 
 /** An editable item row in the create form, before the invoice exists. */
@@ -167,11 +199,31 @@ export function composerContext(client: Client): {
   issuer: ReturnType<typeof loadIssuerSettings>;
   currencyDefault: string;
   hasProfile: boolean;
+  pdfTemplates: PdfTemplate[];
+  defaultPdfTemplateId: number | null;
+  templateError?: string;
 } {
+  const issuer = loadIssuerSettings();
+  let defaultPdfTemplateId: number | null = null;
+  let templateError: string | undefined;
+  try {
+    defaultPdfTemplateId = resolveTemplateRevision(client, issuer).templateId;
+  } catch (error) {
+    if (
+      error instanceof PdfTemplateArchivedError ||
+      error instanceof PdfTemplateNotFoundError ||
+      error instanceof PdfEngineNotConfiguredError
+    ) {
+      templateError = error.message;
+    } else throw error;
+  }
   return {
-    issuer: loadIssuerSettings(),
+    issuer,
     currencyDefault: client.defaultCurrency,
     hasProfile: client.numberingProfileId != null,
+    pdfTemplates: listSelectableTemplates(),
+    defaultPdfTemplateId,
+    ...(templateError ? { templateError } : {}),
   };
 }
 
@@ -203,10 +255,15 @@ export function getInvoiceDetail(id: number): InvoiceDetail | null {
       ? repo.getFileById(invoice.archivedPdfFileId)
       : null;
   const notaFiscal = repo.getNotaFiscalLink(id);
+  const issuer = loadIssuerSettings();
+  const pdfTemplateRevision = invoice.pdfTemplateRevisionId
+    ? getRevision(invoice.pdfTemplateRevisionId)
+    : resolveTemplateRevision(client, issuer);
+  const pdfTemplate = getTemplate(pdfTemplateRevision.templateId);
   return {
     invoice,
     client,
-    issuer: loadIssuerSettings(),
+    issuer,
     items,
     total: sum(items),
     notaFiscal,
@@ -215,6 +272,13 @@ export function getInvoiceDetail(id: number): InvoiceDetail | null {
     notaFiscalXml:
       notaFiscal?.xmlFileId != null ? repo.getFileById(notaFiscal.xmlFileId) : null,
     archivedPdf,
+    textGenerators: listClientTextGenerators(client.id),
+    generatedTexts: listSavedGeneratedTexts(invoice.id),
+    recordTypes: applicableRecordTypes(client.id),
+    records: listInvoiceRecords(invoice.id),
+    pdfTemplate,
+    pdfTemplateRevision,
+    pdfTemplateOptions: listSelectableTemplates(),
   };
 }
 
@@ -254,6 +318,18 @@ const FIXED_MONTHLY_FALLBACK_NAME = "Monthly software development services";
 export function createInvoice(input: CreateInvoiceInput): Invoice {
   const client = repo.getClientById(input.clientId);
   if (!client) throw new ClientNotFoundError();
+  const currentIssuer = loadIssuerSettings();
+  const snapshotColumns = {
+    issuerSnapshotJson: serializePartySnapshot(currentIssuer
+      ? createPartySnapshot(currentIssuer)
+      : { name: "Invoice", fields: [] }),
+    clientSnapshotJson: serializePartySnapshot(createPartySnapshot(client)),
+    pdfTemplateRevisionId: resolveTemplateRevision(
+      client,
+      currentIssuer,
+      input.pdfTemplateId,
+    ).id,
+  };
 
   // Items come from the create form (already edited by the user). They are
   // concrete snapshots and do not depend on the allocated number.
@@ -285,6 +361,7 @@ export function createInvoice(input: CreateInvoiceInput): Invoice {
         status: "draft",
         nfseDescription: null,
         notes: input.notes ?? null,
+        ...snapshotColumns,
       },
       items: buildItems(),
     });
@@ -320,6 +397,7 @@ export function createInvoice(input: CreateInvoiceInput): Invoice {
           status: "draft",
           nfseDescription: null,
           notes: input.notes ?? null,
+          ...snapshotColumns,
         },
         buildItems,
       });
@@ -353,6 +431,7 @@ export function createInvoice(input: CreateInvoiceInput): Invoice {
         status: "draft",
         nfseDescription: null,
         notes: input.notes ?? null,
+        ...snapshotColumns,
       },
       buildItems,
     });
@@ -489,6 +568,35 @@ export function revertToDraft(id: number): Invoice {
   return repo.updateInvoiceStatus(id, "draft");
 }
 
+export function refreshPartyDetails(id: number): Invoice {
+  const invoice = repo.getInvoiceById(id);
+  if (!invoice || !isDocumentEditable(invoice.status)) throw new DocumentLockedError();
+  const client = repo.getClientById(invoice.clientId);
+  if (!client) throw new ClientNotFoundError();
+  const issuer = loadIssuerSettings();
+  return repo.updateInvoicePartySnapshots(
+    id,
+    serializePartySnapshot(issuer ? createPartySnapshot(issuer) : { name: "Invoice", fields: [] }),
+    serializePartySnapshot(createPartySnapshot(client)),
+  );
+}
+
+export function selectDraftPdfTemplate(
+  detail: InvoiceDetail,
+  templateId: number,
+): InvoiceDetail {
+  if (!isDocumentEditable(detail.invoice.status)) throw new DocumentLockedError();
+  const revision = resolveTemplateRevision(
+    detail.client,
+    detail.issuer,
+    templateId,
+  );
+  repo.updateInvoicePdfTemplateRevision(detail.invoice.id, revision.id);
+  const updated = getInvoiceDetail(detail.invoice.id);
+  if (!updated) throw new Error(`Invoice ${detail.invoice.id} vanished`);
+  return updated;
+}
+
 /** Mark a freshly-linked invoice as sent (used by the NFS-e link's checkbox). */
 export function markSent(id: number): Invoice {
   return repo.updateInvoiceStatus(id, "sent");
@@ -504,7 +612,7 @@ function contextFor(detail: InvoiceDetail) {
     currency: detail.invoice.currency,
     totalMinor: detail.total,
     client: detail.client,
-    issuer: loadIssuerSettings(),
+    issuer: detail.issuer,
     items: detail.items,
   });
 }
@@ -515,15 +623,84 @@ function contextFor(detail: InvoiceDetail) {
  * then save it explicitly. Empty when the client has no template.
  */
 export function generateNfseDescription(detail: InvoiceDetail): string {
+  const generator = getNfseTextGenerator(detail.client.id);
+  if (generator) return generateText(generator, detail);
   const template = detail.client.defaultNfseDescriptionTemplate;
   if (!template || template.trim() === "") return "";
   return renderTemplate(template, contextFor(detail)).output;
 }
 
 /** Persist the final (edited) nota fiscal text; blank clears it. */
-export function saveNfseDescription(id: number, text: string): Invoice {
+export function saveNfseDescription(
+  id: number,
+  text: string,
+  sourceSnapshot?: string,
+): InvoiceGeneratedText {
   const trimmed = text.trim();
-  return repo.updateInvoiceNfse(id, trimmed === "" ? null : trimmed);
+  const detail = getInvoiceDetail(id);
+  if (!detail) throw new Error(`Invoice ${id} was not found`);
+  const generator = getNfseTextGenerator(detail.client.id);
+  if (generator) {
+    const existing = getSavedGeneratedText(id, generator.key);
+    const permittedSource =
+      sourceSnapshot === generator.source ||
+      sourceSnapshot === existing?.sourceSnapshot
+        ? sourceSnapshot
+        : existing?.sourceSnapshot ?? generator.source;
+    return saveGeneratedText(id, generator, trimmed, permittedSource);
+  }
+  const existing = getSavedGeneratedText(id, "nfse_description");
+  return saveGeneratedTextSnapshot(
+    id,
+    "nfse_description",
+    "NFS-e description",
+    trimmed,
+    sourceSnapshot ?? existing?.sourceSnapshot ?? "",
+  );
+}
+
+export function generateCustomText(
+  detail: InvoiceDetail,
+  key: string,
+): { generator: ClientTextGenerator; content: string } {
+  const generator = detail.textGenerators.find(
+    (candidate) => candidate.key === key && candidate.purpose === "custom",
+  );
+  if (!generator) throw new Error("Text generator was not found");
+  return { generator, content: generateText(generator, detail) };
+}
+
+export function saveCustomText(
+  detail: InvoiceDetail,
+  key: string,
+  content: string,
+  sourceSnapshot?: string,
+): InvoiceGeneratedText {
+  const generator = detail.textGenerators.find(
+    (candidate) => candidate.key === key && candidate.purpose === "custom",
+  );
+  if (!generator) throw new Error("Text generator was not found");
+  const existing = savedTextFor(detail, key);
+  const permittedSource =
+    sourceSnapshot === generator.source || sourceSnapshot === existing?.sourceSnapshot
+      ? sourceSnapshot
+      : existing?.sourceSnapshot ?? generator.source;
+  return saveGeneratedText(
+    detail.invoice.id,
+    generator,
+    content,
+    permittedSource,
+  );
+}
+
+export function savedTextFor(
+  detail: InvoiceDetail,
+  key: string,
+): InvoiceGeneratedText | null {
+  return (
+    detail.generatedTexts.find((text) => text.generatorKey === key) ??
+    getSavedGeneratedText(detail.invoice.id, key)
+  );
 }
 
 /** Persist invoice notes; editable in any status. Blank clears them. */
@@ -544,15 +721,63 @@ export function pdfFilename(detail: InvoiceDetail): string {
 // --- PDF generation, archive, and nota fiscal linking (Phase 5) ----------
 
 /** PDF view model for the invoice, including any linked nota fiscal metadata. */
-function pdfViewModel(detail: InvoiceDetail) {
-  return buildInvoicePdfViewModel({
+function pdfDocumentModel(detail: InvoiceDetail) {
+  return buildInvoiceDocumentModel({
     invoice: detail.invoice,
     client: detail.client,
     items: detail.items,
     total: detail.total,
-    issuer: loadIssuerSettings(),
+    issuer: detail.issuer,
     notaFiscal: detail.notaFiscal,
+    records: detail.records,
   });
+}
+
+function selectedPdfRevision(detail: InvoiceDetail) {
+  return detail.invoice.pdfTemplateRevisionId
+    ? getRevision(detail.invoice.pdfTemplateRevisionId)
+    : resolveTemplateRevision(detail.client, detail.issuer);
+}
+
+function pdfRenderRequest(detail: InvoiceDetail) {
+  return {
+    template: selectedPdfRevision(detail),
+    document: pdfDocumentModel(detail),
+    traceId: crypto.randomUUID(),
+  };
+}
+
+async function renderSelectedPdf(detail: InvoiceDetail): Promise<Buffer> {
+  const request = pdfRenderRequest(detail);
+  const startedAt = performance.now();
+  const engine = request.template.rendererKey ? "react-pdf" : "gotenberg-html";
+  try {
+    const buffer = await renderPdf(request);
+    console.info(JSON.stringify({
+      event: "pdf_render",
+      status: "success",
+      invoiceId: detail.invoice.id,
+      templateId: request.template.templateId,
+      revisionId: request.template.id,
+      engine,
+      traceId: request.traceId,
+      durationMs: Math.round(performance.now() - startedAt),
+    }));
+    return buffer;
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: "pdf_render",
+      status: "error",
+      invoiceId: detail.invoice.id,
+      templateId: request.template.templateId,
+      revisionId: request.template.id,
+      engine,
+      traceId: request.traceId,
+      durationMs: Math.round(performance.now() - startedAt),
+      category: error instanceof Error ? error.name : "UnknownError",
+    }));
+    throw error;
+  }
 }
 
 /**
@@ -562,7 +787,7 @@ function pdfViewModel(detail: InvoiceDetail) {
 export async function renderInvoicePdf(
   detail: InvoiceDetail,
 ): Promise<{ buffer: Buffer; filename: string }> {
-  const buffer = await renderInvoicePdfBuffer(pdfViewModel(detail));
+  const buffer = await renderSelectedPdf(detail);
   return { buffer, filename: pdfFilename(detail) };
 }
 
@@ -575,7 +800,7 @@ export async function renderInvoicePdf(
 export async function archiveInvoicePdf(
   detail: InvoiceDetail,
 ): Promise<FileRecord> {
-  const buffer = await renderInvoicePdfBuffer(pdfViewModel(detail));
+  const buffer = await renderSelectedPdf(detail);
   const year = detail.invoice.invoiceDate.slice(0, 4) || "unknown";
   const destDir = join(paths.archivedInvoicesDir, year);
 

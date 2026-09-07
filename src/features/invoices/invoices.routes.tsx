@@ -10,6 +10,7 @@ import { formString, type FormBody } from "../../web/form-values.ts";
 import { InvoiceComposer } from "./components/invoice-composer.tsx";
 import { ItemsSection } from "./components/items-section.tsx";
 import { NfseSection } from "./components/nfse-section.tsx";
+import { GeneratedTextCard } from "./components/generated-texts-section.tsx";
 import { NfseLinkSection } from "./components/nfse-link-section.tsx";
 import { PdfSection } from "./components/pdf-section.tsx";
 import {
@@ -29,6 +30,7 @@ import {
   itemFormSchema,
   notaFiscalLinkSchema,
   notesSchema,
+  pdfTemplateSelectionSchema,
   statusSchema,
 } from "./invoices.schema.ts";
 import {
@@ -49,6 +51,7 @@ import {
   updateInvoiceDoc,
   EmptyInvoiceError,
   generateNfseDescription,
+  generateCustomText,
   getInvoiceDetail,
   getInvoiceFile,
   getItem,
@@ -63,12 +66,39 @@ import {
   renderInvoicePdf,
   removeNotaFiscalAttachment,
   revertToDraft,
+  refreshPartyDetails,
   saveNfseDescription,
+  saveCustomText,
+  savedTextFor,
+  selectDraftPdfTemplate,
   saveNotes,
   SequenceOverrideUnavailableError,
   updateItem,
   type NotaFiscalUpload,
 } from "./invoices.service.ts";
+import { LiquidSourceError } from "../text-generators/text-generators.service.ts";
+import { attachToInvoiceRecord, createInvoiceRecord, recordFile, updateInvoiceRecord } from "../invoice-records/invoice-records.instances.ts";
+import { InvoiceRecordsSection } from "../invoice-records/components/invoice-records-section.tsx";
+import {
+  GotenbergConnectionError,
+  GotenbergInvalidPdfError,
+  GotenbergInvalidResponseError,
+  GotenbergNotConfiguredError,
+  GotenbergRequestError,
+  GotenbergTimeoutError,
+  GotenbergUnavailableError,
+} from "../../pdf/html/gotenberg-client.ts";
+import { PdfRendererUnavailableError } from "../../pdf/renderer.ts";
+import { InvalidGotenbergConfigError } from "../../config/gotenberg.ts";
+import {
+  PdfEngineNotConfiguredError,
+  PdfTemplateArchivedError,
+  PdfTemplateNotFoundError,
+} from "../pdf-templates/pdf-templates.service.ts";
+import {
+  getGotenbergStatus,
+  htmlRenderingBlockedReason,
+} from "../pdf-templates/pdf-engine-status.ts";
 import { absolutePath } from "../files/files.service.ts";
 import {
   emptyItemFormValues,
@@ -128,26 +158,54 @@ invoicesRoutes.post("/", async (c) => {
         sequenceOverride: "This profile does not use a sequence token",
       });
     }
+    if (
+      err instanceof PdfEngineNotConfiguredError ||
+      err instanceof PdfTemplateArchivedError ||
+      err instanceof PdfTemplateNotFoundError
+    ) {
+      return renderInvoiceFormError(c, body, {
+        pdfTemplateId: err.message,
+        _form: "Choose an available PDF template.",
+      });
+    }
     throw err;
   }
 });
 
-invoicesRoutes.get("/:id", (c) => {
+invoicesRoutes.get("/:id", async (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
 
   // Auto-fill the nota fiscal text from the template when none is saved yet, so
   // the user never has to click "generate" first (it still needs an explicit
   // Save to persist).
-  const saved = detail.invoice.nfseDescription;
-  const value = saved ?? generateNfseDescription(detail);
-  const nfse = { value, autofilled: saved == null && value.trim() !== "" };
+  const savedOutput = savedTextFor(detail, "nfse_description");
+  const saved = savedOutput?.content ?? detail.invoice.nfseDescription;
+  const nfseGenerator = detail.textGenerators.find(
+    (generator) => generator.purpose === "nfse-description",
+  );
+  let nfse: { value: string; autofilled: boolean; error?: string; sourceSnapshot?: string } = {
+    value: saved ?? "",
+    autofilled: false,
+    sourceSnapshot: savedOutput?.sourceSnapshot ?? nfseGenerator?.source,
+  };
+  if (saved == null) {
+    try {
+      const value = generateNfseDescription(detail);
+      nfse = { value, autofilled: value.trim() !== "", sourceSnapshot: nfseGenerator?.source };
+    } catch (error) {
+      if (error instanceof LiquidSourceError) {
+        nfse = { value: "", autofilled: false, error: error.message };
+      } else throw error;
+    }
+  }
 
   return c.render(
     <InvoiceDetailPage
       detail={detail}
       pdfFilename={pdfFilename(detail)}
       nfse={nfse}
+      pdfRenderBlockedReason={await pdfRenderBlockedReason(detail)}
     />,
     { title: detail.invoice.number },
   );
@@ -221,6 +279,18 @@ invoicesRoutes.post("/:id/issue", async (c) => {
           invoice={detail.invoice}
           archivedPdf={detail.archivedPdf}
           error="This invoice can no longer be issued."
+        />,
+      );
+    }
+    const failure = pdfRenderFailure(err);
+    if (failure) {
+      c.status(failure.status);
+      return c.html(
+        <WorkflowHeader
+          invoice={detail.invoice}
+          archivedPdf={detail.archivedPdf}
+          error={failure.message}
+          renderBlockedReason={failure.message}
         />,
       );
     }
@@ -338,17 +408,76 @@ invoicesRoutes.post("/:id/notes", async (c) => {
 
 // --- nota fiscal description ---------------------------------------------
 
+invoicesRoutes.post("/:id/records", async (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+  const body = (await c.req.parseBody()) as FormBody;
+  const recordTypeId = Number(formString(body.recordTypeId));
+  try { createInvoiceRecord(detail, recordTypeId, {}); return renderInvoiceRecords(c, detail.invoice.id, "Record added."); }
+  catch (error) { return renderInvoiceRecords(c, detail.invoice.id, undefined, errorMessage(error)); }
+});
+
+invoicesRoutes.post("/:id/records/:recordId", async (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+  const recordId = Number(c.req.param("recordId"));
+  const body = (await c.req.parseBody()) as FormBody;
+  const values: Record<string, string | boolean> = {};
+  for (const [key, value] of Object.entries(body)) if (key.startsWith("value_")) values[key.slice(6)] = value instanceof File ? "" : value;
+  const record = detail.records.find((item) => item.id === recordId);
+  for (const definition of record?.definitions.fields ?? []) if (definition.kind === "boolean") values[definition.key] = body[`value_${definition.key}`] === "on";
+  try { updateInvoiceRecord(detail, recordId, values); return renderInvoiceRecords(c, detail.invoice.id, "Information saved."); }
+  catch (error) { return renderInvoiceRecords(c, detail.invoice.id, undefined, errorMessage(error)); }
+});
+
+invoicesRoutes.post("/:id/records/:recordId/attachments/:definitionKey", async (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+  const body = await c.req.parseBody();
+  const upload = body.file;
+  if (!(upload instanceof File) || upload.size === 0) return renderInvoiceRecords(c, detail.invoice.id, undefined, "Choose a file to upload.");
+  try { await attachToInvoiceRecord(detail, Number(c.req.param("recordId")), c.req.param("definitionKey"), upload); return renderInvoiceRecords(c, detail.invoice.id, "Attachment saved."); }
+  catch (error) { return renderInvoiceRecords(c, detail.invoice.id, undefined, errorMessage(error)); }
+});
+
+invoicesRoutes.get("/:id/records/files/:fileId", (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+  const file = recordFile(detail, Number(c.req.param("fileId")));
+  if (!file) return c.notFound();
+  c.header("Content-Type", file.mimeType ?? "application/octet-stream");
+  c.header("Content-Disposition", contentDisposition(file.originalFilename ?? file.storedPath.split("/").pop() ?? "file"));
+  return c.body(Bun.file(absolutePath(file)).stream());
+});
+
 invoicesRoutes.post("/:id/nfse/generate", (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
-  return c.html(
-    <NfseSection
-      invoiceId={detail.invoice.id}
-      value={generateNfseDescription(detail)}
-      hasTemplate={Boolean(detail.client.defaultNfseDescriptionTemplate)}
-      generated
-    />,
-  );
+  try {
+    return c.html(
+      <NfseSection
+        invoiceId={detail.invoice.id}
+        value={generateNfseDescription(detail)}
+        hasTemplate={hasNfseGenerator(detail)}
+        generated
+        sourceSnapshot={detail.textGenerators.find((generator) => generator.purpose === "nfse-description")?.source}
+      />,
+    );
+  } catch (error) {
+    if (error instanceof LiquidSourceError) {
+      c.status(422);
+      return c.html(
+        <NfseSection
+          invoiceId={detail.invoice.id}
+          value={savedTextFor(detail, "nfse_description")?.content ?? detail.invoice.nfseDescription ?? ""}
+          hasTemplate={hasNfseGenerator(detail)}
+          error={error.message}
+          sourceSnapshot={savedTextFor(detail, "nfse_description")?.sourceSnapshot}
+        />,
+      );
+    }
+    throw error;
+  }
 });
 
 invoicesRoutes.post("/:id/nfse", async (c) => {
@@ -356,16 +485,85 @@ invoicesRoutes.post("/:id/nfse", async (c) => {
   if (!detail) return c.notFound();
 
   const body = (await c.req.parseBody()) as FormBody;
-  const updated = saveNfseDescription(
+  const savedText = saveNfseDescription(
     detail.invoice.id,
     typeof body.nfseDescription === "string" ? body.nfseDescription : "",
+    formString(body.sourceSnapshot) || undefined,
   );
   return c.html(
     <NfseSection
-      invoiceId={updated.id}
-      value={updated.nfseDescription ?? ""}
-      hasTemplate={Boolean(detail.client.defaultNfseDescriptionTemplate)}
+      invoiceId={detail.invoice.id}
+      value={savedText.content}
+      hasTemplate={hasNfseGenerator(detail)}
       saved
+      sourceSnapshot={
+        savedText.sourceSnapshot
+      }
+    />,
+  );
+});
+
+invoicesRoutes.post("/:id/generated-texts/:key/generate", (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+  const key = generatorKeyFromParam(c.req.param("key"));
+  if (!key) return c.notFound();
+  const generator = detail.textGenerators.find(
+    (candidate) => candidate.key === key && candidate.purpose === "custom",
+  );
+  if (!generator) return c.notFound();
+  try {
+    const generated = generateCustomText(detail, key);
+    return c.html(
+      <GeneratedTextCard
+        invoiceId={detail.invoice.id}
+        generator={generated.generator}
+        value={generated.content}
+        generated
+        sourceSnapshot={generated.generator.source}
+      />,
+    );
+  } catch (error) {
+    if (error instanceof LiquidSourceError) {
+      c.status(422);
+      return c.html(
+        <GeneratedTextCard
+          invoiceId={detail.invoice.id}
+          generator={generator}
+          value={savedTextFor(detail, key)?.content ?? ""}
+          error={error.message}
+          sourceSnapshot={savedTextFor(detail, key)?.sourceSnapshot ?? generator.source}
+        />,
+      );
+    }
+    throw error;
+  }
+});
+
+invoicesRoutes.post("/:id/generated-texts/:key", async (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+  const key = generatorKeyFromParam(c.req.param("key"));
+  if (!key) return c.notFound();
+  const generator = detail.textGenerators.find(
+    (candidate) => candidate.key === key && candidate.purpose === "custom",
+  );
+  if (!generator) return c.notFound();
+  const body = (await c.req.parseBody()) as FormBody;
+  const content = formString(body.content).slice(0, 100_000);
+  const saved = saveCustomText(
+    detail,
+    key,
+    content,
+    formString(body.sourceSnapshot) || undefined,
+  );
+  return c.html(
+    <GeneratedTextCard
+      invoiceId={detail.invoice.id}
+      generator={generator}
+      value={saved.content}
+      saved
+      sourceSnapshot={saved.sourceSnapshot}
     />,
   );
 });
@@ -376,41 +574,133 @@ invoicesRoutes.get("/:id/pdf", async (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
 
-  const { buffer, filename } = await renderInvoicePdf(detail);
-  c.header("Content-Type", "application/pdf");
-  c.header("Content-Disposition", contentDisposition(filename));
-  return c.body(
-    buffer.buffer.slice(
-      buffer.byteOffset,
-      buffer.byteOffset + buffer.byteLength,
-    ) as ArrayBuffer,
-  );
+  try {
+    const { buffer, filename } = await renderInvoicePdf(detail);
+    c.header("Content-Type", "application/pdf");
+    c.header("Content-Disposition", contentDisposition(filename));
+    return c.body(
+      buffer.buffer.slice(
+        buffer.byteOffset,
+        buffer.byteOffset + buffer.byteLength,
+      ) as ArrayBuffer,
+    );
+  } catch (error) {
+    const failure = pdfRenderFailure(error);
+    if (failure) return c.text(failure.message, failure.status);
+    throw error;
+  }
 });
 
 invoicesRoutes.post("/:id/archive", async (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
 
-  await archiveInvoicePdf(detail);
-  const updated = reload(detail.invoice.id);
-  return c.html(
-    <PdfSection
-      invoice={updated.invoice}
-      archivedPdf={updated.archivedPdf}
-      filename={pdfFilename(updated)}
-      archived
-    />,
-  );
+  try {
+    await archiveInvoicePdf(detail);
+    const updated = reload(detail.invoice.id);
+    return c.html(
+      <PdfSection
+        invoice={updated.invoice}
+        archivedPdf={updated.archivedPdf}
+        filename={pdfFilename(updated)}
+        currentTemplate={updated.pdfTemplate}
+        templates={updated.pdfTemplateOptions}
+        archived
+      />,
+    );
+  } catch (error) {
+    const failure = pdfRenderFailure(error);
+    if (!failure) throw error;
+    c.status(failure.status);
+    return c.html(
+      <PdfSection
+        invoice={detail.invoice}
+        archivedPdf={detail.archivedPdf}
+        filename={pdfFilename(detail)}
+        currentTemplate={detail.pdfTemplate}
+        templates={detail.pdfTemplateOptions}
+        renderError={failure.message}
+        renderBlockedReason={failure.message}
+      />,
+    );
+  }
+});
+
+invoicesRoutes.post("/:id/refresh-party-details", async (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+  try {
+    refreshPartyDetails(detail.invoice.id);
+    const updated = reload(detail.invoice.id);
+    return c.html(<PdfSection invoice={updated.invoice} archivedPdf={updated.archivedPdf} filename={pdfFilename(updated)} currentTemplate={updated.pdfTemplate} templates={updated.pdfTemplateOptions} renderBlockedReason={await pdfRenderBlockedReason(updated)} />);
+  } catch (err) {
+    if (err instanceof DocumentLockedError) return c.text(err.message, 422);
+    throw err;
+  }
+});
+
+invoicesRoutes.post("/:id/pdf-template", async (c) => {
+  const detail = detailFromParam(c.req.param("id"));
+  if (!detail) return c.notFound();
+  const body = (await c.req.parseBody()) as FormBody;
+  const parsed = pdfTemplateSelectionSchema.safeParse(body);
+  if (!parsed.success) {
+    c.status(422);
+    return c.html(
+      <PdfSection
+        invoice={detail.invoice}
+        archivedPdf={detail.archivedPdf}
+        filename={pdfFilename(detail)}
+        currentTemplate={detail.pdfTemplate}
+        templates={detail.pdfTemplateOptions}
+        templateError="Select a PDF template."
+      />,
+    );
+  }
+  try {
+    const updated = selectDraftPdfTemplate(detail, parsed.data.templateId);
+    return c.html(
+      <PdfSection
+        invoice={updated.invoice}
+        archivedPdf={updated.archivedPdf}
+        filename={pdfFilename(updated)}
+        currentTemplate={updated.pdfTemplate}
+        templates={updated.pdfTemplateOptions}
+        renderBlockedReason={await pdfRenderBlockedReason(updated)}
+      />,
+    );
+  } catch (error) {
+    if (error instanceof DocumentLockedError || error instanceof PdfEngineNotConfiguredError) {
+      c.status(error instanceof DocumentLockedError ? 409 : 422);
+      return c.html(
+        <PdfSection
+          invoice={detail.invoice}
+          archivedPdf={detail.archivedPdf}
+          filename={pdfFilename(detail)}
+          currentTemplate={detail.pdfTemplate}
+          templates={detail.pdfTemplateOptions}
+          templateError={error.message}
+        />,
+      );
+    }
+    throw error;
+  }
 });
 
 invoicesRoutes.post("/:id/pdf/archive-download", async (c) => {
   const detail = detailFromParam(c.req.param("id"));
   if (!detail) return c.notFound();
 
-  const archived = await archiveInvoicePdf(detail);
-  c.header("Content-Type", archived.mimeType ?? "application/pdf");
-  c.header("Content-Disposition", contentDisposition(pdfFilename(detail)));
-  return c.body(Bun.file(absolutePath(archived)).stream());
+  try {
+    const archived = await archiveInvoicePdf(detail);
+    c.header("Content-Type", archived.mimeType ?? "application/pdf");
+    c.header("Content-Disposition", contentDisposition(pdfFilename(detail)));
+    return c.body(Bun.file(absolutePath(archived)).stream());
+  } catch (error) {
+    const failure = pdfRenderFailure(error);
+    if (failure) return c.text(failure.message, failure.status);
+    throw error;
+  }
 });
 
 invoicesRoutes.post("/:id/nfse-link", async (c) => {
@@ -643,12 +933,97 @@ function detailFromParam(raw: string) {
   return getInvoiceDetail(id);
 }
 
+function generatorKeyFromParam(raw: string): string | null {
+  return /^[a-z][a-z0-9_]{0,63}$/.test(raw) ? raw : null;
+}
+
+function hasNfseGenerator(detail: ReturnType<typeof getInvoiceDetail> & {}): boolean {
+  return Boolean(
+    detail.textGenerators.some((generator) => generator.purpose === "nfse-description") ||
+      detail.client.defaultNfseDescriptionTemplate,
+  );
+}
+
+async function pdfRenderBlockedReason(
+  detail: NonNullable<ReturnType<typeof getInvoiceDetail>>,
+): Promise<string | undefined> {
+  if (detail.pdfTemplate.engine !== "gotenberg-html") return undefined;
+  return htmlRenderingBlockedReason(await getGotenbergStatus());
+}
+
+type PdfRenderFailure = {
+  status: 422 | 502 | 503;
+  message: string;
+};
+
+function pdfRenderFailure(error: unknown): PdfRenderFailure | null {
+  if (
+    error instanceof GotenbergNotConfiguredError ||
+    error instanceof PdfEngineNotConfiguredError
+  ) {
+    return {
+      status: 503,
+      message:
+        "HTML PDF rendering is not configured. Set GOTENBERG_URL or choose a React PDF template.",
+    };
+  }
+  if (error instanceof InvalidGotenbergConfigError) {
+    return {
+      status: 503,
+      message: `HTML PDF configuration is invalid: ${error.message}`,
+    };
+  }
+  if (error instanceof GotenbergTimeoutError) {
+    return {
+      status: 503,
+      message: "Gotenberg timed out while rendering this PDF. Check the service and try again.",
+    };
+  }
+  if (
+    error instanceof GotenbergConnectionError ||
+    error instanceof GotenbergUnavailableError
+  ) {
+    return {
+      status: 503,
+      message: "Gotenberg is unavailable. Check the HTML PDF engine connection and try again.",
+    };
+  }
+  if (error instanceof GotenbergRequestError || error instanceof LiquidSourceError) {
+    return {
+      status: 422,
+      message: `The selected HTML template could not be rendered: ${error.message}`,
+    };
+  }
+  if (
+    error instanceof GotenbergInvalidResponseError ||
+    error instanceof GotenbergInvalidPdfError
+  ) {
+    return {
+      status: 502,
+      message: "Gotenberg returned an invalid PDF response. Check its logs and try again.",
+    };
+  }
+  if (error instanceof PdfRendererUnavailableError) {
+    return { status: 503, message: error.message };
+  }
+  return null;
+}
+
 function itemForInvoice(raw: string, invoiceId: number) {
   const id = Number(raw);
   if (!Number.isInteger(id) || id <= 0) return null;
   const item = getItem(id);
   return item && item.invoiceId === invoiceId ? item : null;
 }
+
+function renderInvoiceRecords(c: Context, invoiceId: number, saved?: string, error?: string) {
+  const detail = getInvoiceDetail(invoiceId);
+  if (!detail) return c.notFound();
+  if (error) c.status(422);
+  return c.html(<InvoiceRecordsSection invoiceId={invoiceId} recordTypes={detail.recordTypes} records={detail.records} saved={saved} error={error} />);
+}
+
+function errorMessage(error: unknown) { return error instanceof Error ? error.message : "The record could not be saved"; }
 
 /**
  * Build a safe `Content-Disposition` header. The filename is ASCII-sanitized
@@ -691,6 +1066,8 @@ function renderInvoiceFormError(
       currencyDefault={ctx.currencyDefault}
       hasProfile={ctx.hasProfile}
       errors={errors}
+      pdfTemplates={ctx.pdfTemplates}
+      templateError={ctx.templateError}
     />,
   );
 }

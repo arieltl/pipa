@@ -3,6 +3,8 @@ import { nowIso } from "../../domain/dates.ts";
 import { parseMoneyToMinor } from "../../domain/money.ts";
 import * as repo from "./clients.repository.ts";
 import type { ClientFormInput } from "./clients.schema.ts";
+import { serializePartyFields } from "../../domain/party-fields/index.ts";
+import { validateDefaultTemplate } from "../pdf-templates/pdf-templates.service.ts";
 
 /** Raised when a client code collides with an existing client. */
 export class ClientCodeTakenError extends Error {
@@ -33,7 +35,7 @@ export function listNumberingProfiles(): NumberingProfile[] {
 }
 
 /** Map validated form input to the persistable column shape. */
-function toColumns(input: ClientFormInput): Omit<
+function toColumns(input: ClientFormInput, currentFields?: string): Omit<
   NewClient,
   "id" | "createdAt" | "updatedAt"
 > {
@@ -44,23 +46,23 @@ function toColumns(input: ClientFormInput): Omit<
 
   return {
     name: input.name,
-    legalName: input.legalName ?? null,
     code: input.code,
-    address: input.address ?? null,
-    country: input.country ?? null,
-    email: input.email ?? null,
     defaultCurrency: input.defaultCurrency,
     defaultFixedMonthlyValue: monthlyValue,
     defaultFixedMonthlyItemNameTemplate:
       input.defaultFixedMonthlyItemNameTemplate ?? null,
-    defaultNfseDescriptionTemplate: input.defaultNfseDescriptionTemplate ?? null,
     defaultPdfFilenameTemplate: input.defaultPdfFilenameTemplate ?? null,
     numberingProfileId: input.numberingProfileId ?? null,
+    defaultPdfTemplateId: input.defaultPdfTemplateId ?? null,
     isDefault: input.isDefault,
+    partyFieldsJson: input.partyFields
+      ? serializePartyFields(input.partyFields)
+      : currentFields ?? "[]",
   };
 }
 
 export function createClient(input: ClientFormInput): Client {
+  validateDefaultTemplate(input.defaultPdfTemplateId);
   if (repo.getClientByCode(input.code)) {
     throw new ClientCodeTakenError(input.code);
   }
@@ -76,12 +78,13 @@ export function createClient(input: ClientFormInput): Client {
 }
 
 export function updateClient(id: number, input: ClientFormInput): Client {
+  validateDefaultTemplate(input.defaultPdfTemplateId);
   const existing = repo.getClientByCode(input.code);
   if (existing && existing.id !== id) {
     throw new ClientCodeTakenError(input.code);
   }
   const client = repo.updateClientRow(id, {
-    ...toColumns(input),
+    ...toColumns(input, repo.getClientById(id)?.partyFieldsJson),
     updatedAt: nowIso(),
   });
   if (input.isDefault) repo.setDefaultClient(id);
