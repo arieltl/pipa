@@ -79,25 +79,37 @@ export function listInvoicesByClient(clientId: number): InvoiceListRow[] {
 export type ClientInvoiceStats = {
   clientId: number;
   invoiceCount: number;
-  /** Total of invoices not yet paid or void (draft + sent), in minor units. */
+  /** Total of invoices not yet paid or void (draft + issued + sent), in minor units. */
   outstandingMinor: number;
 };
 
 /** Per-client invoice counts and outstanding totals, for the Overview. */
 export function clientInvoiceStats(): ClientInvoiceStats[] {
+  // Aggregate items once per invoice before grouping clients. Keep each sum
+  // explicitly keyed by invoice ID instead of nesting a correlated subquery
+  // inside the client aggregate; the latter produced incorrect totals.
+  const totalsByInvoice = db
+    .select({
+      invoiceId: invoiceItems.invoiceId,
+      total: sql<number>`coalesce(sum(${invoiceItems.value}), 0)`.as("total"),
+    })
+    .from(invoiceItems)
+    .groupBy(invoiceItems.invoiceId)
+    .as("invoice_item_totals");
+
   return db
     .select({
       clientId: invoices.clientId,
       invoiceCount: sql<number>`count(*)`,
       outstandingMinor: sql<number>`coalesce(sum(
-        case when ${invoices.status} in ('draft', 'sent') then (
-          select coalesce(sum(${invoiceItems.value}), 0)
-          from ${invoiceItems}
-          where ${invoiceItems.invoiceId} = ${invoices.id}
-        ) else 0 end
+        case when ${invoices.status} in ('draft', 'issued', 'sent')
+          then coalesce(${totalsByInvoice.total}, 0)
+          else 0
+        end
       ), 0)`,
     })
     .from(invoices)
+    .leftJoin(totalsByInvoice, eq(totalsByInvoice.invoiceId, invoices.id))
     .groupBy(invoices.clientId)
     .all();
 }
