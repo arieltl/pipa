@@ -437,7 +437,7 @@ function renderTextGeneratorServiceError(
 }
 
 function recordTypeValues(body: FormBody): RecordTypeValues {
-  const parse = (value: FormBody[string] | undefined) => { try { return JSON.parse(formString(value)); } catch { return []; } };
+  const parse = (value: FormBody[string] | undefined) => { try { const parsed = JSON.parse(formString(value)); return Array.isArray(parsed) ? parsed : []; } catch { return []; } };
   return { name: formString(body.name), key: formString(body.key), purpose: formString(body.purpose) === "nfse" ? "nfse" : "custom", allowMultiple: body.allowMultiple === "on" || body.allowMultiple === "true", fields: parse(body.fieldDefinitionsJson), attachments: parse(body.attachmentDefinitionsJson) };
 }
 

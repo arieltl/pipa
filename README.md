@@ -1,9 +1,12 @@
 # Invoice
 
-Lightweight, self-hosted invoice generation for a Brazilian PJ workflow. The
-application runs with Bun, Hono, SQLite, local file storage, and React PDF.
+Invoice is a lightweight, self-hosted commercial-invoice workspace for a Brazilian PJ workflow. It stores data in SQLite and local files, generates commercial invoice PDFs, and keeps editable text and supporting NFS-e records beside each invoice.
 
-## Development
+This is a beta application. It has no built-in authentication. Run it on localhost or a trusted private LAN, or put it behind an authenticated reverse proxy (for example, Cloudflare Access) before allowing remote access. Do not publish port 3000 directly to the public Internet.
+
+## Try it locally
+
+Requirements: [Bun](https://bun.sh/) and a writable working directory.
 
 ```sh
 bun install
@@ -11,11 +14,11 @@ bun run db:migrate
 bun run dev
 ```
 
-Open <http://localhost:3000>.
+Open <http://localhost:3000>. On first use, configure the issuer, create a client, then create an invoice. See [the user guide](docs/user-guide.md).
 
-## Docker
+## Run with Docker Compose
 
-React PDF is the lightweight default and needs only the invoice container:
+The default deployment uses React PDF and one app container:
 
 ```sh
 mkdir -p data
@@ -23,28 +26,21 @@ chown -R 1000:1000 data
 docker compose -f docker-compose.yml up --build -d
 ```
 
-To enable HTML/Liquid PDF templates, add the private Gotenberg service:
+Both Compose files bind to `127.0.0.1` by default. Set `INVOICE_BIND_ADDRESS` to a trusted LAN interface only when you intend to allow network access. Remote access needs an authenticating proxy or private-network gateway.
+
+For the optional HTML/Liquid renderer, start the private Gotenberg service:
 
 ```sh
 docker compose -f docker-compose.yml -f compose.gotenberg.yml up --build -d
 ```
 
-For the prebuilt image in `compose.yml`, use the same override:
+Gotenberg uses Chromium and needs substantially more memory and CPU than React PDF. It is not a fallback: an unavailable Gotenberg render fails clearly and does not alter the invoice or its archived PDF. See [self-hosting operations](docs/self-hosting.md) for configuration, backups, upgrades, and proxy guidance.
 
-```sh
-docker compose -f compose.yml -f compose.gotenberg.yml up -d
-```
+## Documentation
 
-The override sets `GOTENBERG_URL=http://gotenberg:3000`, waits for its health
-check, and does not publish Gotenberg's port to the host. Gotenberg runs
-Chromium and therefore uses materially more memory and CPU than the React PDF
-path; budget roughly 512 MiB of memory for it as a starting point. Keep it on
-the private Compose network because rendered HTML contains invoice, customer,
-and payment data.
+- [User guide](docs/user-guide.md)
+- [Self-hosting and operations](docs/self-hosting.md)
+- [PDF and text template reference](pdf_template_author_reference.md)
+- [Contributing](CONTRIBUTING.md)
 
-Configuration variables are listed in `.env.example`. A configured but
-unhealthy Gotenberg service never causes a fallback to React PDF; the UI reports
-the failure, archived files remain downloadable, and issuing stays in draft.
-
-See [pdf_template_author_reference.md](pdf_template_author_reference.md) for
-the shared Liquid data model and template rules.
+The longer specification and architecture files describe design history and implementation decisions; they are not a substitute for the operational guides above.

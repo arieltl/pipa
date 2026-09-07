@@ -15,6 +15,7 @@ import {
   TextGeneratorPurposeTakenError,
   updateTextGenerator,
   LiquidSourceError,
+  listClientTextGenerators,
 } from "./text-generators.service.ts";
 
 beforeEach(() => {
@@ -55,6 +56,16 @@ function clientAndInvoice() {
 }
 
 describe("client text generators", () => {
+  test("flags incompatible migrated templates without altering their original source", () => {
+    const { client } = clientAndInvoice();
+    const source = "Original {{ legacy.unsupported }}";
+    const now = nowIso();
+    db.insert(clientTextGenerators).values({ clientId: client.id, key: "legacy", name: "Legacy", purpose: "custom", source, createdAt: now, updatedAt: now }).run();
+    const generator = listClientTextGenerators(client.id)[0]!;
+    expect(generator.source).toBe(source);
+    expect(generator.validationWarning).toContain("needs review");
+    expect(db.select().from(clientTextGenerators).get()?.source).toBe(source);
+  });
   test("allows only one active NFS-e purpose and keeps keys immutable", () => {
     const { client } = clientAndInvoice();
     const generator = createTextGenerator(client.id, {

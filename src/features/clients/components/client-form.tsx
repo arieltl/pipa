@@ -45,8 +45,13 @@ export function ClientForm({
   submitLabel,
   saved,
 }: ClientFormProps) {
+  const firstError = Object.keys(errors)[0];
+  const errorSection = firstError?.startsWith("partyFields") ? "details"
+    : firstError?.startsWith("defaultPdf") ? "pdf"
+    : firstError === "numberingProfileId" ? "numbering"
+    : firstError?.startsWith("defaultFixedMonthly") ? "billing" : "overview";
   return (
-    <div id="client-form" >
+    <div id="client-form" x-init={firstError ? `workspace = '${errorSection}'` : undefined}>
       {saved ? <Alert kind="success" message="Client saved." /> : null}
 
       <form

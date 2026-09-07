@@ -31,7 +31,7 @@ export function TextGeneratorsSection({
   saved,
 }: {
   clientId: number;
-  generators: ClientTextGenerator[];
+  generators: Array<ClientTextGenerator & { validationWarning?: string }>;
   editor?: "new" | number;
   errors?: FieldErrors;
   submittedValues?: TextGeneratorValues;
@@ -64,6 +64,7 @@ export function TextGeneratorsSection({
       </div>
 
       {saved ? <Alert kind="success" message={saved} /> : null}
+      {generators.filter(generator => generator.validationWarning).map(generator => <Alert kind="error" message={`${generator.name}: ${generator.validationWarning}`} />)}
 
       <div class="grid gap-4">
         {active.map((generator) => (

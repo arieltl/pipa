@@ -9,7 +9,7 @@ services:
     user: "1000:1000"
 
     ports:
-      - "3000:3000"
+      - "${INVOICE_BIND_ADDRESS:-127.0.0.1}:3000:3000"
 
     environment:
       - NODE_ENV=production
@@ -27,6 +27,8 @@ services:
 
     tmpfs:
       - /tmp:size=64m,mode=1777
+
+    read_only: true
 
     security_opt:
       - no-new-privileges:true

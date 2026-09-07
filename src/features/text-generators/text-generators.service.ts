@@ -49,8 +49,16 @@ export class TextGeneratorPurposeTakenError extends Error {
 export function listClientTextGenerators(
   clientId: number,
   includeArchived = false,
-): ClientTextGenerator[] {
-  return repo.listClientGenerators(clientId, includeArchived);
+): Array<ClientTextGenerator & { validationWarning?: string }> {
+  return repo.listClientGenerators(clientId, includeArchived).map((generator) => {
+    try {
+      validateGeneratorSource(generator.source);
+      return generator;
+    } catch (error) {
+      if (!(error instanceof LiquidSourceError)) throw error;
+      return { ...generator, validationWarning: `This saved template needs review: ${error.message}. Its original source and saved invoice text have been preserved.` };
+    }
+  });
 }
 
 export function getActiveTextGenerator(

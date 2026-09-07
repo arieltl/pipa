@@ -4,6 +4,20 @@ import { createApp } from "./app.tsx";
 const app = createApp();
 
 describe("app foundation", () => {
+  it("rejects cross-site mutations before processing form data", async () => {
+    const res = await app.request("/clients", { method: "POST", headers: { Origin: "https://untrusted.example", "Sec-Fetch-Site": "cross-site" }, body: "name=unexpected" });
+    expect(res.status).toBe(403);
+  });
+
+  it("allows same-origin proxy requests through to form validation", async () => {
+    const res = await app.request("/clients", { method: "POST", headers: { Origin: "https://invoices.example", "Sec-Fetch-Site": "same-origin", "Content-Type": "application/x-www-form-urlencoded" }, body: "name=" });
+    expect(res.status).toBe(422);
+  });
+
+  it("rejects oversized requests before multipart parsing", async () => {
+    const res = await app.request("/clients", { method: "POST", headers: { "Content-Length": String(21 * 1024 * 1024) }, body: "oversized" });
+    expect(res.status).toBe(413);
+  });
   it("serves the health check", async () => {
     const res = await app.fetch(new Request("http://localhost/healthz"));
     expect(res.status).toBe(200);

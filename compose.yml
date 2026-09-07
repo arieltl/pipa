@@ -1,6 +1,8 @@
 services:
   invoice:
-    image: ghcr.io/arieltl/invoice:latest
+    # Pin a versioned release by default. Change INVOICE_IMAGE_TAG only as
+    # part of the documented upgrade procedure.
+    image: ghcr.io/arieltl/invoice:${INVOICE_IMAGE_TAG:-0.1.2}
     container_name: invoice
     restart: unless-stopped
 
@@ -9,7 +11,9 @@ services:
     user: "1000:1000"
 
     ports:
-      - "3000:3000"
+      # The app has no built-in authentication. Bind to loopback unless an
+      # authenticated reverse proxy or trusted LAN policy requires otherwise.
+      - "${INVOICE_BIND_ADDRESS:-127.0.0.1}:3000:3000"
 
     environment:
       NODE_ENV: production
@@ -26,6 +30,8 @@ services:
 
     tmpfs:
       - /tmp:size=64m,mode=1777
+
+    read_only: true
 
     security_opt:
       - no-new-privileges:true

@@ -77,7 +77,7 @@ import {
   type NotaFiscalUpload,
 } from "./invoices.service.ts";
 import { LiquidSourceError } from "../text-generators/text-generators.service.ts";
-import { attachToInvoiceRecord, createInvoiceRecord, recordFile, updateInvoiceRecord } from "../invoice-records/invoice-records.instances.ts";
+import { attachToInvoiceRecord, createInvoiceRecord, MAX_RECORD_ATTACHMENT_BYTES, recordFile, updateInvoiceRecord } from "../invoice-records/invoice-records.instances.ts";
 import { InvoiceRecordsSection } from "../invoice-records/components/invoice-records-section.tsx";
 import {
   GotenbergConnectionError,
@@ -427,7 +427,7 @@ invoicesRoutes.post("/:id/records/:recordId", async (c) => {
   const record = detail.records.find((item) => item.id === recordId);
   for (const definition of record?.definitions.fields ?? []) if (definition.kind === "boolean") values[definition.key] = body[`value_${definition.key}`] === "on";
   try { updateInvoiceRecord(detail, recordId, values); return renderInvoiceRecords(c, detail.invoice.id, "Information saved."); }
-  catch (error) { return renderInvoiceRecords(c, detail.invoice.id, undefined, errorMessage(error)); }
+  catch (error) { return renderInvoiceRecords(c, detail.invoice.id, undefined, errorMessage(error), { recordId, values }); }
 });
 
 invoicesRoutes.post("/:id/records/:recordId/attachments/:definitionKey", async (c) => {
@@ -436,6 +436,7 @@ invoicesRoutes.post("/:id/records/:recordId/attachments/:definitionKey", async (
   const body = await c.req.parseBody();
   const upload = body.file;
   if (!(upload instanceof File) || upload.size === 0) return renderInvoiceRecords(c, detail.invoice.id, undefined, "Choose a file to upload.");
+  if (upload.size > MAX_RECORD_ATTACHMENT_BYTES) return renderInvoiceRecords(c, detail.invoice.id, undefined, "Attachments must be 10 MiB or smaller.");
   try { await attachToInvoiceRecord(detail, Number(c.req.param("recordId")), c.req.param("definitionKey"), upload); return renderInvoiceRecords(c, detail.invoice.id, "Attachment saved."); }
   catch (error) { return renderInvoiceRecords(c, detail.invoice.id, undefined, errorMessage(error)); }
 });
@@ -446,6 +447,7 @@ invoicesRoutes.get("/:id/records/files/:fileId", (c) => {
   const file = recordFile(detail, Number(c.req.param("fileId")));
   if (!file) return c.notFound();
   c.header("Content-Type", file.mimeType ?? "application/octet-stream");
+  c.header("X-Content-Type-Options", "nosniff");
   c.header("Content-Disposition", contentDisposition(file.originalFilename ?? file.storedPath.split("/").pop() ?? "file"));
   return c.body(Bun.file(absolutePath(file)).stream());
 });
@@ -1016,11 +1018,11 @@ function itemForInvoice(raw: string, invoiceId: number) {
   return item && item.invoiceId === invoiceId ? item : null;
 }
 
-function renderInvoiceRecords(c: Context, invoiceId: number, saved?: string, error?: string) {
+function renderInvoiceRecords(c: Context, invoiceId: number, saved?: string, error?: string, submittedRecord?: { recordId: number; values: Record<string, string | boolean> }) {
   const detail = getInvoiceDetail(invoiceId);
   if (!detail) return c.notFound();
   if (error) c.status(422);
-  return c.html(<InvoiceRecordsSection invoiceId={invoiceId} recordTypes={detail.recordTypes} records={detail.records} saved={saved} error={error} />);
+  return c.html(<InvoiceRecordsSection invoiceId={invoiceId} recordTypes={detail.recordTypes} records={detail.records} saved={saved} error={error} submittedRecord={submittedRecord} />);
 }
 
 function errorMessage(error: unknown) { return error instanceof Error ? error.message : "The record could not be saved"; }

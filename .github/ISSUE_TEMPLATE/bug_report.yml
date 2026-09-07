@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a reproducible problem in the beta
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove private information. Never include real invoice, client, payment, tax, or uploaded-file data.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Tell us what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the smallest synthetic example that demonstrates the problem.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: e.g. v0.2.0-beta.1 or abc1234
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, Docker/Bun, and whether Gotenberg is enabled.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Redact secrets and all real customer/invoice data before posting.

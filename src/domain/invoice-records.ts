@@ -12,6 +12,10 @@ export const recordFieldDefinitionSchema = z.object({
   kind: recordFieldKindSchema,
   required: z.boolean().default(false),
   choices: z.array(z.string().trim().min(1).max(100)).max(50).default([]),
+}).superRefine((field, ctx) => {
+  if (field.kind === "select" && field.choices.length === 0) {
+    ctx.addIssue({ code: "custom", path: ["choices"], message: "Select fields need at least one choice" });
+  }
 });
 
 export const recordAttachmentDefinitionSchema = z.object({
