@@ -22,9 +22,9 @@ This is a working release checklist, not a statement that the beta has been publ
 - [ ] Finalize license and copyright attribution with maintainer.
 - [ ] Finalize AI policy, project story, roadmap, and security reporting channel.
 - [x] Verify fresh Docker install and persistent restart using isolated data (non-root, read-only root, tmpfs).
-- [ ] Verify upgrade from representative legacy data and optional real Gotenberg rendering.
+- [x] Verify upgrade from representative legacy data and optional real Gotenberg rendering.
 - [ ] Complete final build, typecheck, tests, document/example review, and clean Git review.
-- [ ] Commit/push preparation changes and verify non-publishing GitHub CI.
+- [x] Commit/push initial preparation changes and verify non-publishing GitHub CI.
 - [ ] Review release notes and known limitations with maintainer.
 - [ ] Obtain explicit authorization before release publication.
 
@@ -36,6 +36,15 @@ This is a working release checklist, not a statement that the beta has been publ
 - Generator ordering/unarchive, PDF template archive management, selected-invoice template preview, and further UX improvements need explicit beta-versus-roadmap classification.
 - Current container/executable build targets Linux amd64. Additional architectures are not yet a supported release artifact.
 - Upload MIME checks validate declared types, not a malware scan or guarantee of file content.
+
+## Verification evidence
+
+- Preparation checkpoint: `0337113`. [Non-publishing CI](https://github.com/arieltl/invoice/actions/runs/34165806000) passed dependency installation, runtime asset build, typecheck, unit tests, and Linux executable compilation.
+- Local suite at that checkpoint: 136 passed, one optional Gotenberg integration test skipped. Representative legacy upgrade coverage is in `src/db/migrations.test.ts`; this does not claim verification against every existing installation.
+- Isolated fresh Docker installation passed health and persistence checks across restart with a non-root user, read-only root filesystem, and writable tmpfs. Temporary test resources were removed.
+- A separate real `gotenberg/gotenberg:8-chromium` container passed all six tests in `src/pdf/html/gotenberg-client.test.ts`, including Chromium PDF conversion, using `GOTENBERG_INTEGRATION_URL`. The temporary container was removed.
+- These checks apply to the preparation checkpoint, not a future final release commit. Re-run relevant checks after further code or deployment changes.
+- [Draft release notes](release-notes-beta.md) are for review only; version, license, scope, and publication remain unapproved.
 
 ## Release preparation
 
