@@ -1,14 +1,22 @@
 # Invoice
 
-Invoice is a lightweight, self-hosted commercial-invoice workspace for Brazilian PJ developers who invoice foreign companies. Existing free invoicing software can be more elaborate than a low-volume monthly workflow needs, while separate notes and documents make it harder to keep the supporting material needed for Brazilian bookkeeping together. This project focuses on repeatable invoices and the editable messages and records that accompany them.
+Invoice is a lightweight, self-hosted invoicing workspace for freelancers, independent developers, and small service businesses. It is designed for a low volume of recurring or occasional invoices, with reusable client details, editable text templates, and supporting documents kept together.
 
-It is intended for developers, freelancers, and tiny software houses sending recurring or occasional commercial invoices. It stores data in SQLite and local files, generates commercial invoice PDFs, and keeps editable text and supporting NFS-e records beside each invoice.
+It stores data in SQLite and local files and generates commercial invoice PDFs. You can configure client fields, numbering, currencies, document templates, and supporting records to fit your workflow, whether your clients are local or overseas.
 
 The invoice PDF is only part of that monthly routine. Reusable text templates can help prepare an email to a client, a message, or a note for a bookkeeper using invoice information, while supporting records keep related details and attachments together. Generated text stays editable; the app does not send messages or submit tax documents on your behalf.
 
 This is a beta application. It has no built-in authentication. Run it on localhost or a trusted private LAN, or put it behind an authenticated reverse proxy (for example, Cloudflare Access) before allowing remote access. Do not publish port 3000 directly to the public Internet.
 
-The current beta includes basic client and invoice editors, reusable text generators, numbering profiles, PDF generation, revisioned PDF templates, and local supporting records/files. It does not provide tax compliance advice or replace the official Brazilian NFS-e process.
+The current beta includes client and invoice editors, reusable text generators, numbering profiles, PDF generation, versioned PDF templates, and supporting records/files. It is not a full accounting system and does not guarantee compliance with any country's tax or electronic-invoicing requirements.
+
+## Why I built it
+
+I built this for my own workflow as a developer running a small business in Brazil and invoicing overseas clients. The tools I tried were either more complex than my monthly routine needed or did not help enough with organizing the text and documentation around each invoice.
+
+That need is not specific to Brazil. A consultant can reuse an invoice email, a freelancer can keep delivery notes and receipts alongside a project invoice, and a small studio can use consistent client details and numbering each month. The aim is a focused invoicing workspace, not another system to administer.
+
+Some screens include **NFS-e**, Brazil's electronic service tax invoice, because it is part of the original workflow. Those fields help keep information about separately issued tax documents; the app does not issue them. You do not need to use that workflow: configurable text generators and supporting records can hold the correspondence, references, and attachments relevant to your business.
 
 ## A look inside
 
@@ -19,6 +27,10 @@ Client workspaces and recent invoicing activity. All pictured data is fictional.
 An invoice workspace with editable generated text, status controls, and supporting records:
 
 ![Invoice workspace with fictional overseas client and line items](docs/images/invoice-workspace.png)
+
+An actual generated invoice PDF, shown here as an image:
+
+<img src="docs/images/invoice-pdf.png" alt="Generated USD invoice PDF with fictional client details, line items, total, and payment information" width="640">
 
 See the [screenshot gallery and demo setup](docs/demo.md) for client configuration and images rendered from actual generated invoice PDFs.
 
