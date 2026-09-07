@@ -25,6 +25,8 @@ they will continue to improve.
 - Better invoice and template previews.
 - Better configuration and onboarding.
 - Easier Gotenberg integration and configuration.
+- Backup and restore assistance.
+- Data export.
 
 There are no published timelines. The roadmap may change as the workflow is
 used and evaluated.

@@ -19,10 +19,11 @@ This is a working release checklist, not a statement that the beta has been publ
 - [x] Bound record uploads and expose missing required attachments.
 - [x] Surface incompatible saved Liquid templates without rewriting their source.
 - [x] Draft README, operator/user guides, contribution guide, and issue templates.
-- [ ] Add the approved MIT license after confirming copyright attribution.
+- [x] Add the approved MIT license with Ariel Tamezgui Leventhal's copyright attribution.
 - [x] Document approved AI policy: allow assistance with disclosure and human accountability.
 - [x] Document the project story and maintainer-approved roadmap.
-- [ ] Finalize the private security reporting channel.
+- [x] Document public issues for ordinary bugs and GitHub private vulnerability reporting for sensitive security reports.
+- [ ] Maintainer enables and verifies GitHub private vulnerability reporting when making the repository public.
 - [x] Verify fresh Docker install and persistent restart using isolated data (non-root, read-only root, tmpfs).
 - [x] Verify upgrade from representative legacy data and optional real Gotenberg rendering.
 - [ ] Complete final build, typecheck, tests, document/example review, and clean Git review.
@@ -32,8 +33,12 @@ This is a working release checklist, not a statement that the beta has been publ
 
 ## Known scope decisions pending
 
+Detailed current behavior, possible changes, effort, risk, and verification are in
+[code improvement decisions](code-improvement-decisions.md). These are for later
+maintainer review, not authorization to implement them or add roadmap commitments.
+
 - Built-in authentication is deliberately future work; deploy on a trusted network or behind an authenticating proxy.
-- Text generation and supporting records work separately; copying generated text into record fields is manual today.
+- Generated text has its own editable saved invoice fields. The maintainer does not want a separate generator-to-record linking feature; copying into a separate record is optional and manual.
 - Legacy NFS-e columns/routes remain for compatibility. Removing them is a separate verified migration, not a prerequisite for preserving current data.
 - Generator ordering/unarchive, PDF template archive management, selected-invoice template preview, and further UX improvements need explicit beta-versus-roadmap classification.
 - Current container/executable build targets Linux amd64. Additional architectures are not yet a supported release artifact.

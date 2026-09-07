@@ -18,7 +18,7 @@
 
 Commercial invoices are not Brazilian NFS-e documents. Use the NFS-e/supporting-record area to store external numbers, dates, verification details, notes, and PDF/XML or other attachments. Uploads use generated safe paths; new uploads supersede prior files without overwriting stored bytes.
 
-Clients can define reusable text generators and invoice record types. A generator's output is editable for manual copy/paste. Integrated application of generated text to a record field is planned; nothing silently changes invoice data.
+Clients can define reusable text generators and invoice record types. Generated text is saved as editable invoice text in its own right; it does not need a duplicate supporting-record field. If the same text is wanted in a separate record, it can be copied manually. Generation does not silently overwrite another record's fields.
 
 ## Templates and historical data
 

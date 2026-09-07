@@ -2,6 +2,8 @@
 
 > Implementation planning record: this document mixes completed work and remaining proposals. Use the [user guide](docs/user-guide.md) for current behavior and the [approved roadmap](docs/roadmap.md) for future direction. Unfinished proposals are not automatically beta requirements.
 
+> Superseded proposal: a separate generator-to-record target/apply feature is not being pursued. Generated text already has its own saved editable invoice fields; the maintainer does not want a second linking mechanism.
+
 ## 1. Purpose
 
 This plan evolves the invoice application in four related areas:

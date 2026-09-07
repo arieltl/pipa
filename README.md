@@ -51,5 +51,10 @@ Gotenberg uses Chromium and needs substantially more memory and CPU than React P
 - [Roadmap](docs/roadmap.md)
 - [Design guide](docs/design.md)
 - [AI contribution policy](AI_POLICY.md)
+- [Security and reporting](SECURITY.md)
 
 The longer specification and architecture files describe design history and implementation decisions; they are not a substitute for the operational guides above.
+
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 Ariel Tamezgui Leventhal.

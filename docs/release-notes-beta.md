@@ -22,7 +22,7 @@ The app caps request bodies at 20 MiB and supporting-record attachments at 10 Mi
 
 ## Known limitations
 
-- Generated text is copied into supporting records manually; automatic application is not implemented.
+- Generated text is saved separately from supporting records. Copying it into another record is manual if needed; a separate linking feature is not planned.
 - Some template/generator management conveniences and further settings UI polish remain unfinished. Final roadmap classification is pending.
 - Legacy NFS-e routes/data remain for compatibility. The app stores supporting information; it does not issue government NFS-e documents.
 - Missing required record attachments are shown as incomplete but do not prevent commercial invoice issuance.
@@ -36,6 +36,6 @@ Before upgrading, stop the app and back up the complete data directory, includin
 
 ## Release review still required
 
-The maintainer selected MIT; copyright attribution still needs confirmation before adding the license. The [AI contribution policy](../AI_POLICY.md), project narrative, and [approved roadmap](roadmap.md) are documented. The security reporting channel and final version remain pending. Verification evidence and approval gates are tracked in the [beta readiness checklist](beta-readiness.md).
+The [MIT license](../LICENSE), [AI contribution policy](../AI_POLICY.md), [security policy](../SECURITY.md), project narrative, and [approved roadmap](roadmap.md) are documented. The public name, final version, and code-improvement scope remain pending. The maintainer must enable private vulnerability reporting when making the repository public. Verification evidence and approval gates are tracked in the [beta readiness checklist](beta-readiness.md).
 
 No release tag, GitHub release (including drafts), registry publication, or repository visibility change is authorized by these notes.
