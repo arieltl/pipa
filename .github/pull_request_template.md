@@ -6,7 +6,7 @@
 
 - [ ] `bun run build`
 - [ ] `bun run typecheck`
-- [ ] `bun test --preload ./test/preload.ts`
+- [ ] `bun run test`
 
 ## Data and deployment impact
 
@@ -18,3 +18,7 @@
 ## Notes
 
 <!-- Mention beta limitations, compatibility concerns, or follow-up work. -->
+
+## AI assistance
+
+<!-- If substantial AI assistance was used, identify the tool, scope, and your review/testing. Otherwise write "None". See AI_POLICY.md. Do not include private prompts or data. -->

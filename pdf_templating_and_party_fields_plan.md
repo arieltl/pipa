@@ -1,5 +1,7 @@
 # PDF Templating and Generalized Party Fields Plan
 
+> Implementation planning record: this document mixes completed work and remaining proposals. Use the [user guide](docs/user-guide.md) for current behavior and the [approved roadmap](docs/roadmap.md) for future direction. Unfinished proposals are not automatically beta requirements.
+
 ## 1. Purpose
 
 This plan evolves the invoice application in four related areas:

@@ -1,6 +1,10 @@
 # Invoice
 
-Invoice is a lightweight, self-hosted commercial-invoice workspace for a Brazilian PJ workflow. It stores data in SQLite and local files, generates commercial invoice PDFs, and keeps editable text and supporting NFS-e records beside each invoice.
+Invoice is a lightweight, self-hosted commercial-invoice workspace for Brazilian PJ developers who invoice foreign companies. Existing free invoicing software can be more elaborate than a low-volume monthly workflow needs, while separate notes and documents make it harder to keep the supporting material needed for Brazilian bookkeeping together. This project focuses on repeatable invoices and the editable messages and records that accompany them.
+
+It is intended for developers, freelancers, and tiny software houses sending recurring or occasional commercial invoices. It stores data in SQLite and local files, generates commercial invoice PDFs, and keeps editable text and supporting NFS-e records beside each invoice.
+
+The invoice PDF is only part of that monthly routine. Reusable text templates can help prepare an email to a client, a message, or a note for a bookkeeper using invoice information, while supporting records keep related details and attachments together. Generated text stays editable; the app does not send messages or submit tax documents on your behalf.
 
 This is a beta application. It has no built-in authentication. Run it on localhost or a trusted private LAN, or put it behind an authenticated reverse proxy (for example, Cloudflare Access) before allowing remote access. Do not publish port 3000 directly to the public Internet.
 
@@ -15,6 +19,8 @@ bun run dev
 ```
 
 Open <http://localhost:3000>. On first use, configure the issuer, create a client, then create an invoice. See [the user guide](docs/user-guide.md).
+
+The current beta includes basic client and invoice editors, reusable text generators, numbering profiles, PDF generation, revisioned PDF templates, and local supporting records/files. It does not provide tax compliance advice or replace the official Brazilian NFS-e process.
 
 ## Run with Docker Compose
 
@@ -42,5 +48,8 @@ Gotenberg uses Chromium and needs substantially more memory and CPU than React P
 - [Self-hosting and operations](docs/self-hosting.md)
 - [PDF and text template reference](pdf_template_author_reference.md)
 - [Contributing](CONTRIBUTING.md)
+- [Roadmap](docs/roadmap.md)
+- [Design guide](docs/design.md)
+- [AI contribution policy](AI_POLICY.md)
 
 The longer specification and architecture files describe design history and implementation decisions; they are not a substitute for the operational guides above.

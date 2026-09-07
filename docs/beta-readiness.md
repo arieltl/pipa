@@ -5,8 +5,8 @@ This is a working release checklist, not a statement that the beta has been publ
 ## Checkpoint
 
 - Existing implementation committed and pushed as `23aeda9`.
-- Existing release: `v0.1.2`. Proposed next release: `v0.2.0-beta.1`, pending maintainer choice.
-- Repository currently private. Visibility changes and release publication await maintainer direction.
+- Existing release: `v0.1.2`. Proposed next release: `v0.2.0-beta.1`, pending maintainer choice. Public project name is also undecided; keep current identifiers until a name is approved.
+- Repository currently private. The maintainer will make it public manually when preparation is complete; agents must not change visibility. Release publication separately requires explicit authorization.
 - Do not push a release tag or manually dispatch the release workflow before explicit release authorization: both can publish artifacts.
 
 ## Required before approval
@@ -19,8 +19,10 @@ This is a working release checklist, not a statement that the beta has been publ
 - [x] Bound record uploads and expose missing required attachments.
 - [x] Surface incompatible saved Liquid templates without rewriting their source.
 - [x] Draft README, operator/user guides, contribution guide, and issue templates.
-- [ ] Finalize license and copyright attribution with maintainer.
-- [ ] Finalize AI policy, project story, roadmap, and security reporting channel.
+- [ ] Add the approved MIT license after confirming copyright attribution.
+- [x] Document approved AI policy: allow assistance with disclosure and human accountability.
+- [x] Document the project story and maintainer-approved roadmap.
+- [ ] Finalize the private security reporting channel.
 - [x] Verify fresh Docker install and persistent restart using isolated data (non-root, read-only root, tmpfs).
 - [x] Verify upgrade from representative legacy data and optional real Gotenberg rendering.
 - [ ] Complete final build, typecheck, tests, document/example review, and clean Git review.

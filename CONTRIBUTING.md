@@ -36,3 +36,5 @@ Large architectural, dependency, or workflow changes should be discussed in an i
 ## Pull requests
 
 Describe what changed, why, and how it was verified. Mention deliberate beta limitations or follow-up work. Keep secrets and private customer data out of commits. The repository does not require a contributor license agreement.
+
+AI assistance is welcome with disclosure of substantial use and human review, understanding, and testing. Read the [AI contribution policy](AI_POLICY.md) before submitting AI-assisted work.

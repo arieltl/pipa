@@ -1,5 +1,7 @@
 # Self-Hosted Invoice Generator — Project Specification
 
+> Historical product specification, including original constraints and later proposals. The current app supports optional Gotenberg/Chromium despite the original lightweight-renderer restriction. Consult the [design guide](docs/design.md), [user guide](docs/user-guide.md), and [approved roadmap](docs/roadmap.md) for current scope; not every proposal below is implemented.
+
 ## 1. Project goal
 
 Build a simple, lightweight, self-hosted invoice generator focused on a Brazilian PJ developer workflow.

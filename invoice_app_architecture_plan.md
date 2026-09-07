@@ -1,5 +1,7 @@
 # Self-Hosted Invoice App Architecture Plan
 
+> Historical planning document: some status examples and renderer decisions below predate the current implementation. For current behavior and deployment boundaries, read the [design guide](docs/design.md), [user guide](docs/user-guide.md), and [self-hosting guide](docs/self-hosting.md). Planned work is not a statement of shipped functionality.
+
 This plan turns `self_hosted_invoice_generator_spec.md` into an implementation-oriented architecture for a lightweight self-hosted invoice generator. The original spec remains the product source of truth; this document focuses on how to build it.
 
 The architecture suggestions in the spec are good defaults, but not sacred. The guiding constraint is: keep the app boring, local, cheap to run, easy to inspect, and pleasant to maintain.

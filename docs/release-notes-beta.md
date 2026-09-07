@@ -36,6 +36,6 @@ Before upgrading, stop the app and back up the complete data directory, includin
 
 ## Release review still required
 
-The license, attribution, AI contribution policy, security reporting channel, project narrative, roadmap, and final version await maintainer decisions. Verification evidence and approval gates are tracked in the [beta readiness checklist](beta-readiness.md).
+The maintainer selected MIT; copyright attribution still needs confirmation before adding the license. The [AI contribution policy](../AI_POLICY.md), project narrative, and [approved roadmap](roadmap.md) are documented. The security reporting channel and final version remain pending. Verification evidence and approval gates are tracked in the [beta readiness checklist](beta-readiness.md).
 
 No release tag, GitHub release (including drafts), registry publication, or repository visibility change is authorized by these notes.
