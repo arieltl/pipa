@@ -105,6 +105,8 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout release notes
+        uses: actions/checkout@v5
       - name: Download tested binaries
         uses: actions/download-artifact@v4
         with:
@@ -130,9 +132,14 @@ jobs:
             --title "${GITHUB_REF_NAME}"
             --generate-notes
             --verify-tag
-            --notes "Docker image: \`${IMAGE}:${GITHUB_REF_NAME#v}\`"
           )
           if [[ "${PRERELEASE}" == "true" ]]; then
             args+=(--prerelease)
+          fi
+          notes_file="docs/releases/${GITHUB_REF_NAME#v}.md"
+          if [[ -f "$notes_file" ]]; then
+            args+=(--notes-file "$notes_file")
+          else
+            args+=(--notes "Docker image: \`${IMAGE}:${GITHUB_REF_NAME#v}\`")
           fi
           gh release create "${args[@]}" downloads/*

@@ -13,9 +13,8 @@ port to loopback, so other computers cannot connect through that port by default
 
 Follow the [GHCR installation instructions](../README.md#install-with-docker-compose-ghcr),
 keeping `INVOICE_BIND_ADDRESS=127.0.0.1`. Then open <http://localhost:3000>.
-The current published image targets Linux amd64; other architectures are not
-yet supported release artifacts. The pinned `0.1.2` image predates the unreleased
-beta features shown in the screenshots.
+The published Docker image targets Linux amd64. For native ARM64 use, choose a
+standalone executable below instead. The pinned image version is `0.2.0`.
 
 Run these commands from the directory containing your Compose file:
 
@@ -34,8 +33,8 @@ override, include `-f compose.gotenberg.yml` in the same commands.
 ## Option 2: standalone executable
 
 The release workflow builds the following downloads, with runtime assets and
-SQLite embedded. These downloads will first appear in a release published with
-the updated workflow; older releases do not include them.
+SQLite embedded. These downloads are included starting with `v0.2.0`;
+older releases do not include them.
 
 | Your computer | Download |
 | --- | --- |

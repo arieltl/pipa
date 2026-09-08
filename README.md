@@ -8,7 +8,7 @@ Built for a small number of recurring or occasional invoices, it helps you reuse
 
 ![Overview with fictional clients and invoices](docs/images/overview.png)
 
-Pipa is a web app designed for self-hosting, but it is also practical to use on your own computer: SQLite keeps your data local, and the app can run as a compiled Bun executable. Start it locally and open it in your browser—no separate database server needed. This is browser-based desktop use, not a native desktop app. The next release will include Windows, Linux, and macOS downloads; see the [desktop-use guide](docs/desktop.md) for architectures and setup.
+Pipa is a web app designed for self-hosting, but it is also practical to use on your own computer: SQLite keeps your data local, and the app can run as a compiled Bun executable. Start it locally and open it in your browser—no separate database server needed. This is browser-based desktop use, not a native desktop app. Windows, Linux, and macOS downloads are available from [releases](https://github.com/arieltl/pipa/releases); see the [desktop-use guide](docs/desktop.md) for architectures and setup.
 
 ## Features
 
@@ -72,7 +72,7 @@ docker compose -f compose.yml up -d
 
 Open <http://localhost:3000>. On first use, configure the issuer, create a client, then create an invoice. See [the user guide](docs/user-guide.md).
 
-`compose.yml` pins `ghcr.io/arieltl/invoice:0.1.2` by default. That published version predates the beta features described here; the new beta image has not been released yet. Set `INVOICE_IMAGE_TAG` to the desired published version when upgrading. While the repository/image is private, pulling may require GHCR access.
+`compose.yml` pins `ghcr.io/arieltl/invoice:0.2.0` by default. Set `INVOICE_IMAGE_TAG` to the desired published version when upgrading, and back up your data first. While the repository/image is private, pulling may require GHCR access.
 
 The repository is now [arieltl/pipa](https://github.com/arieltl/pipa). The GHCR image name, Compose service `invoice`, and executable `dist/invoice` retain their existing names for deployment compatibility.
 
