@@ -22,6 +22,7 @@ const dataDir = readEnv("DATA_DIR", "./data");
 export const env = {
   nodeEnv: readEnv("NODE_ENV", "development"),
   port: readInt("PORT", 3000),
+  hostname: readEnv("INVOICE_HOST", "127.0.0.1"),
 
   /** Root data directory; everything persistent lives under here. */
   dataDir,

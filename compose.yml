@@ -17,6 +17,8 @@ services:
 
     environment:
       NODE_ENV: production
+      # Listen inside the container; host exposure is controlled by ports above.
+      INVOICE_HOST: 0.0.0.0
       PORT: "3000"
       DATA_DIR: /data
       DB_PATH: /data/app.db

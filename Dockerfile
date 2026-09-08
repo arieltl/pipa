@@ -17,6 +17,7 @@ RUN mkdir -p /app/empty-data
 FROM gcr.io/distroless/base-debian13:nonroot AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
+    INVOICE_HOST=0.0.0.0 \
     PORT=3000 \
     DATA_DIR=/data \
     DB_PATH=/data/app.db \

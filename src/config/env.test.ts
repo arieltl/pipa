@@ -14,6 +14,7 @@ test("DATA_DIR supplies storage defaults when the individual paths are unset", (
       DB_PATH: "",
       FILES_DIR: "",
       TMP_DIR: "",
+      INVOICE_HOST: "",
     },
     stdout: "pipe",
     stderr: "pipe",
@@ -26,6 +27,6 @@ test("DATA_DIR supplies storage defaults when the individual paths are unset", (
     dbPath: "/var/lib/invoice/app.db",
     filesDir: "/var/lib/invoice/files",
     tmpDir: "/var/lib/invoice/tmp",
+    hostname: "127.0.0.1",
   });
 });
-
