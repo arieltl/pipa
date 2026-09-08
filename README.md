@@ -6,7 +6,7 @@ Built for a small number of recurring or occasional invoices, it helps you reuse
 
 ![Overview with fictional clients and invoices](docs/images/overview.png)
 
-Invoice is a web app designed for self-hosting, but it is also practical to use on your own computer: SQLite keeps your data local, and the app can run as a compiled Bun executable. Start it locally and open it in your browser—no separate database server needed. This is browser-based desktop use, not a native desktop app; the current executable build targets Linux x64.
+Invoice is a web app designed for self-hosting, but it is also practical to use on your own computer: SQLite keeps your data local, and the app can run as a compiled Bun executable. Start it locally and open it in your browser—no separate database server needed. This is browser-based desktop use, not a native desktop app; the current executable build targets Linux x64. See the [desktop-use guide](docs/desktop.md).
 
 ## Features
 
@@ -97,6 +97,7 @@ Alternatively, build an image locally with `docker compose -f docker-compose.yml
 
 - [User guide](docs/user-guide.md)
 - [Self-hosting and operations](docs/self-hosting.md)
+- [Use on your own computer](docs/desktop.md)
 - [PDF and text template reference](pdf_template_author_reference.md)
 - [Contributing](CONTRIBUTING.md)
 - [Roadmap](docs/roadmap.md)
@@ -104,7 +105,7 @@ Alternatively, build an image locally with `docker compose -f docker-compose.yml
 - [AI contribution policy](AI_POLICY.md)
 - [Security and reporting](SECURITY.md)
 
-The longer specification and architecture files describe design history and implementation decisions; they are not a substitute for the operational guides above.
+The design guide describes the current implementation; the roadmap lists approved future improvements.
 
 ## License
 

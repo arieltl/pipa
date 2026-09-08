@@ -2,12 +2,16 @@
 
 ## Project Overview
 
-Build a lightweight self-hosted invoice generator for a Brazilian PJ developer workflow. The app creates commercial invoices for foreign clients, generates editable nota fiscal/NFS-e description text, renders invoice PDFs, and later links NFS-e metadata/files. Keep the app simple, local-first, Docker Compose friendly, and low-RAM.
+Invoice is a lightweight, self-hosted web app for freelancers and small service businesses with low-volume, repeatable invoicing. It creates commercial invoice PDFs, editable generated text, and configurable supporting records/files. Its Brazilian origins are context, not a restriction on the product: explain country-specific terminology in public docs and prefer general workflows.
 
 Read these docs for deeper context before broad architecture changes:
 
-- `self_hosted_invoice_generator_spec.md`: product requirements and domain details.
-- `invoice_app_architecture_plan.md`: implementation architecture and current decisions.
+- `docs/design.md`: current architecture and tradeoffs.
+- `docs/user-guide.md` and `pdf_template_author_reference.md`: current workflows and template contracts.
+- `docs/self-hosting.md` and `docs/desktop.md`: supported deployment and local-use boundaries.
+- `docs/roadmap.md`: maintainer-approved future direction, not an implementation checklist.
+
+Historical specs/plans and release decision notes live in gitignored `.personal/` when present. They are local maintainer documents, not public dependencies or proof of current behavior. Do not force-add them, link to them from public docs, or add new roadmap commitments without maintainer approval.
 
 ## Maintaining This File
 
@@ -27,11 +31,11 @@ Read these docs for deeper context before broad architecture changes:
 - Database: SQLite with Drizzle ORM and Drizzle Kit migrations.
 - SQLite driver: `bun:sqlite` through `drizzle-orm/bun-sqlite`.
 - Validation: Zod schemas at route boundaries via `@hono/zod-validator`; keep raw payloads out of services.
-- PDF: server-side `@react-pdf/renderer`.
+- PDF: built-in `@react-pdf/renderer`; optional Liquid HTML templates through private Gotenberg.
 - Files: append-only local filesystem storage under `DATA_DIR`.
-- Deploy: single Docker container via Docker Compose.
+- Deploy: prebuilt GHCR image through `compose.yml`; `docker-compose.yml` is the optional source-build alternative. `compose.gotenberg.yml` adds the renderer service.
 
-Avoid adding Chromium/Puppeteer, MinIO/S3, Postgres, Prisma, or a full SPA unless the user explicitly changes direction.
+Keep Chromium in optional Gotenberg, not inside the application. Avoid adding Puppeteer, MinIO/S3, Postgres, Prisma, or a full SPA unless the user explicitly changes direction.
 
 ## Architecture Rules
 
@@ -40,12 +44,14 @@ Avoid adding Chromium/Puppeteer, MinIO/S3, Postgres, Prisma, or a full SPA unles
 - Put reusable pure domain logic in `src/domain/`.
 - Put database schema/client/migrations support in `src/db/`.
 - Keep React PDF components separate under `src/pdf/`; do not reuse web UI components inside PDFs.
-- The global JSX runtime is `hono/jsx`. Files under `src/pdf/` that use JSX must start with `/** @jsxImportSource react */` (and be `.tsx`) so `@react-pdf/renderer` gets React's runtime; `react` is a dependency only for this.
+- The global JSX runtime is `hono/jsx`. React PDF TSX components must start with `/** @jsxImportSource react */`; do not apply React's runtime to web UI components.
 - Store money as integer minor units plus currency, never floating point.
 - Store invoice dates as `YYYY-MM-DD`; store timestamps as ISO strings.
 - Enable SQLite foreign keys; prefer WAL mode for normal app use.
 - Keep generated text editable. Templates are helpers, not authority.
 - Client defaults are copied into invoices/items at creation time and must not mutate historical invoices.
+- PDF revisions and invoice presentation snapshots preserve historical documents. A renderer failure must not silently select another engine or advance invoice status.
+- Text generators already have saved editable invoice fields. A separate generator-to-record linking feature was explicitly declined; do not implement old target/apply proposals.
 
 ## Domain Invariants
 
@@ -55,8 +61,10 @@ Avoid adding Chromium/Puppeteer, MinIO/S3, Postgres, Prisma, or a full SPA unles
 - Per-client invoice numbering must be transactional and unique.
 - Invoice status lifecycle (`src/domain/invoice-status.ts`): `draft → issued → sent → paid`, plus `void`. PDF-archived and NFS-e-linked stay derived facts (related rows), not statuses.
 - The `draft ↔ issued` barrier has side effects (issuing archives the PDF and locks the document; reverting unlocks it), so it only crosses via the dedicated `issueInvoice`/`revertToDraft` actions — never the generic status control. The other statuses interchange freely.
-- The invoice document (line items + meta) is editable only while `draft`; enforce with `isDocumentEditable` in the service, not just the UI. Notes and nota fiscal info stay editable in any status.
+- The invoice document (line items + meta) is editable only while `draft`; enforce with `isDocumentEditable` in the service, not just the UI. Notes, generated text, and supporting records stay editable in any status.
 - Files are append-only by default: write temp file, hash, move atomically, insert metadata, supersede instead of overwrite.
+- Missing required record attachments show an incomplete warning, not an invoice-issuance gate. Legacy NFS-e compatibility data must not be removed without a separately verified migration.
+- Dashboard outstanding totals include draft, issued, and sent invoice item totals; exclude paid/void. Aggregate items per invoice before grouping clients, preserving invoice counts and preventing cross-client leakage.
 
 ## UI And htmx
 
@@ -81,13 +89,14 @@ Avoid adding Chromium/Puppeteer, MinIO/S3, Postgres, Prisma, or a full SPA unles
 
 ## Commands
 
-The app may not be scaffolded yet. After `package.json` exists, prefer scripts from that file. Expected command shape:
+Use scripts from `package.json`; CI uses Bun 1.3.14.
 
-- Install dependencies: `bun install`.
+- Install dependencies: `bun install --frozen-lockfile`.
 - Start dev server: `bun run dev`.
-- Run tests: `bun test` or `bun run test`.
-- Run type/lint/check scripts if present before finishing substantial changes.
-- Run Drizzle migration scripts from `package.json` once they exist; do not invent database commands without checking scripts first.
+- Build assets and run tests: `bun run test`. After assets are built, `bun run test:unit` runs the suite alone. Typecheck: `bun run typecheck`.
+- Build the Linux x64 executable: `bun run build:binary`. Do not claim native Windows/macOS builds or downloadable release binaries that the workflow does not publish.
+- Apply migrations: `bun run db:migrate` (also runs at app startup). Generate schema migrations: `bun run db:generate`; review and test them, never substitute `drizzle-kit push`.
+- Demo data: `bun run scripts/seed-demo.ts` uses isolated `data/docs-demo/`. See `docs/demo.md`; never replace the user's database for screenshots. Test isolation is configured in `bunfig.toml` / `test/preload.ts`.
 
 ## Testing Priorities
 
@@ -106,10 +115,14 @@ High-value coverage:
 
 ## Security And Data Safety
 
+- No built-in authentication is intentional for beta; it is on the future roadmap. Direct Bun/executable startup binds `127.0.0.1` by default; `--host` overrides `INVOICE_HOST`. Docker must listen on `0.0.0.0` internally; Compose publishes to host loopback by default via `INVOICE_BIND_ADDRESS`. Do not confuse the container listener with the host-published interface.
+- Keep `.personal/`, real databases, uploads, and secrets out of Git and Docker build contexts. Screenshots must use reviewed fictional demo data.
+- Use explicit DATA_DIR, DB_PATH, FILES_DIR, and TMP_DIR overrides for isolated runs; inherited `.env` values must not redirect tests/demos into user data.
+- HTTP bodies are capped at 20 MiB and supporting-record attachments at 10 MiB. Declared MIME validation is not content inspection or malware scanning. Cross-site request rejection is not authentication.
 - Do not overwrite official/generated/archive files.
 - Do not trust uploaded filenames for stored paths.
 - Validate all form inputs at route boundaries with Zod.
 - Keep raw form payloads out of services; services should receive typed inputs.
 - Use local filesystem storage, not S3/MinIO, for MVP.
 - Preserve user data and existing changes. Never run destructive filesystem or git commands unless explicitly requested.
-
+- Do not push release tags, dispatch the publishing workflow, or create even draft GitHub releases without explicit release authorization. The maintainer changes repository visibility manually. Ordinary branch CI is non-publishing.

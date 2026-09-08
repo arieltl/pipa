@@ -1,5 +1,8 @@
 # Self-hosting and operations
 
+For personal use on your computer, including the compiled executable, see the
+[desktop-use guide](desktop.md).
+
 ## Install from GHCR
 
 The standard installation uses the prebuilt GHCR image in `compose.yml`; no
@@ -29,6 +32,7 @@ Copy `.env.example` for local overrides. Important settings:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP port |
+| `INVOICE_HOST` | `127.0.0.1` directly; `0.0.0.0` inside Docker | Application listener; executable `--host` overrides it |
 | `INVOICE_BIND_ADDRESS` | `127.0.0.1` in Compose | Host interface for the published Docker port |
 | `INVOICE_IMAGE_TAG` | `0.1.2` in prebuilt Compose | Image tag to deploy |
 | `DATA_DIR` | `./data` (dev), `/data` (Docker) | Persistent data root |
@@ -39,6 +43,11 @@ Copy `.env.example` for local overrides. Important settings:
 | `GOTENBERG_TIMEOUT_MS` | `15000` | Gotenberg request timeout |
 
 The container runs as UID/GID `1000:1000`; the bind-mounted data directory must be writable by that user. SQLite needs the data directory writable for its database, WAL, and SHM files. The published image currently targets Linux `amd64`.
+
+Docker listens on `0.0.0.0` **inside the container** so port publishing works;
+Compose still publishes on host loopback by default. For direct execution, the
+default listener is `127.0.0.1`; `--host 0.0.0.0` deliberately enables network
+access. These listener options apply to the current source, not older releases.
 
 When running Bun directly, DB/files/tmp defaults follow `DATA_DIR` unless overridden individually. Compose supplies its own container paths, including `/tmp` on tmpfs, and uses a read-only root filesystem. Set `INVOICE_IMAGE_TAG` to a published version when using `compose.yml`; its current `0.1.2` default predates the new beta features. The beta image will be available only after an approved release. Building from source is optional for testing unreleased changes. Private images require authorized GHCR access; anonymous pull access must be verified at public launch.
 
