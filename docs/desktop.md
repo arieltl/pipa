@@ -31,13 +31,35 @@ Your data is in the host's `data/` directory beside the Compose file. Do not
 delete it when updating the container. If you use the optional Gotenberg
 override, include `-f compose.gotenberg.yml` in the same commands.
 
-## Option 2: compiled executable on Linux x64
+## Option 2: standalone executable
 
-The app can be compiled into a Bun executable with its runtime assets embedded.
-The current build script targets **Linux x64**, not native Windows or macOS.
-The release workflow currently checks compilation but does **not** attach a
-standalone executable download. Until binary downloads are provided, build it
-from a source checkout:
+The release workflow builds the following downloads, with runtime assets and
+SQLite embedded. These downloads will first appear in a release published with
+the updated workflow; older releases do not include them.
+
+| Your computer | Download |
+| --- | --- |
+| Linux x64 (glibc, e.g. Ubuntu/Debian) | `pipa-linux-x64.tar.gz` |
+| Linux ARM64 (glibc) | `pipa-linux-arm64.tar.gz` |
+| Windows x64 | `pipa-windows-x64.zip` |
+| macOS Intel | `pipa-macos-x64.tar.gz` |
+| macOS Apple Silicon | `pipa-macos-arm64.tar.gz` |
+
+Get the matching archive and `SHA256SUMS.txt` from the
+[GitHub release](https://github.com/arieltl/pipa/releases). Verify the archive's
+SHA-256 against the checksum file before extracting: use `sha256sum` on Linux,
+`shasum -a 256` on macOS, or `Get-FileHash -Algorithm SHA256` in PowerShell.
+These are unsigned executables, not installers; Windows/macOS may display
+security warnings. macOS builds are not notarized. Only run downloads you trust.
+
+Extract into a dedicated folder. The executable is named `invoice` on Linux/macOS
+and `invoice.exe` on Windows, retaining the existing executable name for compatibility.
+Run `./invoice` from that folder, or `.\invoice.exe` in PowerShell, then open
+<http://localhost:3000>. No Bun installation is needed to run it. By default,
+data is stored in `./data` relative to your working directory. Keep launching
+from the same folder, or set absolute storage paths as explained below.
+
+To build the Linux x64 executable yourself from a source checkout:
 
 ```sh
 bun install --frozen-lockfile
@@ -86,6 +108,23 @@ The paths above are relative to your working directory. If you move the binary
 or create a launcher, use fixed absolute paths for all four storage variables
 so you do not accidentally open a different empty database. Do not run two app
 instances against the same data at once.
+
+For downloaded archives, replace `./dist/invoice` with `./invoice`. On Windows,
+set environment variables in PowerShell before starting the executable, for example:
+
+```powershell
+$env:DATA_DIR = "$env:LOCALAPPDATA\Pipa"
+$env:DB_PATH = "$env:DATA_DIR\app.db"
+$env:FILES_DIR = "$env:DATA_DIR\files"
+$env:TMP_DIR = "$env:DATA_DIR\tmp"
+$env:PORT = "3000"
+.\invoice.exe
+```
+
+Keep using those same paths on subsequent launches and upgrades. Optional HTML
+templates still need a separate [Gotenberg service](https://github.com/arieltl/pipa/blob/main/docs/self-hosting.md#gotenberg-html-to-pdf-rendering).
+The complete online version of this guide is at
+<https://github.com/arieltl/pipa/blob/main/docs/desktop.md>.
 
 ## Keep your data safe
 

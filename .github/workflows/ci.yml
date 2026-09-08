@@ -12,6 +12,9 @@ permissions:
   contents: read
 
 jobs:
+  binaries:
+    uses: ./.github/workflows/binaries.yml
+
   test:
     name: Test
     runs-on: ubuntu-latest
