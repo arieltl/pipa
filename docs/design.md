@@ -1,6 +1,6 @@
 # Design guide
 
-This document describes the current implementation shape and the constraints
+This document describes Pipa's current implementation and the constraints
 that keep the beta small to operate. The product motivation is described in
 the [README](../README.md); this guide is about technical decisions.
 

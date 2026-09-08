@@ -1,6 +1,6 @@
 # Roadmap
 
-Invoice is intentionally focused on a small, self-hosted workflow. This list
+Pipa is intentionally focused on a small, self-hosted workflow. This list
 describes direction, not promises or a schedule.
 
 ## Current beta

@@ -1,12 +1,14 @@
-# Invoice
+# Pipa
 
-Invoice is a lightweight invoicing workspace for freelancers, independent developers, and small service businesses. Create professional invoice PDFs and keep client details, correspondence, and supporting documents together.
+<img src="src/public/pipa-logo.svg" alt="Pipa logo: a kite inside a banknote" width="160">
+
+Pipa (Personal Invoicing & Paperwork Assistant) is a lightweight invoicing workspace for freelancers, independent developers, and small service businesses. Create professional invoice PDFs and keep client details, correspondence, and supporting documents together.
 
 Built for a small number of recurring or occasional invoices, it helps you reuse the details and text you need each month—whether your clients are local or overseas.
 
 ![Overview with fictional clients and invoices](docs/images/overview.png)
 
-Invoice is a web app designed for self-hosting, but it is also practical to use on your own computer: SQLite keeps your data local, and the app can run as a compiled Bun executable. Start it locally and open it in your browser—no separate database server needed. This is browser-based desktop use, not a native desktop app; the current executable build targets Linux x64. See the [desktop-use guide](docs/desktop.md).
+Pipa is a web app designed for self-hosting, but it is also practical to use on your own computer: SQLite keeps your data local, and the app can run as a compiled Bun executable. Start it locally and open it in your browser—no separate database server needed. This is browser-based desktop use, not a native desktop app; the current executable build targets Linux x64. See the [desktop-use guide](docs/desktop.md).
 
 ## Features
 
@@ -32,6 +34,8 @@ See the [roadmap](docs/roadmap.md) for direction; no release dates are promised.
 ## Why I built it
 
 I built this for my own workflow as a developer running a small business in Brazil and invoicing overseas clients. The tools I tried were either more complex than my monthly routine needed or did not help enough with organizing the text and documentation around each invoice.
+
+*Pipa* means “kite” in Brazilian Portuguese—and doubles as Personal Invoicing & Paperwork Assistant.
 
 That need is not specific to Brazil. A consultant can reuse an invoice email, a freelancer can keep delivery notes and receipts alongside a project invoice, and a small studio can use consistent client details and numbering each month. The aim is a focused invoicing workspace, not another system to administer.
 
@@ -69,6 +73,8 @@ docker compose -f compose.yml up -d
 Open <http://localhost:3000>. On first use, configure the issuer, create a client, then create an invoice. See [the user guide](docs/user-guide.md).
 
 `compose.yml` pins `ghcr.io/arieltl/invoice:0.1.2` by default. That published version predates the beta features described here; the new beta image has not been released yet. Set `INVOICE_IMAGE_TAG` to the desired published version when upgrading. While the repository/image is private, pulling may require GHCR access.
+
+The repository is now [arieltl/pipa](https://github.com/arieltl/pipa). The GHCR image name, Compose service `invoice`, and executable `dist/invoice` retain their existing names for deployment compatibility.
 
 Both Compose files bind to `127.0.0.1` by default. Set `INVOICE_BIND_ADDRESS` to a trusted LAN interface only when you intend to allow network access. Remote access needs an authenticating proxy or private-network gateway.
 

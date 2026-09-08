@@ -30,6 +30,18 @@ describe("app foundation", () => {
     const body = await res.text();
     expect(body).toContain("<!DOCTYPE html>");
     expect(body).toContain("<title>Overview");
+    expect(body).toContain("<title>Overview · Pipa</title>");
+    expect(body).toContain('href="/public/pipa-logo.svg"');
+    expect(body).toContain('alt="Pipa"');
+    expect(body).toContain("Invoicing workspace");
+    expect(body).toContain("Personal Invoicing &amp; Paperwork Assistant");
+  });
+
+  it("serves the Pipa logo asset", async () => {
+    const res = await app.fetch(new Request("http://localhost/public/pipa-logo.svg"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("image/svg+xml");
+    expect(await res.text()).toContain("Pipa — kite banknote");
   });
 
   it("returns a bare fragment (no layout) for htmx requests", async () => {

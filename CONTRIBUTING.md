@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve Invoice. The project is in beta; keep changes focused and explain behavior that affects stored invoices, migrations, files, or PDF output.
+Thanks for helping improve Pipa. The project is in beta; keep changes focused and explain behavior that affects stored invoices, migrations, files, or PDF output.
 
 ## Local setup
 

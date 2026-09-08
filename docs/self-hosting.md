@@ -5,6 +5,11 @@ For personal use on your computer, including the compiled executable, see the
 
 ## Install from GHCR
 
+Pipa's repository is [arieltl/pipa](https://github.com/arieltl/pipa). The existing
+GHCR package remains `ghcr.io/arieltl/invoice` so the repository rename does not
+require an image migration. Compose service names and `INVOICE_*` settings are
+unchanged.
+
 The standard installation uses the prebuilt GHCR image in `compose.yml`; no
 local build is needed. Obtain the Compose files from the repository, prepare
 the writable data directory as described in the [README](../README.md), then run:

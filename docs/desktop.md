@@ -1,6 +1,6 @@
 # Use on your own computer
 
-Invoice can serve as a personal desktop tool: run it on your computer and open
+Pipa can serve as a personal desktop tool: run it on your computer and open
 it in your browser. Your invoices and files stay local. There is no native
 desktop window, installer, tray icon, or automatic background launcher; closing
 the browser does not stop the app.

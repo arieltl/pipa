@@ -11,7 +11,8 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # Keep the existing package when the repository is renamed to Pipa.
+  IMAGE_NAME: ${{ github.repository_owner }}/invoice
 
 jobs:
   test:

@@ -25,7 +25,7 @@ export function Layout({
   defaultClientId = null,
   children,
 }: LayoutProps) {
-  const pageTitle = title ? `${title} · Invoice` : "Invoice";
+  const pageTitle = title ? `${title} · Pipa` : "Pipa";
   return (
     <>
       {raw("<!DOCTYPE html>")}
@@ -33,6 +33,7 @@ export function Layout({
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" type="image/svg+xml" href="/public/pipa-logo.svg" />
         <title>{pageTitle}</title>
         <link rel="stylesheet" href="/public/app.css?v=client-experience-7" />
         <script src="/public/app.js?v=custom-field-name-8" defer></script>
@@ -70,8 +71,8 @@ export function Layout({
                 ☰
               </button>
               <a href="/" class="flex items-center gap-2">
-                <span class="brand-mark">I</span>
-                <span class="text-sm font-semibold tracking-tight">Invoice</span>
+                <img class="h-8 w-10 object-contain" src="/public/pipa-logo.svg" alt="Pipa" />
+                <span class="text-sm font-semibold tracking-tight">Pipa</span>
               </a>
             </header>
 
@@ -81,7 +82,7 @@ export function Layout({
 
             <footer class="border-t border-base-300/70 bg-base-100/45">
               <div class="mx-auto max-w-7xl px-4 py-3 text-xs text-base-content/60">
-                Self-hosted invoice generator
+                Personal Invoicing &amp; Paperwork Assistant
               </div>
             </footer>
           </div>
@@ -109,11 +110,11 @@ function Sidebar({
     >
       <div class="flex items-center justify-between px-4 py-4">
         <a href="/" class="flex items-center gap-3">
-          <span class="brand-mark">I</span>
+          <img class="h-10 w-12 object-contain" src="/public/pipa-logo.svg" alt="Pipa" />
           <span class="leading-tight">
-            <span class="block text-sm font-semibold tracking-tight">Invoice</span>
+            <span class="block text-sm font-semibold tracking-tight">Pipa</span>
             <span class="block text-xs text-base-content/70">
-              PJ billing workspace
+              Invoicing workspace
             </span>
           </span>
         </a>

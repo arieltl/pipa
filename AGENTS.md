@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-Invoice is a lightweight, self-hosted web app for freelancers and small service businesses with low-volume, repeatable invoicing. It creates commercial invoice PDFs, editable generated text, and configurable supporting records/files. Its Brazilian origins are context, not a restriction on the product: explain country-specific terminology in public docs and prefer general workflows.
+Pipa (Personal Invoicing & Paperwork Assistant) is a lightweight, self-hosted web app for freelancers and small service businesses with low-volume, repeatable invoicing. It creates commercial invoice PDFs, editable generated text, and configurable supporting records/files. Its Brazilian origins are context, not a restriction on the product: explain country-specific terminology in public docs and prefer general workflows.
+
+Repository: `arieltl/pipa`. Brand asset: `src/public/pipa-logo.svg`. The GHCR package `arieltl/invoice`, Compose service/container names, executable `dist/invoice`, and `INVOICE_*` settings deliberately retain deployment-compatible names. Do not blindly replace domain words such as "Invoice" or rename stored files/data.
 
 Read these docs for deeper context before broad architecture changes:
 

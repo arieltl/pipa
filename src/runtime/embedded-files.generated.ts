@@ -22,6 +22,7 @@ import file17 from "../public/alpine.min.js" with { type: "file" };
 import file18 from "../public/app.css" with { type: "file" };
 import file19 from "../public/app.js" with { type: "file" };
 import file20 from "../public/htmx.min.js" with { type: "file" };
+import file21 from "../public/pipa-logo.svg" with { type: "file" };
 
 export const embeddedRuntimeFiles = [
   { source: file0, target: "drizzle/0000_mushy_the_call.sql" },
@@ -45,4 +46,5 @@ export const embeddedRuntimeFiles = [
   { source: file18, target: "src/public/app.css" },
   { source: file19, target: "src/public/app.js" },
   { source: file20, target: "src/public/htmx.min.js" },
+  { source: file21, target: "src/public/pipa-logo.svg" },
 ] as const;

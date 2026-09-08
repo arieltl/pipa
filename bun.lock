@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "invoice",
+      "name": "pipa",
       "dependencies": {
         "@hono/zod-validator": "^0.8.0",
         "@react-pdf/renderer": "^4.5.1",

@@ -34,7 +34,7 @@ async function start() {
     fetch: app.fetch,
   });
   const displayHost = listenOptions.hostname.includes(":") ? `[${listenOptions.hostname}]` : listenOptions.hostname;
-  console.log(`▶ invoice app listening on http://${displayHost}:${env.port}`);
+  console.log(`▶ Pipa listening on http://${displayHost}:${env.port}`);
 }
 
 start().catch((error) => {

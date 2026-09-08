@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none" role="img" aria-labelledby="t">
+  <title id="t">Pipa — kite banknote</title>
+  <g transform="rotate(-9 160 120)">
+    <rect x="35" y="58" width="250" height="132" rx="23" fill="#121C30" stroke="#38BDF8" stroke-width="3"/>
+    <rect x="47" y="70" width="226" height="108" rx="13" stroke="#38BDF8" stroke-width="2"/>
+    <g stroke="#EEF4FF" stroke-width="5" stroke-linecap="round">
+      <path d="M86 105C79 97 64 102 65 111C66 121 86 117 86 130C86 141 68 143 62 134M74 94V145"/>
+      <path d="M257 105C250 97 235 102 236 111C237 121 257 117 257 130C257 141 239 143 233 134M245 94V145"/>
+    </g>
+    <path d="M160 79L191 109L160 149L129 109Z" fill="#38BDF8"/>
+    <path d="M160 79L191 109H160ZM129 109H160V149Z" fill="#14B8A6"/>
+    <!-- The pennant sits above the curve, attached by its tip. -->
+    <path d="M141.69 164.3L135.08 156L145.98 154.6Z" fill="#EEF4FF"/>
+    <path d="M160 150C157 164 136 169 123 160C110 151 94 156 88 168" stroke="#38BDF8" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <path d="M34 207L57 202M27 194L44 191" stroke="#14B8A6" stroke-width="4" stroke-linecap="round"/>
+</svg>
