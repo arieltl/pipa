@@ -107,3 +107,11 @@ The longer specification and architecture files describe design history and impl
 ## License
 
 [MIT](LICENSE) — Copyright (c) 2026 Ariel Tamezgui Leventhal.
+
+## AI use notice
+
+This project was developed with extensive use of AI-assisted development workflows. As described in [CONTRIBUTING.md](CONTRIBUTING.md) and the [AI contribution policy](AI_POLICY.md), AI assistance is encouraged—but human contributors remain the quality gate. Understanding, reviewing, and testing the work is our responsibility, regardless of who—or what—typed it.
+
+This software is in very early beta. Expect bugs, rough edges, and unfinished features, as with any prerelease software. Whether a bug was handwritten or generated with remarkable confidence, it still needs fixing. AI is neither an excuse nor a warranty: there is work left to do, and we are accountable for what we ship.
+
+Coauthored by GPT 😆
