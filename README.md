@@ -6,6 +6,8 @@ Built for a small number of recurring or occasional invoices, it helps you reuse
 
 ![Overview with fictional clients and invoices](docs/images/overview.png)
 
+Invoice is a web app designed for self-hosting, but it is also practical to use on your own computer: SQLite keeps your data local, and the app can run as a compiled Bun executable. Start it locally and open it in your browser—no separate database server needed. This is browser-based desktop use, not a native desktop app; the current executable build targets Linux x64.
+
 ## Features
 
 - Create, preview, and download invoice PDFs with customizable templates.
