@@ -28,7 +28,10 @@ testing unreleased changes, not the default installation path.
 
 The beta has no user accounts, sessions, or application-level access control. Anyone who can reach the app can read and change its invoices, client data, templates, and uploaded files. Keep it on localhost or a trusted LAN. For remote access, bind the app to loopback and use an authenticated reverse proxy such as Cloudflare Access, basic auth, or an equivalent private-network gateway. TLS and proxy access policy are deployment responsibilities.
 
-Do not expose Gotenberg to the host or public network. The Compose override addresses it by its private service name. Rendered documents include invoice, customer, issuer, and payment data.
+Keep Gotenberg private. The bundled Compose override does not publish its port;
+it addresses the service by its private Docker name. If using a separate
+instance, restrict access to the machines that need it. Rendered documents
+include invoice, customer, issuer, and payment data.
 
 ## Configuration
 
@@ -57,6 +60,108 @@ access. These listener options apply to the current source, not older releases.
 When running Bun directly, DB/files/tmp defaults follow `DATA_DIR` unless overridden individually. Compose supplies its own container paths, including `/tmp` on tmpfs, and uses a read-only root filesystem. Set `INVOICE_IMAGE_TAG` to a published version when using `compose.yml`; its current `0.1.2` default predates the new beta features. The beta image will be available only after an approved release. Building from source is optional for testing unreleased changes. Private images require authorized GHCR access; anonymous pull access must be verified at public launch.
 
 HTTP requests are limited to 20 MiB and individual supporting-record attachments to 10 MiB. Declared MIME types are checked against each attachment category; files are not malware-scanned. Missing required attachments appear as an incomplete record and do not prevent issuing a commercial invoice. Browser mutations explicitly originating from another site are rejected; this is not authentication.
+
+## Gotenberg: HTML-to-PDF rendering
+
+Gotenberg is optional. The built-in React PDF renderer needs no separate
+service. Configure Gotenberg through environment variables; there is currently
+no UI form for changing its address. These instructions describe the current
+source; the published `0.1.2` image predates this functionality.
+
+### Use the bundled Docker service
+
+From the directory containing the Compose files:
+
+```sh
+docker compose -f compose.yml -f compose.gotenberg.yml pull
+docker compose -f compose.yml -f compose.gotenberg.yml up -d
+```
+
+The override starts `gotenberg/gotenberg:8-chromium` and sets Pipa's connection
+to `http://gotenberg:3000`. The service name is the hostname; `3000` is its
+internal port. Gotenberg's port is not published to the host. Compose waits for
+its health check before starting Pipa. Include both Compose files in subsequent
+start, stop, and update commands for this setup.
+
+### Connect to an existing Gotenberg instance
+
+Set the base URL, including protocol and port, in the `.env` file beside your
+Compose file. For example, for an instance on a trusted private network:
+
+```dotenv
+GOTENBERG_URL=http://192.168.1.20:3001
+GOTENBERG_TIMEOUT_MS=30000
+```
+
+Replace the example address with one reachable **from Pipa's container**. Use
+HTTP or HTTPS. Supply the base URL, not `/health` or the conversion endpoint;
+Pipa appends those paths itself. There is no separate Gotenberg port variable.
+
+Apply the settings with:
+
+```sh
+docker compose -f compose.yml up -d
+```
+
+Do **not** include `compose.gotenberg.yml` for this configuration: that override
+sets `GOTENBERG_URL=http://gotenberg:3000`, replacing your custom address.
+If changing from the bundled service, stop the old two-file stack first, then
+start the single-file configuration. Do not delete your data directory.
+
+Inside Docker, `localhost` means the **Pipa container**, not your computer or
+another container. Use a service hostname on a shared Docker network, or an
+appropriate reachable host address. Keep access restricted; do not expose
+Gotenberg publicly to make the connection work.
+
+### Configure the standalone binary or Bun server
+
+Use the same variables in the environment that launches Pipa. For example,
+when Gotenberg is reachable on your computer at port 3001:
+
+```sh
+GOTENBERG_URL=http://127.0.0.1:3001 \
+GOTENBERG_TIMEOUT_MS=30000 \
+./dist/invoice
+```
+
+Keep your usual `DATA_DIR`, `DB_PATH`, `FILES_DIR`, and `TMP_DIR` settings and
+working directory when running this command; do not accidentally switch to a
+different database. For a source run, use `bun run start` in place of
+`./dist/invoice`. Stop and restart the process after changing its environment.
+In this direct-run case, `127.0.0.1` refers to the computer running Pipa.
+
+### Choose a template and verify the connection
+
+- Open **PDF templates** to see the connection status: unconfigured, connected,
+  unavailable, or invalid configuration.
+- Choose an **HTML/Gotenberg** template for the client or draft invoice you
+  want to render. Setting the URL does not change existing template selections.
+- Generate a sample PDF or preview an invoice to verify an actual conversion;
+  a successful health check alone does not prove rendering works.
+- If rendering fails, Pipa reports the error. It does not silently substitute
+  another renderer, archive a failed PDF, or advance the invoice's issue status.
+
+`GOTENBERG_TIMEOUT_MS` defaults to `15000` (15 seconds) and accepts integer
+values from `1000` to `120000` (1–120 seconds). Health checks use at most five
+seconds. The template screen may cache connection status for ten seconds.
+
+To disable Gotenberg, leave `GOTENBERG_URL` empty and restart/recreate Pipa.
+Remove the bundled override if you were using it, since it supplies a URL.
+React PDF templates remain usable; invoices pinned to HTML templates still
+need Gotenberg to render again. Existing archived PDFs are not removed.
+
+### Troubleshooting
+
+- **Invalid configuration:** check the HTTP(S) base URL and timeout range.
+- **Connection refused or unavailable:** check the hostname and port from
+  Pipa's network, Gotenberg's health, and any firewall rules. A URL working in
+  your browser does not prove it is reachable from a container.
+- **Your custom URL is ignored:** check whether `compose.gotenberg.yml` is
+  still included and whether Pipa was recreated after the environment change.
+- **Conversion times out:** check Gotenberg's logs and available memory/CPU;
+  increase the timeout within the supported range if necessary.
+- **Pipa's health endpoint is OK but HTML rendering fails:** `/healthz` checks
+  the app, not Gotenberg. Check **PDF templates** and attempt a sample conversion.
 
 ## Backups and restore
 
