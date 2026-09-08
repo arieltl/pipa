@@ -18,13 +18,7 @@ details, credentials, or database backups.
 For suspected exploitable vulnerabilities, data exposure, or reports that need
 sensitive reproduction details, use GitHub's private vulnerability reporting:
 open this repository's **Security → Advisories** page and choose **Report a vulnerability**.
-The maintainer must [enable private reporting](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository)
-when the repository becomes public and verify that this option is available before launch.
 
-If the private reporting option is unavailable, do not post exploit details or
-sensitive files publicly. Open a minimal issue asking the maintainer to enable
-private reporting, without describing the vulnerability. No alternative private
-contact address has been designated.
 
 In a private report, include the affected version or commit, deployment setup,
 expected and actual behavior, potential impact, and minimal reproduction steps.
