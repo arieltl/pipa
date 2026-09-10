@@ -12,6 +12,7 @@ import { InvoicesTable } from "./components/invoices-table.tsx";
 import type { FieldErrors } from "../../web/components/forms.tsx";
 import type { InvoiceListRow, ClientInvoiceStats } from "./invoices.repository.ts";
 import type { InvoiceDetail } from "./invoices.service.ts";
+import { InvoiceOverview } from "./components/invoice-workspace.tsx";
 
 export function InvoicesListPage({ invoices }: { invoices: InvoiceListRow[] }) {
   return (
@@ -155,7 +156,7 @@ export function InvoiceDetailPage({
           </a>
         }
       />
-      <InvoiceDetailBody detail={detail} pdfFilename={pdfFilename} nfse={nfse} pdfRenderBlockedReason={pdfRenderBlockedReason} />
+      <InvoiceOverview detail={detail} pdfFilename={pdfFilename} renderBlockedReason={pdfRenderBlockedReason} />
     </div>
   );
 }

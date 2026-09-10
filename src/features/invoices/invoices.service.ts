@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { nowIso } from "../../domain/dates.ts";
 import type {
   Client,
   ClientInvoiceRecordType,
@@ -41,10 +42,12 @@ import type {
   ItemFormInput,
 } from "./invoices.schema.ts";
 import { loadIssuerSettings } from "../settings/settings.service.ts";
+import { GotenbergConnectionError } from "../../pdf/html/gotenberg-client.ts";
 import { db } from "../../db/client.ts";
-import { numberingProfiles } from "../../db/schema.ts";
-import { eq } from "drizzle-orm";
+import { invoiceFileOwnership, invoices, numberingProfiles } from "../../db/schema.ts";
+import { and, eq, sql } from "drizzle-orm";
 import { createPartySnapshot, serializePartySnapshot } from "../../domain/party-fields/snapshot.ts";
+import { operationIdentity, sha256Identity, WorkspaceConflictError } from "../../domain/invoice-workspace.ts";
 import {
   getRevision,
   getTemplate,
@@ -468,23 +471,29 @@ function assertDocumentEditable(invoiceId: number): void {
   }
 }
 
+/** Compatibility writers predate aggregate commands.  Keep their mutations
+ * visible to workspace clients until their retired HTTP routes disappear. */
+function advanceLegacyRevision(invoiceId: number): void {
+  db.update(invoices).set({ workspaceRevision: sql`${invoices.workspaceRevision} + 1`, updatedAt: nowIso() }).where(eq(invoices.id, invoiceId)).run();
+}
+function legacyWrite<T>(invoiceId: number, write: () => T): T {
+  return db.transaction(() => { const result = write(); advanceLegacyRevision(invoiceId); return result; });
+}
+
 export function addItem(invoiceId: number, input: ItemFormInput): InvoiceItem {
-  assertDocumentEditable(invoiceId);
-  return repo.insertItem(invoiceId, toItemColumns(input));
+  return legacyWrite(invoiceId, () => { assertDocumentEditable(invoiceId); return repo.insertItem(invoiceId, toItemColumns(input)); });
 }
 
 export function updateItem(id: number, input: ItemFormInput): InvoiceItem {
   const item = repo.getItemById(id);
   if (!item) throw new DocumentLockedError();
-  assertDocumentEditable(item.invoiceId);
-  return repo.updateItem(id, toItemColumns(input));
+  return legacyWrite(item.invoiceId, () => { assertDocumentEditable(item.invoiceId); return repo.updateItem(id, toItemColumns(input)); });
 }
 
 export function deleteItem(id: number): void {
   const item = repo.getItemById(id);
   if (!item) throw new DocumentLockedError();
-  assertDocumentEditable(item.invoiceId);
-  repo.deleteItem(id);
+  legacyWrite(item.invoiceId, () => { assertDocumentEditable(item.invoiceId); repo.deleteItem(id); });
 }
 
 // --- draft document edit + delete ----------------------------------------
@@ -498,18 +507,7 @@ export function updateInvoiceDoc(
   id: number,
   input: EditInvoiceDocInput,
 ): Invoice {
-  const invoice = repo.getInvoiceById(id);
-  if (!invoice || !isDocumentEditable(invoice.status)) {
-    throw new DocumentLockedError();
-  }
-  const existing = repo.getInvoiceByNumber(input.number);
-  if (existing && existing.id !== id) {
-    throw new InvoiceNumberTakenError(input.number);
-  }
-  return repo.updateInvoiceDoc(id, {
-    number: input.number,
-    invoiceDate: input.invoiceDate,
-  });
+  return legacyWrite(id, () => { const invoice = repo.getInvoiceById(id); if (!invoice || !isDocumentEditable(invoice.status)) throw new DocumentLockedError(); const existing = repo.getInvoiceByNumber(input.number); if (existing && existing.id !== id) throw new InvoiceNumberTakenError(input.number); return repo.updateInvoiceDoc(id, { number: input.number, invoiceDate: input.invoiceDate }); });
 }
 
 /**
@@ -534,12 +532,7 @@ export function deleteInvoice(id: number): void {
  * must go through `issueInvoice` / `revertToDraft`.
  */
 export function changeStatus(id: number, status: string): Invoice {
-  const invoice = repo.getInvoiceById(id);
-  if (!invoice) throw new InvalidStatusTransitionError("(missing)", status);
-  if (!canManuallyTransition(invoice.status, status)) {
-    throw new InvalidStatusTransitionError(invoice.status, status);
-  }
-  return repo.updateInvoiceStatus(id, status);
+  return legacyWrite(id, () => { const invoice = repo.getInvoiceById(id); if (!invoice) throw new InvalidStatusTransitionError("(missing)", status); if (!canManuallyTransition(invoice.status, status)) throw new InvalidStatusTransitionError(invoice.status, status); return repo.updateInvoiceStatus(id, status); });
 }
 
 /**
@@ -551,8 +544,24 @@ export async function issueInvoice(detail: InvoiceDetail): Promise<Invoice> {
     throw new InvalidStatusTransitionError(detail.invoice.status, "issued");
   }
   if (detail.items.length === 0) throw new EmptyInvoiceError();
-  await archiveInvoicePdf(detail);
-  return repo.updateInvoiceStatus(detail.invoice.id, "issued");
+  // The legacy public API must use the same render/finalize fence as the
+  // workspace command.  Rendering may await for long enough that the detail
+  // passed here is obsolete; a direct archive followed by status write could
+  // otherwise issue bytes for an earlier invoice revision.
+  const arguments_ = { dependencySignature: pdfRenderingDependencySignature(detail) };
+  const input = { schemaVersion: 1 as const, operationId: crypto.randomUUID(), expectedRevision: detail.invoice.workspaceRevision, kind: "issue" as const, arguments: arguments_ };
+  const canonicalPayloadDigest = operationIdentity({ schemaVersion: input.schemaVersion, kind: input.kind, baseRevision: input.expectedRevision, arguments: input.arguments });
+  const { executeWorkspaceCommand } = await import("./invoice-workspace.service.ts");
+  const result = await executeWorkspaceCommand(detail.invoice.id, { ...input, canonicalPayloadDigest });
+  if (result.outcome === "committed") {
+    const updated = repo.getInvoiceById(detail.invoice.id);
+    if (updated) return updated;
+  }
+  if (result.code === "INVALID_STATUS") throw new InvalidStatusTransitionError(detail.invoice.status, "issued");
+  if (result.code === "RENDER_FAILED" && !detail.pdfTemplateRevision.rendererKey) throw new GotenbergConnectionError(result.message);
+  if (result.code === "STALE_REVISION" || result.code === "DEPENDENCY_CONFLICT") throw new WorkspaceConflictError(result.code, result.message, result.resultingRevision, detail.invoice.status);
+  if (result.code === "RENDER_FAILED" && !detail.pdfTemplateRevision.rendererKey) throw new GotenbergConnectionError(result.message);
+  throw new Error(result.message);
 }
 
 /**
@@ -565,7 +574,7 @@ export function revertToDraft(id: number): Invoice {
   if (invoice.status === "draft") {
     throw new InvalidStatusTransitionError("draft", "draft");
   }
-  return repo.updateInvoiceStatus(id, "draft");
+  const updated=repo.updateInvoiceStatus(id, "draft"); advanceLegacyRevision(id); return updated;
 }
 
 export function refreshPartyDetails(id: number): Invoice {
@@ -574,24 +583,21 @@ export function refreshPartyDetails(id: number): Invoice {
   const client = repo.getClientById(invoice.clientId);
   if (!client) throw new ClientNotFoundError();
   const issuer = loadIssuerSettings();
-  return repo.updateInvoicePartySnapshots(
+  const updated=repo.updateInvoicePartySnapshots(
     id,
     serializePartySnapshot(issuer ? createPartySnapshot(issuer) : { name: "Invoice", fields: [] }),
     serializePartySnapshot(createPartySnapshot(client)),
-  );
+  ); advanceLegacyRevision(id); return updated;
 }
 
 export function selectDraftPdfTemplate(
   detail: InvoiceDetail,
   templateId: number,
 ): InvoiceDetail {
-  if (!isDocumentEditable(detail.invoice.status)) throw new DocumentLockedError();
-  const revision = resolveTemplateRevision(
-    detail.client,
-    detail.issuer,
-    templateId,
-  );
-  repo.updateInvoicePdfTemplateRevision(detail.invoice.id, revision.id);
+  const live = repo.getInvoiceById(detail.invoice.id);
+  if (!live || !isDocumentEditable(live.status)) throw new DocumentLockedError();
+  const revision = resolveTemplateRevision(detail.client, detail.issuer, templateId);
+  legacyWrite(detail.invoice.id, () => { const current=repo.getInvoiceById(detail.invoice.id); if(!current||!isDocumentEditable(current.status))throw new DocumentLockedError(); repo.updateInvoicePdfTemplateRevision(detail.invoice.id, revision.id); });
   const updated = getInvoiceDetail(detail.invoice.id);
   if (!updated) throw new Error(`Invoice ${detail.invoice.id} vanished`);
   return updated;
@@ -599,7 +605,7 @@ export function selectDraftPdfTemplate(
 
 /** Mark a freshly-linked invoice as sent (used by the NFS-e link's checkbox). */
 export function markSent(id: number): Invoice {
-  return repo.updateInvoiceStatus(id, "sent");
+  return changeStatus(id, "sent");
 }
 
 // --- nota fiscal description + filename ----------------------------------
@@ -706,7 +712,7 @@ export function savedTextFor(
 /** Persist invoice notes; editable in any status. Blank clears them. */
 export function saveNotes(id: number, notes: string | undefined): Invoice {
   const trimmed = (notes ?? "").trim();
-  return repo.updateInvoiceNotes(id, trimmed === "" ? null : trimmed);
+  return legacyWrite(id, () => repo.updateInvoiceNotes(id, trimmed === "" ? null : trimmed));
 }
 
 /** Safe PDF basename for an invoice, from the client's filename template. */
@@ -716,6 +722,21 @@ export function pdfFilename(detail: InvoiceDetail): string {
     contextFor(detail),
     `invoice-${detail.invoice.number}`,
   );
+}
+
+/** Every saved-data input that can affect rendered bytes or the output name. */
+export function pdfRenderingDependencySignature(detail: InvoiceDetail): string {
+  const revision = selectedPdfRevision(detail);
+  return sha256Identity({
+    document: pdfDocumentModel(detail),
+    template: { id: revision.id, templateId: revision.templateId, contentSha256: revision.contentSha256, rendererKey: revision.rendererKey, configurationJson: revision.configurationJson },
+    filename: pdfFilename(detail),
+    filenameTemplate: detail.client.defaultPdfFilenameTemplate,
+    legacyFallbacks: {
+      issuerLive: detail.invoice.issuerSnapshotJson == null ? detail.issuer : null,
+      clientLive: detail.invoice.clientSnapshotJson == null ? detail.client : null,
+    },
+  });
 }
 
 // --- PDF generation, archive, and nota fiscal linking (Phase 5) ----------
@@ -787,8 +808,11 @@ async function renderSelectedPdf(detail: InvoiceDetail): Promise<Buffer> {
 export async function renderInvoicePdf(
   detail: InvoiceDetail,
 ): Promise<{ buffer: Buffer; filename: string }> {
+  // Capture the filename and its live legacy fallbacks before rendering. A
+  // command revalidates the same complete dependency signature afterward.
+  const filename = pdfFilename(detail);
   const buffer = await renderSelectedPdf(detail);
-  return { buffer, filename: pdfFilename(detail) };
+  return { buffer, filename };
 }
 
 /**
@@ -800,20 +824,18 @@ export async function renderInvoicePdf(
 export async function archiveInvoicePdf(
   detail: InvoiceDetail,
 ): Promise<FileRecord> {
-  const buffer = await renderSelectedPdf(detail);
-  const year = detail.invoice.invoiceDate.slice(0, 4) || "unknown";
-  const destDir = join(paths.archivedInvoicesDir, year);
-
-  const stored = supersedeFile(detail.invoice.archivedPdfFileId, {
-    kind: "archived_invoice",
-    bytes: buffer,
-    destDir,
-    desiredBasename: pdfFilename(detail),
-    mimeType: "application/pdf",
-  });
-
-  repo.updateInvoiceArchivedPdf(detail.invoice.id, stored.id);
-  return stored;
+  const arguments_ = { dependencySignature: pdfRenderingDependencySignature(detail) };
+  const input = { schemaVersion: 1 as const, operationId: crypto.randomUUID(), expectedRevision: detail.invoice.workspaceRevision, kind: "pdf-version" as const, arguments: arguments_ };
+  const canonicalPayloadDigest = operationIdentity({ schemaVersion: input.schemaVersion, kind: input.kind, baseRevision: input.expectedRevision, arguments: input.arguments });
+  const { executeWorkspaceCommand } = await import("./invoice-workspace.service.ts");
+  const result = await executeWorkspaceCommand(detail.invoice.id, { ...input, canonicalPayloadDigest });
+  const fileId = (result.normalized as { fileId?: number } | undefined)?.fileId;
+  if (result.outcome === "committed" && fileId) {
+    const stored = repo.getFileById(fileId);
+    if (stored) return stored;
+  }
+  if (result.code === "STALE_REVISION" || result.code === "DEPENDENCY_CONFLICT") throw new WorkspaceConflictError(result.code, result.message, result.resultingRevision, detail.invoice.status);
+  throw new Error(result.message);
 }
 
 export type NotaFiscalUpload = {
@@ -871,6 +893,7 @@ export function linkNotaFiscal(
     pdfFileId,
     xmlFileId,
   });
+  advanceLegacyRevision(detail.invoice.id);
 
   const updated = getInvoiceDetail(detail.invoice.id);
   if (!updated) throw new Error(`Invoice ${detail.invoice.id} vanished`);
@@ -881,7 +904,7 @@ export function removeNotaFiscalAttachment(
   detail: InvoiceDetail,
   attachment: "pdf" | "xml",
 ): InvoiceDetail {
-  repo.clearNotaFiscalAttachment(detail.invoice.id, attachment);
+  repo.clearNotaFiscalAttachment(detail.invoice.id, attachment); advanceLegacyRevision(detail.invoice.id);
   const updated = getInvoiceDetail(detail.invoice.id);
   if (!updated) throw new Error(`Invoice ${detail.invoice.id} vanished`);
   return updated;
@@ -892,14 +915,11 @@ export function getInvoiceFile(
   detail: InvoiceDetail,
   fileId: number,
 ): FileRecord | null {
-  const allowed = new Set(
-    [
-      detail.invoice.archivedPdfFileId,
-      detail.notaFiscal?.pdfFileId,
-      detail.notaFiscal?.xmlFileId,
-    ].filter((id): id is number => id != null),
-  );
-  if (!allowed.has(fileId)) return null;
+  // Current pointers cover old datasets. Durable ownership is authoritative
+  // for superseded archives, tombstones, and immutable PDF versions.
+  const owned = db.select().from(invoiceFileOwnership).where(and(eq(invoiceFileOwnership.invoiceId, detail.invoice.id), eq(invoiceFileOwnership.fileId, fileId))).get();
+  const allowed = [detail.invoice.archivedPdfFileId, detail.notaFiscal?.pdfFileId, detail.notaFiscal?.xmlFileId].includes(fileId);
+  if (!owned && !allowed) return null;
   return repo.getFileById(fileId);
 }
 

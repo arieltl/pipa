@@ -20,6 +20,13 @@ export const INVOICE_STATUSES = [
 
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
+/** Statuses that contribute to an amount still expected from a client. */
+export const OUTSTANDING_INVOICE_STATUSES = [
+  "draft",
+  "issued",
+  "sent",
+] as const satisfies readonly InvoiceStatus[];
+
 /** The loose cluster whose members interchange via the manual status control. */
 const MANUAL_STATUSES: InvoiceStatus[] = ["issued", "sent", "paid", "void"];
 
@@ -30,6 +37,11 @@ export function isInvoiceStatus(value: string): value is InvoiceStatus {
 /** The invoice document (line items + meta) is only editable while drafting. */
 export function isDocumentEditable(status: string): boolean {
   return status === "draft";
+}
+
+/** Whether an invoice contributes to outstanding client balances. */
+export function isOutstandingInvoice(status: string): boolean {
+  return (OUTSTANDING_INVOICE_STATUSES as readonly string[]).includes(status);
 }
 
 /**

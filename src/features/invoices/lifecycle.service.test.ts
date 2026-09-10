@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { db } from "../../db/client.ts";
+import { eq } from "drizzle-orm";
 import {
   clients,
   files,
@@ -119,6 +120,15 @@ describe("issueInvoice", () => {
     await issueInvoice(detail);
     const reloaded = getInvoiceDetail(detail.invoice.id)!;
     expect(issueInvoice(reloaded)).rejects.toBeInstanceOf(InvalidStatusTransitionError);
+  });
+
+  test("does not issue an obsolete detail after its workspace revision changed", async () => {
+    const detail = newInvoice();
+    db.update(invoices).set({ workspaceRevision: detail.invoice.workspaceRevision + 1, updatedAt: nowIso() }).where(eq(invoices.id, detail.invoice.id)).run();
+    await expect(issueInvoice(detail)).rejects.toMatchObject({ code: "STALE_REVISION" });
+    const current = getInvoiceDetail(detail.invoice.id)!;
+    expect(current.invoice.status).toBe("draft");
+    expect(current.invoice.archivedPdfFileId).toBeNull();
   });
 });
 

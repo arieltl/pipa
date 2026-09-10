@@ -25,6 +25,8 @@ async function start() {
   ensureDataDirs();
   extractEmbeddedRuntimeFiles();
   runMigrations();
+  const { maintainWorkspaceState } = await import("./features/invoices/invoice-workspace.service.ts");
+  maintainWorkspaceState();
 
   const app = createApp();
 

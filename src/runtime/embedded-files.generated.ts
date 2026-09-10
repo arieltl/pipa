@@ -10,19 +10,25 @@ import file5 from "../../drizzle/0005_fresh_warhawk.sql" with { type: "file" };
 import file6 from "../../drizzle/0006_woozy_beyonder.sql" with { type: "file" };
 import file7 from "../../drizzle/0007_builtin_html_classic.sql" with { type: "file" };
 import file8 from "../../drizzle/0008_bizarre_valeria_richards.sql" with { type: "file" };
-import file9 from "../../drizzle/meta/0000_snapshot.json" with { type: "file" };
-import file10 from "../../drizzle/meta/0001_snapshot.json" with { type: "file" };
-import file11 from "../../drizzle/meta/0002_snapshot.json" with { type: "file" };
-import file12 from "../../drizzle/meta/0003_snapshot.json" with { type: "file" };
-import file13 from "../../drizzle/meta/0005_snapshot.json" with { type: "file" };
-import file14 from "../../drizzle/meta/0006_snapshot.json" with { type: "file" };
-import file15 from "../../drizzle/meta/0008_snapshot.json" with { type: "file" };
-import file16 from "../../drizzle/meta/_journal.json" with { type: "file" };
-import file17 from "../public/alpine.min.js" with { type: "file" };
-import file18 from "../public/app.css" with { type: "file" };
-import file19 from "../public/app.js" with { type: "file" };
-import file20 from "../public/htmx.min.js" with { type: "file" };
-import file21 from "../public/pipa-logo.svg" with { type: "file" };
+import file9 from "../../drizzle/0009_ambiguous_war_machine.sql" with { type: "file" };
+import file10 from "../../drizzle/0010_goofy_preak.sql" with { type: "file" };
+import file11 from "../../drizzle/0011_milky_skullbuster.sql" with { type: "file" };
+import file12 from "../../drizzle/meta/0000_snapshot.json" with { type: "file" };
+import file13 from "../../drizzle/meta/0001_snapshot.json" with { type: "file" };
+import file14 from "../../drizzle/meta/0002_snapshot.json" with { type: "file" };
+import file15 from "../../drizzle/meta/0003_snapshot.json" with { type: "file" };
+import file16 from "../../drizzle/meta/0005_snapshot.json" with { type: "file" };
+import file17 from "../../drizzle/meta/0006_snapshot.json" with { type: "file" };
+import file18 from "../../drizzle/meta/0008_snapshot.json" with { type: "file" };
+import file19 from "../../drizzle/meta/0009_snapshot.json" with { type: "file" };
+import file20 from "../../drizzle/meta/0010_snapshot.json" with { type: "file" };
+import file21 from "../../drizzle/meta/0011_snapshot.json" with { type: "file" };
+import file22 from "../../drizzle/meta/_journal.json" with { type: "file" };
+import file23 from "../public/alpine.min.js" with { type: "file" };
+import file24 from "../public/app.css" with { type: "file" };
+import file25 from "../public/app.js" with { type: "file" };
+import file26 from "../public/htmx.min.js" with { type: "file" };
+import file27 from "../public/pipa-logo.svg" with { type: "file" };
 
 export const embeddedRuntimeFiles = [
   { source: file0, target: "drizzle/0000_mushy_the_call.sql" },
@@ -34,17 +40,23 @@ export const embeddedRuntimeFiles = [
   { source: file6, target: "drizzle/0006_woozy_beyonder.sql" },
   { source: file7, target: "drizzle/0007_builtin_html_classic.sql" },
   { source: file8, target: "drizzle/0008_bizarre_valeria_richards.sql" },
-  { source: file9, target: "drizzle/meta/0000_snapshot.json" },
-  { source: file10, target: "drizzle/meta/0001_snapshot.json" },
-  { source: file11, target: "drizzle/meta/0002_snapshot.json" },
-  { source: file12, target: "drizzle/meta/0003_snapshot.json" },
-  { source: file13, target: "drizzle/meta/0005_snapshot.json" },
-  { source: file14, target: "drizzle/meta/0006_snapshot.json" },
-  { source: file15, target: "drizzle/meta/0008_snapshot.json" },
-  { source: file16, target: "drizzle/meta/_journal.json" },
-  { source: file17, target: "src/public/alpine.min.js" },
-  { source: file18, target: "src/public/app.css" },
-  { source: file19, target: "src/public/app.js" },
-  { source: file20, target: "src/public/htmx.min.js" },
-  { source: file21, target: "src/public/pipa-logo.svg" },
+  { source: file9, target: "drizzle/0009_ambiguous_war_machine.sql" },
+  { source: file10, target: "drizzle/0010_goofy_preak.sql" },
+  { source: file11, target: "drizzle/0011_milky_skullbuster.sql" },
+  { source: file12, target: "drizzle/meta/0000_snapshot.json" },
+  { source: file13, target: "drizzle/meta/0001_snapshot.json" },
+  { source: file14, target: "drizzle/meta/0002_snapshot.json" },
+  { source: file15, target: "drizzle/meta/0003_snapshot.json" },
+  { source: file16, target: "drizzle/meta/0005_snapshot.json" },
+  { source: file17, target: "drizzle/meta/0006_snapshot.json" },
+  { source: file18, target: "drizzle/meta/0008_snapshot.json" },
+  { source: file19, target: "drizzle/meta/0009_snapshot.json" },
+  { source: file20, target: "drizzle/meta/0010_snapshot.json" },
+  { source: file21, target: "drizzle/meta/0011_snapshot.json" },
+  { source: file22, target: "drizzle/meta/_journal.json" },
+  { source: file23, target: "src/public/alpine.min.js" },
+  { source: file24, target: "src/public/app.css" },
+  { source: file25, target: "src/public/app.js" },
+  { source: file26, target: "src/public/htmx.min.js" },
+  { source: file27, target: "src/public/pipa-logo.svg" },
 ] as const;

@@ -14,6 +14,12 @@
 4. Preview or download the PDF. React PDF works everywhere; HTML / Gotenberg templates require a configured, available Gotenberg service.
 5. A draft can be issued when its PDF can be archived. Issuing archives the PDF and locks the invoice document. Reverting to draft unlocks it. Other commercial statuses are **sent**, **paid**, and **void**; linked supporting documents do not change that status.
 
+Open **Edit invoice** from the saved overview to change the document, text and notes, or supporting records. These sections share one **Save changes** action. Switching sections keeps your unsaved values and selected files. **Cancel editing** discards the pending changes. Generating text offers a candidate to review before replacing your wording.
+
+After issuance, **Edit details** still allows notes, generated text, and supporting records to change. The document stays locked. The main PDF download uses the saved version; **Save PDF version** creates another immutable version, and earlier versions remain available.
+
+If a response is interrupted, use **Check again** to find out whether the operation finished. If another window changed the invoice, review the conflict before saving again. Downloading your unsaved changes preserves text for recovery, but does not include selected file bytes.
+
 ## Supporting records and local tax documents
 
 Use supporting records to keep document references, dates, notes, and attachments beside an invoice—for example, delivery evidence, a purchase-order reference, or a separately issued tax document. Configure the fields your business needs; the workflow is not limited to one country.
