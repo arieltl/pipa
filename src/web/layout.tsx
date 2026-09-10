@@ -35,8 +35,8 @@ export function Layout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" type="image/svg+xml" href="/public/pipa-logo.svg" />
         <title>{pageTitle}</title>
-        <link rel="stylesheet" href="/public/app.css?v=client-experience-7" />
-        <script src="/public/app.js?v=custom-field-name-8" defer></script>
+        <link rel="stylesheet" href="/public/app.css?v=pdf-preview-1" />
+        <script src="/public/app.js?v=pdf-preview-1" defer></script>
         <script src="/public/htmx.min.js" defer></script>
         <script src="/public/alpine.min.js" defer></script>
       </head>

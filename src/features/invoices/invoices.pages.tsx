@@ -147,15 +147,6 @@ export function InvoiceDetailPage({
 }) {
   return (
     <div>
-      <PageHeader
-        title={detail.invoice.number}
-        description={`${detail.client.name} · created ${detail.invoice.createdAt.slice(0, 10)}`}
-        actions={
-          <a href={`/clients/${detail.client.id}`} class="btn btn-ghost btn-sm">
-            Back to {detail.client.name}
-          </a>
-        }
-      />
       <InvoiceOverview detail={detail} pdfFilename={pdfFilename} renderBlockedReason={pdfRenderBlockedReason} />
     </div>
   );

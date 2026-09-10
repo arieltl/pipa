@@ -1,4 +1,8 @@
 (() => {
+  async function showPdfPreview(url, label) {
+    const { openPdfPreview } = await import('/public/pdf-preview.mjs');
+    return openPdfPreview(url, { label });
+  }
   const canonicalJson = (item) => item === null || typeof item !== "object" ? JSON.stringify(item) : Array.isArray(item) ? `[${item.map(canonicalJson).join(",")}]` : `{${Object.keys(item).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(item[key])}`).join(",")}}`;
   async function identityDigest(value) { const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(canonicalJson(value)));return [...new Uint8Array(bytes)].map((byte)=>byte.toString(16).padStart(2,"0")).join(""); }
   function fieldLabel(field, control) {
@@ -256,7 +260,7 @@
         async generateCandidate(text) { if(this.unresolved)return;const sequence=++this.candidateSequence;const inputDigest=await this.digest({key:text.key,proposal:this.proposal});try{const result=await this.request(`/invoices/${config.invoiceId}/edit-sessions/${this.editSessionId}/preview/generate`,{sequence,inputDigest,generatorKey:text.key,proposal:this.serializeChanges()});const currentDigest=await this.digest({key:text.key,proposal:this.proposal});if(!this.unresolved&&sequence===this.candidateSequence&&result.inputDigest===inputDigest&&result.sequence===sequence&&currentDigest===inputDigest)text.candidate=result.candidate;}catch(error){this.announce(error.message);}},
         replaceCandidate(text) { if(this.unresolved||text.candidate===null)return;text.undo=text.content;text.content=text.candidate;text.candidate=null;this.markDirty(); },
         compositionStart(){this.composing=true;}, compositionEnd(){this.composing=false;if(this.saveAfterComposition){this.saveAfterComposition=false;this.save();}},
-        async previewPdf(){if(!this.ready||this.unresolved)return;const sequence=++this.previewSequence,proposal=this.serializeChanges(),inputDigest=await this.digest({editSessionId:this.editSessionId,baseGeneration:this.baseGeneration,proposal});this.preview={sequence,inputDigest,obsolete:false};try{const result=await this.request(`/invoices/${config.invoiceId}/previews`,{previewId:crypto.randomUUID(),sourceKind:"workspace-proposal",editSessionId:this.editSessionId,baseGeneration:this.baseGeneration,inputDigest,proposal});if(this.preview?.sequence!==sequence||this.preview.inputDigest!==inputDigest)return;const currentDigest=await this.digest({editSessionId:this.editSessionId,baseGeneration:this.baseGeneration,proposal:this.serializeChanges()});if(currentDigest!==inputDigest){this.preview.obsolete=true;this.announce("This preview is obsolete; generate another after your edits.");return;}this.preview.url=result.url;window.open(result.url,"_blank","noopener");}catch(error){this.announce(error.message||"The PDF preview could not be created.");}},
+        async previewPdf(){if(!this.ready||this.unresolved)return;const sequence=++this.previewSequence,proposal=this.serializeChanges(),inputDigest=await this.digest({invoiceId:config.invoiceId,sourceKind:"workspace-proposal",editSessionId:this.editSessionId,baseGeneration:this.baseGeneration,proposal});this.preview={sequence,inputDigest,obsolete:false};try{const result=await this.request(`/invoices/${config.invoiceId}/previews`,{previewId:crypto.randomUUID(),sourceKind:"workspace-proposal",editSessionId:this.editSessionId,baseGeneration:this.baseGeneration,inputDigest,proposal});if(this.preview?.sequence!==sequence||this.preview.inputDigest!==inputDigest)return;const currentDigest=await this.digest({invoiceId:config.invoiceId,sourceKind:"workspace-proposal",editSessionId:this.editSessionId,baseGeneration:this.baseGeneration,proposal:this.serializeChanges()});if(currentDigest!==inputDigest){this.preview.obsolete=true;this.announce("This preview is obsolete; generate another after your edits.");return;}if(result.outcome!=="ready"||!result.url)throw new Error(result.message||"The PDF preview could not be created.");this.preview.url=result.url;await showPdfPreview(result.url,"Unsaved changes · not an issued PDF");}catch(error){this.announce(error.message||"The PDF preview could not be created.");}},
         copyText(value) { navigator.clipboard.writeText(value); this.announce("Copied current text. It has not been saved by copying."); },
         serializeChanges() {
           const base = this.baseSnapshot; const changes = {};
@@ -521,6 +525,28 @@
       } catch { commandRecovery.freeze(false);commandRecovery.show("The command could not be prepared and was not sent."); }
       return;
     }
-    const previewButton=event.target.closest?.("[data-pdf-preview]");if(previewButton){event.preventDefault();const invoiceId=Number(previewButton.dataset.invoiceId),revision=Number(previewButton.dataset.revision),previewId=crypto.randomUUID(),inputDigest=await identityDigest({invoiceId,revision,sourceKind:"current-saved-data"});previewButton.disabled=true;const target=document.querySelector("#invoice-command-result");try{await window.htmx.ajax("POST",`/invoices/${invoiceId}/previews`,{target,swap:"innerHTML",values:{workspaceEnvelope:JSON.stringify({previewId,sourceKind:"current-saved-data",inputDigest})}});const node=target.querySelector("[data-workspace-result]");const result=node?JSON.parse(node.dataset.workspaceResult):null;if(!result?.url)throw new Error();window.open(result.url,"_blank","noopener");}finally{previewButton.disabled=false;} }
+    const savedPreview = event.target.closest?.('[data-pdf-file]');
+    if (savedPreview) {
+      event.preventDefault(); savedPreview.disabled = true;
+      try { await showPdfPreview(savedPreview.dataset.pdfFile, 'Saved PDF · exact archived version'); }
+      catch { const target=document.querySelector('#invoice-command-result'); if(target)target.textContent='The PDF viewer could not load. Please try again.'; }
+      finally { savedPreview.disabled = false; }
+      return;
+    }
+    const previewButton=event.target.closest?.("[data-pdf-preview]");
+    if(previewButton){
+      event.preventDefault(); previewButton.disabled=true;
+      const target=document.querySelector("#invoice-command-result");
+      try {
+        const invoiceId=Number(previewButton.dataset.invoiceId),revision=Number(previewButton.dataset.revision),previewId=crypto.randomUUID(),inputDigest=await identityDigest({invoiceId,revision,sourceKind:"current-saved-data"});
+        target.textContent='Preparing PDF preview…';
+        await window.htmx.ajax("POST",`/invoices/${invoiceId}/previews`,{target,swap:"innerHTML",values:{workspaceEnvelope:JSON.stringify({previewId,sourceKind:"current-saved-data",inputDigest})}});
+        const node=target.querySelector("[data-workspace-result]"); const result=node?JSON.parse(node.dataset.workspaceResult):null;
+        if(!result?.url)throw new Error(result?.message || 'The PDF preview could not be created.');
+        target.replaceChildren();
+        await showPdfPreview(result.url,'Current saved data · preview only');
+      } catch(error) { target.textContent=error.message || 'The PDF preview could not load.'; }
+      finally {previewButton.disabled=false;}
+    }
   });
 })();

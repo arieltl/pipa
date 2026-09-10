@@ -28,7 +28,295 @@ import file23 from "../public/alpine.min.js" with { type: "file" };
 import file24 from "../public/app.css" with { type: "file" };
 import file25 from "../public/app.js" with { type: "file" };
 import file26 from "../public/htmx.min.js" with { type: "file" };
-import file27 from "../public/pipa-logo.svg" with { type: "file" };
+import file27 from "../public/pdf-preview.mjs" with { type: "file" };
+import file28 from "../public/pdfjs/LICENSE" with { type: "file" };
+import file29 from "../public/pdfjs/cmaps/78-EUC-H.bcmap" with { type: "file" };
+import file30 from "../public/pdfjs/cmaps/78-EUC-V.bcmap" with { type: "file" };
+import file31 from "../public/pdfjs/cmaps/78-H.bcmap" with { type: "file" };
+import file32 from "../public/pdfjs/cmaps/78-RKSJ-H.bcmap" with { type: "file" };
+import file33 from "../public/pdfjs/cmaps/78-RKSJ-V.bcmap" with { type: "file" };
+import file34 from "../public/pdfjs/cmaps/78-V.bcmap" with { type: "file" };
+import file35 from "../public/pdfjs/cmaps/78ms-RKSJ-H.bcmap" with { type: "file" };
+import file36 from "../public/pdfjs/cmaps/78ms-RKSJ-V.bcmap" with { type: "file" };
+import file37 from "../public/pdfjs/cmaps/83pv-RKSJ-H.bcmap" with { type: "file" };
+import file38 from "../public/pdfjs/cmaps/90ms-RKSJ-H.bcmap" with { type: "file" };
+import file39 from "../public/pdfjs/cmaps/90ms-RKSJ-V.bcmap" with { type: "file" };
+import file40 from "../public/pdfjs/cmaps/90msp-RKSJ-H.bcmap" with { type: "file" };
+import file41 from "../public/pdfjs/cmaps/90msp-RKSJ-V.bcmap" with { type: "file" };
+import file42 from "../public/pdfjs/cmaps/90pv-RKSJ-H.bcmap" with { type: "file" };
+import file43 from "../public/pdfjs/cmaps/90pv-RKSJ-V.bcmap" with { type: "file" };
+import file44 from "../public/pdfjs/cmaps/Add-H.bcmap" with { type: "file" };
+import file45 from "../public/pdfjs/cmaps/Add-RKSJ-H.bcmap" with { type: "file" };
+import file46 from "../public/pdfjs/cmaps/Add-RKSJ-V.bcmap" with { type: "file" };
+import file47 from "../public/pdfjs/cmaps/Add-V.bcmap" with { type: "file" };
+import file48 from "../public/pdfjs/cmaps/Adobe-CNS1-0.bcmap" with { type: "file" };
+import file49 from "../public/pdfjs/cmaps/Adobe-CNS1-1.bcmap" with { type: "file" };
+import file50 from "../public/pdfjs/cmaps/Adobe-CNS1-2.bcmap" with { type: "file" };
+import file51 from "../public/pdfjs/cmaps/Adobe-CNS1-3.bcmap" with { type: "file" };
+import file52 from "../public/pdfjs/cmaps/Adobe-CNS1-4.bcmap" with { type: "file" };
+import file53 from "../public/pdfjs/cmaps/Adobe-CNS1-5.bcmap" with { type: "file" };
+import file54 from "../public/pdfjs/cmaps/Adobe-CNS1-6.bcmap" with { type: "file" };
+import file55 from "../public/pdfjs/cmaps/Adobe-CNS1-UCS2.bcmap" with { type: "file" };
+import file56 from "../public/pdfjs/cmaps/Adobe-GB1-0.bcmap" with { type: "file" };
+import file57 from "../public/pdfjs/cmaps/Adobe-GB1-1.bcmap" with { type: "file" };
+import file58 from "../public/pdfjs/cmaps/Adobe-GB1-2.bcmap" with { type: "file" };
+import file59 from "../public/pdfjs/cmaps/Adobe-GB1-3.bcmap" with { type: "file" };
+import file60 from "../public/pdfjs/cmaps/Adobe-GB1-4.bcmap" with { type: "file" };
+import file61 from "../public/pdfjs/cmaps/Adobe-GB1-5.bcmap" with { type: "file" };
+import file62 from "../public/pdfjs/cmaps/Adobe-GB1-UCS2.bcmap" with { type: "file" };
+import file63 from "../public/pdfjs/cmaps/Adobe-Japan1-0.bcmap" with { type: "file" };
+import file64 from "../public/pdfjs/cmaps/Adobe-Japan1-1.bcmap" with { type: "file" };
+import file65 from "../public/pdfjs/cmaps/Adobe-Japan1-2.bcmap" with { type: "file" };
+import file66 from "../public/pdfjs/cmaps/Adobe-Japan1-3.bcmap" with { type: "file" };
+import file67 from "../public/pdfjs/cmaps/Adobe-Japan1-4.bcmap" with { type: "file" };
+import file68 from "../public/pdfjs/cmaps/Adobe-Japan1-5.bcmap" with { type: "file" };
+import file69 from "../public/pdfjs/cmaps/Adobe-Japan1-6.bcmap" with { type: "file" };
+import file70 from "../public/pdfjs/cmaps/Adobe-Japan1-UCS2.bcmap" with { type: "file" };
+import file71 from "../public/pdfjs/cmaps/Adobe-Korea1-0.bcmap" with { type: "file" };
+import file72 from "../public/pdfjs/cmaps/Adobe-Korea1-1.bcmap" with { type: "file" };
+import file73 from "../public/pdfjs/cmaps/Adobe-Korea1-2.bcmap" with { type: "file" };
+import file74 from "../public/pdfjs/cmaps/Adobe-Korea1-UCS2.bcmap" with { type: "file" };
+import file75 from "../public/pdfjs/cmaps/B5-H.bcmap" with { type: "file" };
+import file76 from "../public/pdfjs/cmaps/B5-V.bcmap" with { type: "file" };
+import file77 from "../public/pdfjs/cmaps/B5pc-H.bcmap" with { type: "file" };
+import file78 from "../public/pdfjs/cmaps/B5pc-V.bcmap" with { type: "file" };
+import file79 from "../public/pdfjs/cmaps/CNS-EUC-H.bcmap" with { type: "file" };
+import file80 from "../public/pdfjs/cmaps/CNS-EUC-V.bcmap" with { type: "file" };
+import file81 from "../public/pdfjs/cmaps/CNS1-H.bcmap" with { type: "file" };
+import file82 from "../public/pdfjs/cmaps/CNS1-V.bcmap" with { type: "file" };
+import file83 from "../public/pdfjs/cmaps/CNS2-H.bcmap" with { type: "file" };
+import file84 from "../public/pdfjs/cmaps/CNS2-V.bcmap" with { type: "file" };
+import file85 from "../public/pdfjs/cmaps/ETHK-B5-H.bcmap" with { type: "file" };
+import file86 from "../public/pdfjs/cmaps/ETHK-B5-V.bcmap" with { type: "file" };
+import file87 from "../public/pdfjs/cmaps/ETen-B5-H.bcmap" with { type: "file" };
+import file88 from "../public/pdfjs/cmaps/ETen-B5-V.bcmap" with { type: "file" };
+import file89 from "../public/pdfjs/cmaps/ETenms-B5-H.bcmap" with { type: "file" };
+import file90 from "../public/pdfjs/cmaps/ETenms-B5-V.bcmap" with { type: "file" };
+import file91 from "../public/pdfjs/cmaps/EUC-H.bcmap" with { type: "file" };
+import file92 from "../public/pdfjs/cmaps/EUC-V.bcmap" with { type: "file" };
+import file93 from "../public/pdfjs/cmaps/Ext-H.bcmap" with { type: "file" };
+import file94 from "../public/pdfjs/cmaps/Ext-RKSJ-H.bcmap" with { type: "file" };
+import file95 from "../public/pdfjs/cmaps/Ext-RKSJ-V.bcmap" with { type: "file" };
+import file96 from "../public/pdfjs/cmaps/Ext-V.bcmap" with { type: "file" };
+import file97 from "../public/pdfjs/cmaps/GB-EUC-H.bcmap" with { type: "file" };
+import file98 from "../public/pdfjs/cmaps/GB-EUC-V.bcmap" with { type: "file" };
+import file99 from "../public/pdfjs/cmaps/GB-H.bcmap" with { type: "file" };
+import file100 from "../public/pdfjs/cmaps/GB-V.bcmap" with { type: "file" };
+import file101 from "../public/pdfjs/cmaps/GBK-EUC-H.bcmap" with { type: "file" };
+import file102 from "../public/pdfjs/cmaps/GBK-EUC-V.bcmap" with { type: "file" };
+import file103 from "../public/pdfjs/cmaps/GBK2K-H.bcmap" with { type: "file" };
+import file104 from "../public/pdfjs/cmaps/GBK2K-V.bcmap" with { type: "file" };
+import file105 from "../public/pdfjs/cmaps/GBKp-EUC-H.bcmap" with { type: "file" };
+import file106 from "../public/pdfjs/cmaps/GBKp-EUC-V.bcmap" with { type: "file" };
+import file107 from "../public/pdfjs/cmaps/GBT-EUC-H.bcmap" with { type: "file" };
+import file108 from "../public/pdfjs/cmaps/GBT-EUC-V.bcmap" with { type: "file" };
+import file109 from "../public/pdfjs/cmaps/GBT-H.bcmap" with { type: "file" };
+import file110 from "../public/pdfjs/cmaps/GBT-V.bcmap" with { type: "file" };
+import file111 from "../public/pdfjs/cmaps/GBTpc-EUC-H.bcmap" with { type: "file" };
+import file112 from "../public/pdfjs/cmaps/GBTpc-EUC-V.bcmap" with { type: "file" };
+import file113 from "../public/pdfjs/cmaps/GBpc-EUC-H.bcmap" with { type: "file" };
+import file114 from "../public/pdfjs/cmaps/GBpc-EUC-V.bcmap" with { type: "file" };
+import file115 from "../public/pdfjs/cmaps/H.bcmap" with { type: "file" };
+import file116 from "../public/pdfjs/cmaps/HKdla-B5-H.bcmap" with { type: "file" };
+import file117 from "../public/pdfjs/cmaps/HKdla-B5-V.bcmap" with { type: "file" };
+import file118 from "../public/pdfjs/cmaps/HKdlb-B5-H.bcmap" with { type: "file" };
+import file119 from "../public/pdfjs/cmaps/HKdlb-B5-V.bcmap" with { type: "file" };
+import file120 from "../public/pdfjs/cmaps/HKgccs-B5-H.bcmap" with { type: "file" };
+import file121 from "../public/pdfjs/cmaps/HKgccs-B5-V.bcmap" with { type: "file" };
+import file122 from "../public/pdfjs/cmaps/HKm314-B5-H.bcmap" with { type: "file" };
+import file123 from "../public/pdfjs/cmaps/HKm314-B5-V.bcmap" with { type: "file" };
+import file124 from "../public/pdfjs/cmaps/HKm471-B5-H.bcmap" with { type: "file" };
+import file125 from "../public/pdfjs/cmaps/HKm471-B5-V.bcmap" with { type: "file" };
+import file126 from "../public/pdfjs/cmaps/HKscs-B5-H.bcmap" with { type: "file" };
+import file127 from "../public/pdfjs/cmaps/HKscs-B5-V.bcmap" with { type: "file" };
+import file128 from "../public/pdfjs/cmaps/Hankaku.bcmap" with { type: "file" };
+import file129 from "../public/pdfjs/cmaps/Hiragana.bcmap" with { type: "file" };
+import file130 from "../public/pdfjs/cmaps/KSC-EUC-H.bcmap" with { type: "file" };
+import file131 from "../public/pdfjs/cmaps/KSC-EUC-V.bcmap" with { type: "file" };
+import file132 from "../public/pdfjs/cmaps/KSC-H.bcmap" with { type: "file" };
+import file133 from "../public/pdfjs/cmaps/KSC-Johab-H.bcmap" with { type: "file" };
+import file134 from "../public/pdfjs/cmaps/KSC-Johab-V.bcmap" with { type: "file" };
+import file135 from "../public/pdfjs/cmaps/KSC-V.bcmap" with { type: "file" };
+import file136 from "../public/pdfjs/cmaps/KSCms-UHC-H.bcmap" with { type: "file" };
+import file137 from "../public/pdfjs/cmaps/KSCms-UHC-HW-H.bcmap" with { type: "file" };
+import file138 from "../public/pdfjs/cmaps/KSCms-UHC-HW-V.bcmap" with { type: "file" };
+import file139 from "../public/pdfjs/cmaps/KSCms-UHC-V.bcmap" with { type: "file" };
+import file140 from "../public/pdfjs/cmaps/KSCpc-EUC-H.bcmap" with { type: "file" };
+import file141 from "../public/pdfjs/cmaps/KSCpc-EUC-V.bcmap" with { type: "file" };
+import file142 from "../public/pdfjs/cmaps/Katakana.bcmap" with { type: "file" };
+import file143 from "../public/pdfjs/cmaps/LICENSE" with { type: "file" };
+import file144 from "../public/pdfjs/cmaps/NWP-H.bcmap" with { type: "file" };
+import file145 from "../public/pdfjs/cmaps/NWP-V.bcmap" with { type: "file" };
+import file146 from "../public/pdfjs/cmaps/RKSJ-H.bcmap" with { type: "file" };
+import file147 from "../public/pdfjs/cmaps/RKSJ-V.bcmap" with { type: "file" };
+import file148 from "../public/pdfjs/cmaps/Roman.bcmap" with { type: "file" };
+import file149 from "../public/pdfjs/cmaps/UniCNS-UCS2-H.bcmap" with { type: "file" };
+import file150 from "../public/pdfjs/cmaps/UniCNS-UCS2-V.bcmap" with { type: "file" };
+import file151 from "../public/pdfjs/cmaps/UniCNS-UTF16-H.bcmap" with { type: "file" };
+import file152 from "../public/pdfjs/cmaps/UniCNS-UTF16-V.bcmap" with { type: "file" };
+import file153 from "../public/pdfjs/cmaps/UniCNS-UTF32-H.bcmap" with { type: "file" };
+import file154 from "../public/pdfjs/cmaps/UniCNS-UTF32-V.bcmap" with { type: "file" };
+import file155 from "../public/pdfjs/cmaps/UniCNS-UTF8-H.bcmap" with { type: "file" };
+import file156 from "../public/pdfjs/cmaps/UniCNS-UTF8-V.bcmap" with { type: "file" };
+import file157 from "../public/pdfjs/cmaps/UniGB-UCS2-H.bcmap" with { type: "file" };
+import file158 from "../public/pdfjs/cmaps/UniGB-UCS2-V.bcmap" with { type: "file" };
+import file159 from "../public/pdfjs/cmaps/UniGB-UTF16-H.bcmap" with { type: "file" };
+import file160 from "../public/pdfjs/cmaps/UniGB-UTF16-V.bcmap" with { type: "file" };
+import file161 from "../public/pdfjs/cmaps/UniGB-UTF32-H.bcmap" with { type: "file" };
+import file162 from "../public/pdfjs/cmaps/UniGB-UTF32-V.bcmap" with { type: "file" };
+import file163 from "../public/pdfjs/cmaps/UniGB-UTF8-H.bcmap" with { type: "file" };
+import file164 from "../public/pdfjs/cmaps/UniGB-UTF8-V.bcmap" with { type: "file" };
+import file165 from "../public/pdfjs/cmaps/UniJIS-UCS2-H.bcmap" with { type: "file" };
+import file166 from "../public/pdfjs/cmaps/UniJIS-UCS2-HW-H.bcmap" with { type: "file" };
+import file167 from "../public/pdfjs/cmaps/UniJIS-UCS2-HW-V.bcmap" with { type: "file" };
+import file168 from "../public/pdfjs/cmaps/UniJIS-UCS2-V.bcmap" with { type: "file" };
+import file169 from "../public/pdfjs/cmaps/UniJIS-UTF16-H.bcmap" with { type: "file" };
+import file170 from "../public/pdfjs/cmaps/UniJIS-UTF16-V.bcmap" with { type: "file" };
+import file171 from "../public/pdfjs/cmaps/UniJIS-UTF32-H.bcmap" with { type: "file" };
+import file172 from "../public/pdfjs/cmaps/UniJIS-UTF32-V.bcmap" with { type: "file" };
+import file173 from "../public/pdfjs/cmaps/UniJIS-UTF8-H.bcmap" with { type: "file" };
+import file174 from "../public/pdfjs/cmaps/UniJIS-UTF8-V.bcmap" with { type: "file" };
+import file175 from "../public/pdfjs/cmaps/UniJIS2004-UTF16-H.bcmap" with { type: "file" };
+import file176 from "../public/pdfjs/cmaps/UniJIS2004-UTF16-V.bcmap" with { type: "file" };
+import file177 from "../public/pdfjs/cmaps/UniJIS2004-UTF32-H.bcmap" with { type: "file" };
+import file178 from "../public/pdfjs/cmaps/UniJIS2004-UTF32-V.bcmap" with { type: "file" };
+import file179 from "../public/pdfjs/cmaps/UniJIS2004-UTF8-H.bcmap" with { type: "file" };
+import file180 from "../public/pdfjs/cmaps/UniJIS2004-UTF8-V.bcmap" with { type: "file" };
+import file181 from "../public/pdfjs/cmaps/UniJISPro-UCS2-HW-V.bcmap" with { type: "file" };
+import file182 from "../public/pdfjs/cmaps/UniJISPro-UCS2-V.bcmap" with { type: "file" };
+import file183 from "../public/pdfjs/cmaps/UniJISPro-UTF8-V.bcmap" with { type: "file" };
+import file184 from "../public/pdfjs/cmaps/UniJISX0213-UTF32-H.bcmap" with { type: "file" };
+import file185 from "../public/pdfjs/cmaps/UniJISX0213-UTF32-V.bcmap" with { type: "file" };
+import file186 from "../public/pdfjs/cmaps/UniJISX02132004-UTF32-H.bcmap" with { type: "file" };
+import file187 from "../public/pdfjs/cmaps/UniJISX02132004-UTF32-V.bcmap" with { type: "file" };
+import file188 from "../public/pdfjs/cmaps/UniKS-UCS2-H.bcmap" with { type: "file" };
+import file189 from "../public/pdfjs/cmaps/UniKS-UCS2-V.bcmap" with { type: "file" };
+import file190 from "../public/pdfjs/cmaps/UniKS-UTF16-H.bcmap" with { type: "file" };
+import file191 from "../public/pdfjs/cmaps/UniKS-UTF16-V.bcmap" with { type: "file" };
+import file192 from "../public/pdfjs/cmaps/UniKS-UTF32-H.bcmap" with { type: "file" };
+import file193 from "../public/pdfjs/cmaps/UniKS-UTF32-V.bcmap" with { type: "file" };
+import file194 from "../public/pdfjs/cmaps/UniKS-UTF8-H.bcmap" with { type: "file" };
+import file195 from "../public/pdfjs/cmaps/UniKS-UTF8-V.bcmap" with { type: "file" };
+import file196 from "../public/pdfjs/cmaps/V.bcmap" with { type: "file" };
+import file197 from "../public/pdfjs/cmaps/WP-Symbol.bcmap" with { type: "file" };
+import file198 from "../public/pdfjs/iccs/CGATS001Compat-v2-micro.icc" with { type: "file" };
+import file199 from "../public/pdfjs/iccs/LICENSE" with { type: "file" };
+import file200 from "../public/pdfjs/images/altText_add.svg" with { type: "file" };
+import file201 from "../public/pdfjs/images/altText_disclaimer.svg" with { type: "file" };
+import file202 from "../public/pdfjs/images/altText_done.svg" with { type: "file" };
+import file203 from "../public/pdfjs/images/altText_spinner.svg" with { type: "file" };
+import file204 from "../public/pdfjs/images/altText_warning.svg" with { type: "file" };
+import file205 from "../public/pdfjs/images/annotation-check.svg" with { type: "file" };
+import file206 from "../public/pdfjs/images/annotation-comment.svg" with { type: "file" };
+import file207 from "../public/pdfjs/images/annotation-help.svg" with { type: "file" };
+import file208 from "../public/pdfjs/images/annotation-insert.svg" with { type: "file" };
+import file209 from "../public/pdfjs/images/annotation-key.svg" with { type: "file" };
+import file210 from "../public/pdfjs/images/annotation-newparagraph.svg" with { type: "file" };
+import file211 from "../public/pdfjs/images/annotation-noicon.svg" with { type: "file" };
+import file212 from "../public/pdfjs/images/annotation-note.svg" with { type: "file" };
+import file213 from "../public/pdfjs/images/annotation-paperclip.svg" with { type: "file" };
+import file214 from "../public/pdfjs/images/annotation-paragraph.svg" with { type: "file" };
+import file215 from "../public/pdfjs/images/annotation-pushpin.svg" with { type: "file" };
+import file216 from "../public/pdfjs/images/checkmark.svg" with { type: "file" };
+import file217 from "../public/pdfjs/images/comment-actionsButton.svg" with { type: "file" };
+import file218 from "../public/pdfjs/images/comment-closeButton.svg" with { type: "file" };
+import file219 from "../public/pdfjs/images/comment-editButton.svg" with { type: "file" };
+import file220 from "../public/pdfjs/images/comment-popup-editButton.svg" with { type: "file" };
+import file221 from "../public/pdfjs/images/cursor-editorFreeHighlight.svg" with { type: "file" };
+import file222 from "../public/pdfjs/images/cursor-editorFreeText.svg" with { type: "file" };
+import file223 from "../public/pdfjs/images/cursor-editorInk.svg" with { type: "file" };
+import file224 from "../public/pdfjs/images/cursor-editorTextHighlight.svg" with { type: "file" };
+import file225 from "../public/pdfjs/images/editor-toolbar-delete.svg" with { type: "file" };
+import file226 from "../public/pdfjs/images/editor-toolbar-edit.svg" with { type: "file" };
+import file227 from "../public/pdfjs/images/findbarButton-next.svg" with { type: "file" };
+import file228 from "../public/pdfjs/images/findbarButton-previous.svg" with { type: "file" };
+import file229 from "../public/pdfjs/images/gv-toolbarButton-download.svg" with { type: "file" };
+import file230 from "../public/pdfjs/images/loading-icon.gif" with { type: "file" };
+import file231 from "../public/pdfjs/images/loading.svg" with { type: "file" };
+import file232 from "../public/pdfjs/images/messageBar_closingButton.svg" with { type: "file" };
+import file233 from "../public/pdfjs/images/messageBar_info.svg" with { type: "file" };
+import file234 from "../public/pdfjs/images/messageBar_warning.svg" with { type: "file" };
+import file235 from "../public/pdfjs/images/pages_closeButton.svg" with { type: "file" };
+import file236 from "../public/pdfjs/images/pages_selected.svg" with { type: "file" };
+import file237 from "../public/pdfjs/images/pages_viewArrow.svg" with { type: "file" };
+import file238 from "../public/pdfjs/images/pages_viewButton.svg" with { type: "file" };
+import file239 from "../public/pdfjs/images/secondaryToolbarButton-documentProperties.svg" with { type: "file" };
+import file240 from "../public/pdfjs/images/secondaryToolbarButton-firstPage.svg" with { type: "file" };
+import file241 from "../public/pdfjs/images/secondaryToolbarButton-handTool.svg" with { type: "file" };
+import file242 from "../public/pdfjs/images/secondaryToolbarButton-lastPage.svg" with { type: "file" };
+import file243 from "../public/pdfjs/images/secondaryToolbarButton-rotateCcw.svg" with { type: "file" };
+import file244 from "../public/pdfjs/images/secondaryToolbarButton-rotateCw.svg" with { type: "file" };
+import file245 from "../public/pdfjs/images/secondaryToolbarButton-scrollHorizontal.svg" with { type: "file" };
+import file246 from "../public/pdfjs/images/secondaryToolbarButton-scrollPage.svg" with { type: "file" };
+import file247 from "../public/pdfjs/images/secondaryToolbarButton-scrollVertical.svg" with { type: "file" };
+import file248 from "../public/pdfjs/images/secondaryToolbarButton-scrollWrapped.svg" with { type: "file" };
+import file249 from "../public/pdfjs/images/secondaryToolbarButton-selectTool.svg" with { type: "file" };
+import file250 from "../public/pdfjs/images/secondaryToolbarButton-spreadEven.svg" with { type: "file" };
+import file251 from "../public/pdfjs/images/secondaryToolbarButton-spreadNone.svg" with { type: "file" };
+import file252 from "../public/pdfjs/images/secondaryToolbarButton-spreadOdd.svg" with { type: "file" };
+import file253 from "../public/pdfjs/images/signature-properties-row-check.svg" with { type: "file" };
+import file254 from "../public/pdfjs/images/toolbarButton-bookmark.svg" with { type: "file" };
+import file255 from "../public/pdfjs/images/toolbarButton-currentOutlineItem.svg" with { type: "file" };
+import file256 from "../public/pdfjs/images/toolbarButton-download.svg" with { type: "file" };
+import file257 from "../public/pdfjs/images/toolbarButton-editorFreeText.svg" with { type: "file" };
+import file258 from "../public/pdfjs/images/toolbarButton-editorHighlight.svg" with { type: "file" };
+import file259 from "../public/pdfjs/images/toolbarButton-editorInk.svg" with { type: "file" };
+import file260 from "../public/pdfjs/images/toolbarButton-editorSignature.svg" with { type: "file" };
+import file261 from "../public/pdfjs/images/toolbarButton-editorStamp.svg" with { type: "file" };
+import file262 from "../public/pdfjs/images/toolbarButton-menuArrow.svg" with { type: "file" };
+import file263 from "../public/pdfjs/images/toolbarButton-menuArrowNova.svg" with { type: "file" };
+import file264 from "../public/pdfjs/images/toolbarButton-openFile.svg" with { type: "file" };
+import file265 from "../public/pdfjs/images/toolbarButton-pageDown.svg" with { type: "file" };
+import file266 from "../public/pdfjs/images/toolbarButton-pageUp.svg" with { type: "file" };
+import file267 from "../public/pdfjs/images/toolbarButton-presentationMode.svg" with { type: "file" };
+import file268 from "../public/pdfjs/images/toolbarButton-print.svg" with { type: "file" };
+import file269 from "../public/pdfjs/images/toolbarButton-search.svg" with { type: "file" };
+import file270 from "../public/pdfjs/images/toolbarButton-secondaryToolbarToggle.svg" with { type: "file" };
+import file271 from "../public/pdfjs/images/toolbarButton-signaturePropertiesError.svg" with { type: "file" };
+import file272 from "../public/pdfjs/images/toolbarButton-signaturePropertiesVerified.svg" with { type: "file" };
+import file273 from "../public/pdfjs/images/toolbarButton-viewAttachments.svg" with { type: "file" };
+import file274 from "../public/pdfjs/images/toolbarButton-viewLayers.svg" with { type: "file" };
+import file275 from "../public/pdfjs/images/toolbarButton-viewOutline.svg" with { type: "file" };
+import file276 from "../public/pdfjs/images/toolbarButton-viewThumbnail.svg" with { type: "file" };
+import file277 from "../public/pdfjs/images/toolbarButton-viewsManagerToggle.svg" with { type: "file" };
+import file278 from "../public/pdfjs/images/toolbarButton-zoomIn.svg" with { type: "file" };
+import file279 from "../public/pdfjs/images/toolbarButton-zoomOut.svg" with { type: "file" };
+import file280 from "../public/pdfjs/images/treeitem-collapsed.svg" with { type: "file" };
+import file281 from "../public/pdfjs/images/treeitem-expanded.svg" with { type: "file" };
+import file282 from "../public/pdfjs/pdf.mjs" with { type: "file" };
+import file283 from "../public/pdfjs/pdf.worker.mjs" with { type: "file" };
+import file284 from "../public/pdfjs/pdf_viewer.css" with { type: "file" };
+import file285 from "../public/pdfjs/pdf_viewer.mjs" with { type: "file" };
+import file286 from "../public/pdfjs/standard_fonts/FoxitDingbats.pfb" with { type: "file" };
+import file287 from "../public/pdfjs/standard_fonts/FoxitFixed.pfb" with { type: "file" };
+import file288 from "../public/pdfjs/standard_fonts/FoxitFixedBold.pfb" with { type: "file" };
+import file289 from "../public/pdfjs/standard_fonts/FoxitFixedBoldItalic.pfb" with { type: "file" };
+import file290 from "../public/pdfjs/standard_fonts/FoxitFixedItalic.pfb" with { type: "file" };
+import file291 from "../public/pdfjs/standard_fonts/FoxitSerif.pfb" with { type: "file" };
+import file292 from "../public/pdfjs/standard_fonts/FoxitSerifBold.pfb" with { type: "file" };
+import file293 from "../public/pdfjs/standard_fonts/FoxitSerifBoldItalic.pfb" with { type: "file" };
+import file294 from "../public/pdfjs/standard_fonts/FoxitSerifItalic.pfb" with { type: "file" };
+import file295 from "../public/pdfjs/standard_fonts/FoxitSymbol.pfb" with { type: "file" };
+import file296 from "../public/pdfjs/standard_fonts/LICENSE_FOXIT" with { type: "file" };
+import file297 from "../public/pdfjs/standard_fonts/LICENSE_LIBERATION" with { type: "file" };
+import file298 from "../public/pdfjs/standard_fonts/LiberationSans-Bold.ttf" with { type: "file" };
+import file299 from "../public/pdfjs/standard_fonts/LiberationSans-BoldItalic.ttf" with { type: "file" };
+import file300 from "../public/pdfjs/standard_fonts/LiberationSans-Italic.ttf" with { type: "file" };
+import file301 from "../public/pdfjs/standard_fonts/LiberationSans-Regular.ttf" with { type: "file" };
+import file302 from "../public/pdfjs/wasm/LICENSE_JBIG2" with { type: "file" };
+import file303 from "../public/pdfjs/wasm/LICENSE_OPENJPEG" with { type: "file" };
+import file304 from "../public/pdfjs/wasm/LICENSE_PDFJS_JBIG2" with { type: "file" };
+import file305 from "../public/pdfjs/wasm/LICENSE_PDFJS_OPENJPEG" with { type: "file" };
+import file306 from "../public/pdfjs/wasm/LICENSE_PDFJS_QCMS" with { type: "file" };
+import file307 from "../public/pdfjs/wasm/LICENSE_QCMS" with { type: "file" };
+import file308 from "../public/pdfjs/wasm/jbig2.wasm" with { type: "file" };
+import file309 from "../public/pdfjs/wasm/jbig2_nowasm_fallback.js" with { type: "file" };
+import file310 from "../public/pdfjs/wasm/openjpeg.wasm" with { type: "file" };
+import file311 from "../public/pdfjs/wasm/openjpeg_nowasm_fallback.js" with { type: "file" };
+import file312 from "../public/pdfjs/wasm/qcms_bg.wasm" with { type: "file" };
+import file313 from "../public/pdfjs/wasm/quickjs-eval.js" with { type: "file" };
+import file314 from "../public/pdfjs/wasm/quickjs-eval.wasm" with { type: "file" };
+import file315 from "../public/pipa-logo.svg" with { type: "file" };
 
 export const embeddedRuntimeFiles = [
   { source: file0, target: "drizzle/0000_mushy_the_call.sql" },
@@ -58,5 +346,293 @@ export const embeddedRuntimeFiles = [
   { source: file24, target: "src/public/app.css" },
   { source: file25, target: "src/public/app.js" },
   { source: file26, target: "src/public/htmx.min.js" },
-  { source: file27, target: "src/public/pipa-logo.svg" },
+  { source: file27, target: "src/public/pdf-preview.mjs" },
+  { source: file28, target: "src/public/pdfjs/LICENSE" },
+  { source: file29, target: "src/public/pdfjs/cmaps/78-EUC-H.bcmap" },
+  { source: file30, target: "src/public/pdfjs/cmaps/78-EUC-V.bcmap" },
+  { source: file31, target: "src/public/pdfjs/cmaps/78-H.bcmap" },
+  { source: file32, target: "src/public/pdfjs/cmaps/78-RKSJ-H.bcmap" },
+  { source: file33, target: "src/public/pdfjs/cmaps/78-RKSJ-V.bcmap" },
+  { source: file34, target: "src/public/pdfjs/cmaps/78-V.bcmap" },
+  { source: file35, target: "src/public/pdfjs/cmaps/78ms-RKSJ-H.bcmap" },
+  { source: file36, target: "src/public/pdfjs/cmaps/78ms-RKSJ-V.bcmap" },
+  { source: file37, target: "src/public/pdfjs/cmaps/83pv-RKSJ-H.bcmap" },
+  { source: file38, target: "src/public/pdfjs/cmaps/90ms-RKSJ-H.bcmap" },
+  { source: file39, target: "src/public/pdfjs/cmaps/90ms-RKSJ-V.bcmap" },
+  { source: file40, target: "src/public/pdfjs/cmaps/90msp-RKSJ-H.bcmap" },
+  { source: file41, target: "src/public/pdfjs/cmaps/90msp-RKSJ-V.bcmap" },
+  { source: file42, target: "src/public/pdfjs/cmaps/90pv-RKSJ-H.bcmap" },
+  { source: file43, target: "src/public/pdfjs/cmaps/90pv-RKSJ-V.bcmap" },
+  { source: file44, target: "src/public/pdfjs/cmaps/Add-H.bcmap" },
+  { source: file45, target: "src/public/pdfjs/cmaps/Add-RKSJ-H.bcmap" },
+  { source: file46, target: "src/public/pdfjs/cmaps/Add-RKSJ-V.bcmap" },
+  { source: file47, target: "src/public/pdfjs/cmaps/Add-V.bcmap" },
+  { source: file48, target: "src/public/pdfjs/cmaps/Adobe-CNS1-0.bcmap" },
+  { source: file49, target: "src/public/pdfjs/cmaps/Adobe-CNS1-1.bcmap" },
+  { source: file50, target: "src/public/pdfjs/cmaps/Adobe-CNS1-2.bcmap" },
+  { source: file51, target: "src/public/pdfjs/cmaps/Adobe-CNS1-3.bcmap" },
+  { source: file52, target: "src/public/pdfjs/cmaps/Adobe-CNS1-4.bcmap" },
+  { source: file53, target: "src/public/pdfjs/cmaps/Adobe-CNS1-5.bcmap" },
+  { source: file54, target: "src/public/pdfjs/cmaps/Adobe-CNS1-6.bcmap" },
+  { source: file55, target: "src/public/pdfjs/cmaps/Adobe-CNS1-UCS2.bcmap" },
+  { source: file56, target: "src/public/pdfjs/cmaps/Adobe-GB1-0.bcmap" },
+  { source: file57, target: "src/public/pdfjs/cmaps/Adobe-GB1-1.bcmap" },
+  { source: file58, target: "src/public/pdfjs/cmaps/Adobe-GB1-2.bcmap" },
+  { source: file59, target: "src/public/pdfjs/cmaps/Adobe-GB1-3.bcmap" },
+  { source: file60, target: "src/public/pdfjs/cmaps/Adobe-GB1-4.bcmap" },
+  { source: file61, target: "src/public/pdfjs/cmaps/Adobe-GB1-5.bcmap" },
+  { source: file62, target: "src/public/pdfjs/cmaps/Adobe-GB1-UCS2.bcmap" },
+  { source: file63, target: "src/public/pdfjs/cmaps/Adobe-Japan1-0.bcmap" },
+  { source: file64, target: "src/public/pdfjs/cmaps/Adobe-Japan1-1.bcmap" },
+  { source: file65, target: "src/public/pdfjs/cmaps/Adobe-Japan1-2.bcmap" },
+  { source: file66, target: "src/public/pdfjs/cmaps/Adobe-Japan1-3.bcmap" },
+  { source: file67, target: "src/public/pdfjs/cmaps/Adobe-Japan1-4.bcmap" },
+  { source: file68, target: "src/public/pdfjs/cmaps/Adobe-Japan1-5.bcmap" },
+  { source: file69, target: "src/public/pdfjs/cmaps/Adobe-Japan1-6.bcmap" },
+  { source: file70, target: "src/public/pdfjs/cmaps/Adobe-Japan1-UCS2.bcmap" },
+  { source: file71, target: "src/public/pdfjs/cmaps/Adobe-Korea1-0.bcmap" },
+  { source: file72, target: "src/public/pdfjs/cmaps/Adobe-Korea1-1.bcmap" },
+  { source: file73, target: "src/public/pdfjs/cmaps/Adobe-Korea1-2.bcmap" },
+  { source: file74, target: "src/public/pdfjs/cmaps/Adobe-Korea1-UCS2.bcmap" },
+  { source: file75, target: "src/public/pdfjs/cmaps/B5-H.bcmap" },
+  { source: file76, target: "src/public/pdfjs/cmaps/B5-V.bcmap" },
+  { source: file77, target: "src/public/pdfjs/cmaps/B5pc-H.bcmap" },
+  { source: file78, target: "src/public/pdfjs/cmaps/B5pc-V.bcmap" },
+  { source: file79, target: "src/public/pdfjs/cmaps/CNS-EUC-H.bcmap" },
+  { source: file80, target: "src/public/pdfjs/cmaps/CNS-EUC-V.bcmap" },
+  { source: file81, target: "src/public/pdfjs/cmaps/CNS1-H.bcmap" },
+  { source: file82, target: "src/public/pdfjs/cmaps/CNS1-V.bcmap" },
+  { source: file83, target: "src/public/pdfjs/cmaps/CNS2-H.bcmap" },
+  { source: file84, target: "src/public/pdfjs/cmaps/CNS2-V.bcmap" },
+  { source: file85, target: "src/public/pdfjs/cmaps/ETHK-B5-H.bcmap" },
+  { source: file86, target: "src/public/pdfjs/cmaps/ETHK-B5-V.bcmap" },
+  { source: file87, target: "src/public/pdfjs/cmaps/ETen-B5-H.bcmap" },
+  { source: file88, target: "src/public/pdfjs/cmaps/ETen-B5-V.bcmap" },
+  { source: file89, target: "src/public/pdfjs/cmaps/ETenms-B5-H.bcmap" },
+  { source: file90, target: "src/public/pdfjs/cmaps/ETenms-B5-V.bcmap" },
+  { source: file91, target: "src/public/pdfjs/cmaps/EUC-H.bcmap" },
+  { source: file92, target: "src/public/pdfjs/cmaps/EUC-V.bcmap" },
+  { source: file93, target: "src/public/pdfjs/cmaps/Ext-H.bcmap" },
+  { source: file94, target: "src/public/pdfjs/cmaps/Ext-RKSJ-H.bcmap" },
+  { source: file95, target: "src/public/pdfjs/cmaps/Ext-RKSJ-V.bcmap" },
+  { source: file96, target: "src/public/pdfjs/cmaps/Ext-V.bcmap" },
+  { source: file97, target: "src/public/pdfjs/cmaps/GB-EUC-H.bcmap" },
+  { source: file98, target: "src/public/pdfjs/cmaps/GB-EUC-V.bcmap" },
+  { source: file99, target: "src/public/pdfjs/cmaps/GB-H.bcmap" },
+  { source: file100, target: "src/public/pdfjs/cmaps/GB-V.bcmap" },
+  { source: file101, target: "src/public/pdfjs/cmaps/GBK-EUC-H.bcmap" },
+  { source: file102, target: "src/public/pdfjs/cmaps/GBK-EUC-V.bcmap" },
+  { source: file103, target: "src/public/pdfjs/cmaps/GBK2K-H.bcmap" },
+  { source: file104, target: "src/public/pdfjs/cmaps/GBK2K-V.bcmap" },
+  { source: file105, target: "src/public/pdfjs/cmaps/GBKp-EUC-H.bcmap" },
+  { source: file106, target: "src/public/pdfjs/cmaps/GBKp-EUC-V.bcmap" },
+  { source: file107, target: "src/public/pdfjs/cmaps/GBT-EUC-H.bcmap" },
+  { source: file108, target: "src/public/pdfjs/cmaps/GBT-EUC-V.bcmap" },
+  { source: file109, target: "src/public/pdfjs/cmaps/GBT-H.bcmap" },
+  { source: file110, target: "src/public/pdfjs/cmaps/GBT-V.bcmap" },
+  { source: file111, target: "src/public/pdfjs/cmaps/GBTpc-EUC-H.bcmap" },
+  { source: file112, target: "src/public/pdfjs/cmaps/GBTpc-EUC-V.bcmap" },
+  { source: file113, target: "src/public/pdfjs/cmaps/GBpc-EUC-H.bcmap" },
+  { source: file114, target: "src/public/pdfjs/cmaps/GBpc-EUC-V.bcmap" },
+  { source: file115, target: "src/public/pdfjs/cmaps/H.bcmap" },
+  { source: file116, target: "src/public/pdfjs/cmaps/HKdla-B5-H.bcmap" },
+  { source: file117, target: "src/public/pdfjs/cmaps/HKdla-B5-V.bcmap" },
+  { source: file118, target: "src/public/pdfjs/cmaps/HKdlb-B5-H.bcmap" },
+  { source: file119, target: "src/public/pdfjs/cmaps/HKdlb-B5-V.bcmap" },
+  { source: file120, target: "src/public/pdfjs/cmaps/HKgccs-B5-H.bcmap" },
+  { source: file121, target: "src/public/pdfjs/cmaps/HKgccs-B5-V.bcmap" },
+  { source: file122, target: "src/public/pdfjs/cmaps/HKm314-B5-H.bcmap" },
+  { source: file123, target: "src/public/pdfjs/cmaps/HKm314-B5-V.bcmap" },
+  { source: file124, target: "src/public/pdfjs/cmaps/HKm471-B5-H.bcmap" },
+  { source: file125, target: "src/public/pdfjs/cmaps/HKm471-B5-V.bcmap" },
+  { source: file126, target: "src/public/pdfjs/cmaps/HKscs-B5-H.bcmap" },
+  { source: file127, target: "src/public/pdfjs/cmaps/HKscs-B5-V.bcmap" },
+  { source: file128, target: "src/public/pdfjs/cmaps/Hankaku.bcmap" },
+  { source: file129, target: "src/public/pdfjs/cmaps/Hiragana.bcmap" },
+  { source: file130, target: "src/public/pdfjs/cmaps/KSC-EUC-H.bcmap" },
+  { source: file131, target: "src/public/pdfjs/cmaps/KSC-EUC-V.bcmap" },
+  { source: file132, target: "src/public/pdfjs/cmaps/KSC-H.bcmap" },
+  { source: file133, target: "src/public/pdfjs/cmaps/KSC-Johab-H.bcmap" },
+  { source: file134, target: "src/public/pdfjs/cmaps/KSC-Johab-V.bcmap" },
+  { source: file135, target: "src/public/pdfjs/cmaps/KSC-V.bcmap" },
+  { source: file136, target: "src/public/pdfjs/cmaps/KSCms-UHC-H.bcmap" },
+  { source: file137, target: "src/public/pdfjs/cmaps/KSCms-UHC-HW-H.bcmap" },
+  { source: file138, target: "src/public/pdfjs/cmaps/KSCms-UHC-HW-V.bcmap" },
+  { source: file139, target: "src/public/pdfjs/cmaps/KSCms-UHC-V.bcmap" },
+  { source: file140, target: "src/public/pdfjs/cmaps/KSCpc-EUC-H.bcmap" },
+  { source: file141, target: "src/public/pdfjs/cmaps/KSCpc-EUC-V.bcmap" },
+  { source: file142, target: "src/public/pdfjs/cmaps/Katakana.bcmap" },
+  { source: file143, target: "src/public/pdfjs/cmaps/LICENSE" },
+  { source: file144, target: "src/public/pdfjs/cmaps/NWP-H.bcmap" },
+  { source: file145, target: "src/public/pdfjs/cmaps/NWP-V.bcmap" },
+  { source: file146, target: "src/public/pdfjs/cmaps/RKSJ-H.bcmap" },
+  { source: file147, target: "src/public/pdfjs/cmaps/RKSJ-V.bcmap" },
+  { source: file148, target: "src/public/pdfjs/cmaps/Roman.bcmap" },
+  { source: file149, target: "src/public/pdfjs/cmaps/UniCNS-UCS2-H.bcmap" },
+  { source: file150, target: "src/public/pdfjs/cmaps/UniCNS-UCS2-V.bcmap" },
+  { source: file151, target: "src/public/pdfjs/cmaps/UniCNS-UTF16-H.bcmap" },
+  { source: file152, target: "src/public/pdfjs/cmaps/UniCNS-UTF16-V.bcmap" },
+  { source: file153, target: "src/public/pdfjs/cmaps/UniCNS-UTF32-H.bcmap" },
+  { source: file154, target: "src/public/pdfjs/cmaps/UniCNS-UTF32-V.bcmap" },
+  { source: file155, target: "src/public/pdfjs/cmaps/UniCNS-UTF8-H.bcmap" },
+  { source: file156, target: "src/public/pdfjs/cmaps/UniCNS-UTF8-V.bcmap" },
+  { source: file157, target: "src/public/pdfjs/cmaps/UniGB-UCS2-H.bcmap" },
+  { source: file158, target: "src/public/pdfjs/cmaps/UniGB-UCS2-V.bcmap" },
+  { source: file159, target: "src/public/pdfjs/cmaps/UniGB-UTF16-H.bcmap" },
+  { source: file160, target: "src/public/pdfjs/cmaps/UniGB-UTF16-V.bcmap" },
+  { source: file161, target: "src/public/pdfjs/cmaps/UniGB-UTF32-H.bcmap" },
+  { source: file162, target: "src/public/pdfjs/cmaps/UniGB-UTF32-V.bcmap" },
+  { source: file163, target: "src/public/pdfjs/cmaps/UniGB-UTF8-H.bcmap" },
+  { source: file164, target: "src/public/pdfjs/cmaps/UniGB-UTF8-V.bcmap" },
+  { source: file165, target: "src/public/pdfjs/cmaps/UniJIS-UCS2-H.bcmap" },
+  { source: file166, target: "src/public/pdfjs/cmaps/UniJIS-UCS2-HW-H.bcmap" },
+  { source: file167, target: "src/public/pdfjs/cmaps/UniJIS-UCS2-HW-V.bcmap" },
+  { source: file168, target: "src/public/pdfjs/cmaps/UniJIS-UCS2-V.bcmap" },
+  { source: file169, target: "src/public/pdfjs/cmaps/UniJIS-UTF16-H.bcmap" },
+  { source: file170, target: "src/public/pdfjs/cmaps/UniJIS-UTF16-V.bcmap" },
+  { source: file171, target: "src/public/pdfjs/cmaps/UniJIS-UTF32-H.bcmap" },
+  { source: file172, target: "src/public/pdfjs/cmaps/UniJIS-UTF32-V.bcmap" },
+  { source: file173, target: "src/public/pdfjs/cmaps/UniJIS-UTF8-H.bcmap" },
+  { source: file174, target: "src/public/pdfjs/cmaps/UniJIS-UTF8-V.bcmap" },
+  { source: file175, target: "src/public/pdfjs/cmaps/UniJIS2004-UTF16-H.bcmap" },
+  { source: file176, target: "src/public/pdfjs/cmaps/UniJIS2004-UTF16-V.bcmap" },
+  { source: file177, target: "src/public/pdfjs/cmaps/UniJIS2004-UTF32-H.bcmap" },
+  { source: file178, target: "src/public/pdfjs/cmaps/UniJIS2004-UTF32-V.bcmap" },
+  { source: file179, target: "src/public/pdfjs/cmaps/UniJIS2004-UTF8-H.bcmap" },
+  { source: file180, target: "src/public/pdfjs/cmaps/UniJIS2004-UTF8-V.bcmap" },
+  { source: file181, target: "src/public/pdfjs/cmaps/UniJISPro-UCS2-HW-V.bcmap" },
+  { source: file182, target: "src/public/pdfjs/cmaps/UniJISPro-UCS2-V.bcmap" },
+  { source: file183, target: "src/public/pdfjs/cmaps/UniJISPro-UTF8-V.bcmap" },
+  { source: file184, target: "src/public/pdfjs/cmaps/UniJISX0213-UTF32-H.bcmap" },
+  { source: file185, target: "src/public/pdfjs/cmaps/UniJISX0213-UTF32-V.bcmap" },
+  { source: file186, target: "src/public/pdfjs/cmaps/UniJISX02132004-UTF32-H.bcmap" },
+  { source: file187, target: "src/public/pdfjs/cmaps/UniJISX02132004-UTF32-V.bcmap" },
+  { source: file188, target: "src/public/pdfjs/cmaps/UniKS-UCS2-H.bcmap" },
+  { source: file189, target: "src/public/pdfjs/cmaps/UniKS-UCS2-V.bcmap" },
+  { source: file190, target: "src/public/pdfjs/cmaps/UniKS-UTF16-H.bcmap" },
+  { source: file191, target: "src/public/pdfjs/cmaps/UniKS-UTF16-V.bcmap" },
+  { source: file192, target: "src/public/pdfjs/cmaps/UniKS-UTF32-H.bcmap" },
+  { source: file193, target: "src/public/pdfjs/cmaps/UniKS-UTF32-V.bcmap" },
+  { source: file194, target: "src/public/pdfjs/cmaps/UniKS-UTF8-H.bcmap" },
+  { source: file195, target: "src/public/pdfjs/cmaps/UniKS-UTF8-V.bcmap" },
+  { source: file196, target: "src/public/pdfjs/cmaps/V.bcmap" },
+  { source: file197, target: "src/public/pdfjs/cmaps/WP-Symbol.bcmap" },
+  { source: file198, target: "src/public/pdfjs/iccs/CGATS001Compat-v2-micro.icc" },
+  { source: file199, target: "src/public/pdfjs/iccs/LICENSE" },
+  { source: file200, target: "src/public/pdfjs/images/altText_add.svg" },
+  { source: file201, target: "src/public/pdfjs/images/altText_disclaimer.svg" },
+  { source: file202, target: "src/public/pdfjs/images/altText_done.svg" },
+  { source: file203, target: "src/public/pdfjs/images/altText_spinner.svg" },
+  { source: file204, target: "src/public/pdfjs/images/altText_warning.svg" },
+  { source: file205, target: "src/public/pdfjs/images/annotation-check.svg" },
+  { source: file206, target: "src/public/pdfjs/images/annotation-comment.svg" },
+  { source: file207, target: "src/public/pdfjs/images/annotation-help.svg" },
+  { source: file208, target: "src/public/pdfjs/images/annotation-insert.svg" },
+  { source: file209, target: "src/public/pdfjs/images/annotation-key.svg" },
+  { source: file210, target: "src/public/pdfjs/images/annotation-newparagraph.svg" },
+  { source: file211, target: "src/public/pdfjs/images/annotation-noicon.svg" },
+  { source: file212, target: "src/public/pdfjs/images/annotation-note.svg" },
+  { source: file213, target: "src/public/pdfjs/images/annotation-paperclip.svg" },
+  { source: file214, target: "src/public/pdfjs/images/annotation-paragraph.svg" },
+  { source: file215, target: "src/public/pdfjs/images/annotation-pushpin.svg" },
+  { source: file216, target: "src/public/pdfjs/images/checkmark.svg" },
+  { source: file217, target: "src/public/pdfjs/images/comment-actionsButton.svg" },
+  { source: file218, target: "src/public/pdfjs/images/comment-closeButton.svg" },
+  { source: file219, target: "src/public/pdfjs/images/comment-editButton.svg" },
+  { source: file220, target: "src/public/pdfjs/images/comment-popup-editButton.svg" },
+  { source: file221, target: "src/public/pdfjs/images/cursor-editorFreeHighlight.svg" },
+  { source: file222, target: "src/public/pdfjs/images/cursor-editorFreeText.svg" },
+  { source: file223, target: "src/public/pdfjs/images/cursor-editorInk.svg" },
+  { source: file224, target: "src/public/pdfjs/images/cursor-editorTextHighlight.svg" },
+  { source: file225, target: "src/public/pdfjs/images/editor-toolbar-delete.svg" },
+  { source: file226, target: "src/public/pdfjs/images/editor-toolbar-edit.svg" },
+  { source: file227, target: "src/public/pdfjs/images/findbarButton-next.svg" },
+  { source: file228, target: "src/public/pdfjs/images/findbarButton-previous.svg" },
+  { source: file229, target: "src/public/pdfjs/images/gv-toolbarButton-download.svg" },
+  { source: file230, target: "src/public/pdfjs/images/loading-icon.gif" },
+  { source: file231, target: "src/public/pdfjs/images/loading.svg" },
+  { source: file232, target: "src/public/pdfjs/images/messageBar_closingButton.svg" },
+  { source: file233, target: "src/public/pdfjs/images/messageBar_info.svg" },
+  { source: file234, target: "src/public/pdfjs/images/messageBar_warning.svg" },
+  { source: file235, target: "src/public/pdfjs/images/pages_closeButton.svg" },
+  { source: file236, target: "src/public/pdfjs/images/pages_selected.svg" },
+  { source: file237, target: "src/public/pdfjs/images/pages_viewArrow.svg" },
+  { source: file238, target: "src/public/pdfjs/images/pages_viewButton.svg" },
+  { source: file239, target: "src/public/pdfjs/images/secondaryToolbarButton-documentProperties.svg" },
+  { source: file240, target: "src/public/pdfjs/images/secondaryToolbarButton-firstPage.svg" },
+  { source: file241, target: "src/public/pdfjs/images/secondaryToolbarButton-handTool.svg" },
+  { source: file242, target: "src/public/pdfjs/images/secondaryToolbarButton-lastPage.svg" },
+  { source: file243, target: "src/public/pdfjs/images/secondaryToolbarButton-rotateCcw.svg" },
+  { source: file244, target: "src/public/pdfjs/images/secondaryToolbarButton-rotateCw.svg" },
+  { source: file245, target: "src/public/pdfjs/images/secondaryToolbarButton-scrollHorizontal.svg" },
+  { source: file246, target: "src/public/pdfjs/images/secondaryToolbarButton-scrollPage.svg" },
+  { source: file247, target: "src/public/pdfjs/images/secondaryToolbarButton-scrollVertical.svg" },
+  { source: file248, target: "src/public/pdfjs/images/secondaryToolbarButton-scrollWrapped.svg" },
+  { source: file249, target: "src/public/pdfjs/images/secondaryToolbarButton-selectTool.svg" },
+  { source: file250, target: "src/public/pdfjs/images/secondaryToolbarButton-spreadEven.svg" },
+  { source: file251, target: "src/public/pdfjs/images/secondaryToolbarButton-spreadNone.svg" },
+  { source: file252, target: "src/public/pdfjs/images/secondaryToolbarButton-spreadOdd.svg" },
+  { source: file253, target: "src/public/pdfjs/images/signature-properties-row-check.svg" },
+  { source: file254, target: "src/public/pdfjs/images/toolbarButton-bookmark.svg" },
+  { source: file255, target: "src/public/pdfjs/images/toolbarButton-currentOutlineItem.svg" },
+  { source: file256, target: "src/public/pdfjs/images/toolbarButton-download.svg" },
+  { source: file257, target: "src/public/pdfjs/images/toolbarButton-editorFreeText.svg" },
+  { source: file258, target: "src/public/pdfjs/images/toolbarButton-editorHighlight.svg" },
+  { source: file259, target: "src/public/pdfjs/images/toolbarButton-editorInk.svg" },
+  { source: file260, target: "src/public/pdfjs/images/toolbarButton-editorSignature.svg" },
+  { source: file261, target: "src/public/pdfjs/images/toolbarButton-editorStamp.svg" },
+  { source: file262, target: "src/public/pdfjs/images/toolbarButton-menuArrow.svg" },
+  { source: file263, target: "src/public/pdfjs/images/toolbarButton-menuArrowNova.svg" },
+  { source: file264, target: "src/public/pdfjs/images/toolbarButton-openFile.svg" },
+  { source: file265, target: "src/public/pdfjs/images/toolbarButton-pageDown.svg" },
+  { source: file266, target: "src/public/pdfjs/images/toolbarButton-pageUp.svg" },
+  { source: file267, target: "src/public/pdfjs/images/toolbarButton-presentationMode.svg" },
+  { source: file268, target: "src/public/pdfjs/images/toolbarButton-print.svg" },
+  { source: file269, target: "src/public/pdfjs/images/toolbarButton-search.svg" },
+  { source: file270, target: "src/public/pdfjs/images/toolbarButton-secondaryToolbarToggle.svg" },
+  { source: file271, target: "src/public/pdfjs/images/toolbarButton-signaturePropertiesError.svg" },
+  { source: file272, target: "src/public/pdfjs/images/toolbarButton-signaturePropertiesVerified.svg" },
+  { source: file273, target: "src/public/pdfjs/images/toolbarButton-viewAttachments.svg" },
+  { source: file274, target: "src/public/pdfjs/images/toolbarButton-viewLayers.svg" },
+  { source: file275, target: "src/public/pdfjs/images/toolbarButton-viewOutline.svg" },
+  { source: file276, target: "src/public/pdfjs/images/toolbarButton-viewThumbnail.svg" },
+  { source: file277, target: "src/public/pdfjs/images/toolbarButton-viewsManagerToggle.svg" },
+  { source: file278, target: "src/public/pdfjs/images/toolbarButton-zoomIn.svg" },
+  { source: file279, target: "src/public/pdfjs/images/toolbarButton-zoomOut.svg" },
+  { source: file280, target: "src/public/pdfjs/images/treeitem-collapsed.svg" },
+  { source: file281, target: "src/public/pdfjs/images/treeitem-expanded.svg" },
+  { source: file282, target: "src/public/pdfjs/pdf.mjs" },
+  { source: file283, target: "src/public/pdfjs/pdf.worker.mjs" },
+  { source: file284, target: "src/public/pdfjs/pdf_viewer.css" },
+  { source: file285, target: "src/public/pdfjs/pdf_viewer.mjs" },
+  { source: file286, target: "src/public/pdfjs/standard_fonts/FoxitDingbats.pfb" },
+  { source: file287, target: "src/public/pdfjs/standard_fonts/FoxitFixed.pfb" },
+  { source: file288, target: "src/public/pdfjs/standard_fonts/FoxitFixedBold.pfb" },
+  { source: file289, target: "src/public/pdfjs/standard_fonts/FoxitFixedBoldItalic.pfb" },
+  { source: file290, target: "src/public/pdfjs/standard_fonts/FoxitFixedItalic.pfb" },
+  { source: file291, target: "src/public/pdfjs/standard_fonts/FoxitSerif.pfb" },
+  { source: file292, target: "src/public/pdfjs/standard_fonts/FoxitSerifBold.pfb" },
+  { source: file293, target: "src/public/pdfjs/standard_fonts/FoxitSerifBoldItalic.pfb" },
+  { source: file294, target: "src/public/pdfjs/standard_fonts/FoxitSerifItalic.pfb" },
+  { source: file295, target: "src/public/pdfjs/standard_fonts/FoxitSymbol.pfb" },
+  { source: file296, target: "src/public/pdfjs/standard_fonts/LICENSE_FOXIT" },
+  { source: file297, target: "src/public/pdfjs/standard_fonts/LICENSE_LIBERATION" },
+  { source: file298, target: "src/public/pdfjs/standard_fonts/LiberationSans-Bold.ttf" },
+  { source: file299, target: "src/public/pdfjs/standard_fonts/LiberationSans-BoldItalic.ttf" },
+  { source: file300, target: "src/public/pdfjs/standard_fonts/LiberationSans-Italic.ttf" },
+  { source: file301, target: "src/public/pdfjs/standard_fonts/LiberationSans-Regular.ttf" },
+  { source: file302, target: "src/public/pdfjs/wasm/LICENSE_JBIG2" },
+  { source: file303, target: "src/public/pdfjs/wasm/LICENSE_OPENJPEG" },
+  { source: file304, target: "src/public/pdfjs/wasm/LICENSE_PDFJS_JBIG2" },
+  { source: file305, target: "src/public/pdfjs/wasm/LICENSE_PDFJS_OPENJPEG" },
+  { source: file306, target: "src/public/pdfjs/wasm/LICENSE_PDFJS_QCMS" },
+  { source: file307, target: "src/public/pdfjs/wasm/LICENSE_QCMS" },
+  { source: file308, target: "src/public/pdfjs/wasm/jbig2.wasm" },
+  { source: file309, target: "src/public/pdfjs/wasm/jbig2_nowasm_fallback.js" },
+  { source: file310, target: "src/public/pdfjs/wasm/openjpeg.wasm" },
+  { source: file311, target: "src/public/pdfjs/wasm/openjpeg_nowasm_fallback.js" },
+  { source: file312, target: "src/public/pdfjs/wasm/qcms_bg.wasm" },
+  { source: file313, target: "src/public/pdfjs/wasm/quickjs-eval.js" },
+  { source: file314, target: "src/public/pdfjs/wasm/quickjs-eval.wasm" },
+  { source: file315, target: "src/public/pipa-logo.svg" },
 ] as const;

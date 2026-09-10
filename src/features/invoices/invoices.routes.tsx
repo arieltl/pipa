@@ -236,7 +236,7 @@ invoicesRoutes.get("/:id", async (c) => {
 
 invoicesRoutes.get("/:id/edit", (c) => {
   const detail = detailFromParam(c.req.param("id")); if (!detail) return c.notFound();
-  return c.render(<div><PageHeader title={`Edit ${detail.invoice.number}`} description={`${detail.client.name} · one editing session`} actions={<a href={`/invoices/${detail.invoice.id}`} class="btn btn-ghost btn-sm">Review current invoice</a>}/><InvoiceWorkspaceEditor detail={detail}/></div>, { title: `Edit ${detail.invoice.number}` });
+  return c.render(<InvoiceWorkspaceEditor detail={detail}/>, { title: `Edit ${detail.invoice.number}` });
 });
 
 invoicesRoutes.post("/:id/edit-sessions", async (c) => {
