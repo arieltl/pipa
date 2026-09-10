@@ -42,7 +42,7 @@ Copy `.env.example` for local overrides. Important settings:
 | `PORT` | `3000` | HTTP port |
 | `INVOICE_HOST` | `127.0.0.1` directly; `0.0.0.0` inside Docker | Application listener; executable `--host` overrides it |
 | `INVOICE_BIND_ADDRESS` | `127.0.0.1` in Compose | Host interface for the published Docker port |
-| `INVOICE_IMAGE_TAG` | `0.3.0` in prebuilt Compose | Image tag to deploy |
+| `INVOICE_IMAGE_TAG` | `0.3.1` in prebuilt Compose | Image tag to deploy |
 | `DATA_DIR` | `./data` (dev), `/data` (Docker) | Persistent data root |
 | `DB_PATH` | `${DATA_DIR}/app.db` | SQLite database path |
 | `FILES_DIR` | `${DATA_DIR}/files` | Archived PDFs and uploaded files |
@@ -57,7 +57,7 @@ Compose still publishes on host loopback by default. For direct execution, the
 default listener is `127.0.0.1`; `--host 0.0.0.0` deliberately enables network
 access. These listener options apply to the current source, not older releases.
 
-When running Bun directly, DB/files/tmp defaults follow `DATA_DIR` unless overridden individually. Compose supplies its own container paths, including `/tmp` on tmpfs, and uses a read-only root filesystem. Set `INVOICE_IMAGE_TAG` to a published version when using `compose.yml`; its default is `0.3.0`. Building from source is optional for testing unreleased changes. Private images require authorized GHCR access; anonymous pull access must be verified at public launch.
+When running Bun directly, DB/files/tmp defaults follow `DATA_DIR` unless overridden individually. Compose supplies its own container paths, including `/tmp` on tmpfs, and uses a read-only root filesystem. Set `INVOICE_IMAGE_TAG` to a published version when using `compose.yml`; its default is `0.3.1`. Building from source is optional for testing unreleased changes. Private images require authorized GHCR access; anonymous pull access must be verified at public launch.
 
 HTTP requests are limited to 20 MiB and individual supporting-record attachments to 10 MiB. Declared MIME types are checked against each attachment category; files are not malware-scanned. Missing required attachments appear as an incomplete record and do not prevent issuing a commercial invoice. Browser mutations explicitly originating from another site are rejected; this is not authentication.
 

@@ -220,12 +220,12 @@
       const proposal = {
         invoice: { ...config.snapshot.invoice, notes: config.snapshot.invoice.notes || "" },
         items: config.snapshot.items.map((item) => ({ key: `id:${item.id}`, id: item.id, name: item.name, value: (item.value / 100).toFixed(2), source: item.source, notes: item.notes, removed: false })),
-        generatedTexts: textKeys.map((key) => ({ key, name: savedByKey[key]?.generatorName || generatorByKey[key]?.name || key, sourceSnapshot: savedByKey[key]?.sourceSnapshot || generatorByKey[key]?.source || "", content: savedByKey[key]?.content ?? "", candidate: null, undo: null })),
+        generatedTexts: textKeys.map((key) => ({ key, name: savedByKey[key]?.generatorName || generatorByKey[key]?.name || key, sourceSnapshot: savedByKey[key]?.sourceSnapshot ?? generatorByKey[key]?.source ?? "", content: savedByKey[key]?.content ?? "", candidate: savedByKey[key] ? null : config.textPreviews?.find(text => text.generatorKey === key && !text.error)?.content ?? null, error: config.textPreviews?.find(text => text.generatorKey === key)?.error ?? null, undo: null })),
         records: config.snapshot.records.filter((record) => !record.removedAt).map((record) => ({ key: `id:${record.id}`, id: record.id, name: record.recordTypeName, purpose:record.purpose, recordTypeId: record.recordTypeId, definitions: JSON.parse(record.definitionsSnapshotJson), values: structuredClone(record.values), baseValues: structuredClone(record.values), attachments: structuredClone(record.attachments || []), removed: false, files: [] })),
         legacy: { values: Object.fromEntries([["nfNumber", "nfNumber"], ["issueDate", "issueDate"], ["verificationCode", "verificationCode"], ["publicUrl", "publicUrl"], ["notes", "notes"]].map(([local, saved]) => [local, config.snapshot.legacy?.[saved] ?? null])), baseValues: Object.fromEntries([["nfNumber", "nfNumber"], ["issueDate", "issueDate"], ["verificationCode", "verificationCode"], ["publicUrl", "publicUrl"], ["notes", "notes"]].map(([local, saved]) => [local, config.snapshot.legacy?.[saved] ?? null])), files: structuredClone(config.legacyFiles || []) },
         refreshParties: false,
       };
-      const comparable = (value) => JSON.stringify(value, (key, item) => ["candidate", "undo", "files"].includes(key) ? undefined : item);
+      const comparable = (value) => JSON.stringify(value, (key, item) => ["candidate", "undo", "files", "error"].includes(key) ? undefined : item);
       return {
         config, proposal, baseSnapshot: structuredClone(config.snapshot), baseComparable: comparable(proposal), section: "document", newRecordTypeId: String(config.snapshot.availableRecordTypes[0]?.id || ""), ready: false,
         editableDirty: false, unresolved: false, retainedDocumentProposal: null,
@@ -257,7 +257,19 @@
         removeAttachment(record,saved) { if(this.unresolved)return;saved.pendingRemoval=true;this.markDirty(); },
         undoRecord(record) { record.removed=false;this.markDirty(); },
         legacyEffective(field) { const aliases={nfNumber:"number",issueDate:"issue_date",verificationCode:"verification_code",publicUrl:"public_url",notes:"notes"}; const value=this.proposal.legacy.values[field]; if(value!==null)return value === "" ? "Empty value will be shown" : value; const record=this.proposal.records.find((item)=>!item.removed&&item.purpose==="nfse"); const fallback=record?.values?.[aliases[field]]; return fallback === undefined || fallback === "" ? "No configured record fallback" : `Configured record: ${fallback}`; },
-        async generateCandidate(text) { if(this.unresolved)return;const sequence=++this.candidateSequence;const inputDigest=await this.digest({key:text.key,proposal:this.proposal});try{const result=await this.request(`/invoices/${config.invoiceId}/edit-sessions/${this.editSessionId}/preview/generate`,{sequence,inputDigest,generatorKey:text.key,proposal:this.serializeChanges()});const currentDigest=await this.digest({key:text.key,proposal:this.proposal});if(!this.unresolved&&sequence===this.candidateSequence&&result.inputDigest===inputDigest&&result.sequence===sequence&&currentDigest===inputDigest)text.candidate=result.candidate;}catch(error){this.announce(error.message);}},
+        async generateCandidate(text) {
+          if(this.unresolved)return;
+          const sequence=++this.candidateSequence, proposal=this.serializeChanges();
+          text.error=null;
+          try {
+            const inputDigest=await this.digest({key:text.key,proposal});
+            const result=await this.request(`/invoices/${config.invoiceId}/edit-sessions/${this.editSessionId}/preview/generate`,{sequence,inputDigest,generatorKey:text.key,proposal});
+            const currentDigest=await this.digest({key:text.key,proposal:this.serializeChanges()});
+            if(this.unresolved||sequence!==this.candidateSequence||currentDigest!==inputDigest)return;
+            if(result.outcome!=="ready"||typeof result.candidate!=="string")throw new Error(result.message||"Text generation failed.");
+            if(result.inputDigest===inputDigest&&result.sequence===sequence)text.candidate=result.candidate;
+          } catch(error) { if(sequence===this.candidateSequence){text.error=error.message;this.announce(error.message);} }
+        },
         replaceCandidate(text) { if(this.unresolved||text.candidate===null)return;text.undo=text.content;text.content=text.candidate;text.candidate=null;this.markDirty(); },
         compositionStart(){this.composing=true;}, compositionEnd(){this.composing=false;if(this.saveAfterComposition){this.saveAfterComposition=false;this.save();}},
         async previewPdf(){if(!this.ready||this.unresolved)return;const sequence=++this.previewSequence,proposal=this.serializeChanges(),inputDigest=await this.digest({invoiceId:config.invoiceId,sourceKind:"workspace-proposal",editSessionId:this.editSessionId,baseGeneration:this.baseGeneration,proposal});this.preview={sequence,inputDigest,obsolete:false};try{const result=await this.request(`/invoices/${config.invoiceId}/previews`,{previewId:crypto.randomUUID(),sourceKind:"workspace-proposal",editSessionId:this.editSessionId,baseGeneration:this.baseGeneration,inputDigest,proposal});if(this.preview?.sequence!==sequence||this.preview.inputDigest!==inputDigest)return;const currentDigest=await this.digest({invoiceId:config.invoiceId,sourceKind:"workspace-proposal",editSessionId:this.editSessionId,baseGeneration:this.baseGeneration,proposal:this.serializeChanges()});if(currentDigest!==inputDigest){this.preview.obsolete=true;this.announce("This preview is obsolete; generate another after your edits.");return;}if(result.outcome!=="ready"||!result.url)throw new Error(result.message||"The PDF preview could not be created.");this.preview.url=result.url;await showPdfPreview(result.url,"Unsaved changes · not an issued PDF");}catch(error){this.announce(error.message||"The PDF preview could not be created.");}},

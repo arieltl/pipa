@@ -929,3 +929,20 @@ function isUniqueViolation(err: unknown): boolean {
     /UNIQUE constraint failed/i.test(err.message)
   );
 }
+
+/** Read-only output for the workspace: saved edits always win over templates. */
+export function workspaceGeneratedTexts(detail: InvoiceDetail) {
+  const texts: Array<{ generatorKey: string; generatorName: string; content: string; saved: boolean; error?: string }> = detail.generatedTexts.map(text => ({ ...text, saved: true }));
+  if (!texts.some(text => text.generatorKey === "nfse_description") && detail.invoice.nfseDescription !== null) {
+    texts.push({ generatorKey: "nfse_description", generatorName: "NFS-e description", content: detail.invoice.nfseDescription, saved: true });
+  }
+  for (const generator of detail.textGenerators) {
+    if (texts.some(text => text.generatorKey === generator.key)) continue;
+    try {
+      texts.push({ generatorKey: generator.key, generatorName: generator.name, content: generateText(generator, detail), saved: false });
+    } catch (error) {
+      texts.push({ generatorKey: generator.key, generatorName: generator.name, content: "", saved: false, error: error instanceof Error ? error.message : "Text generation failed." });
+    }
+  }
+  return texts;
+}

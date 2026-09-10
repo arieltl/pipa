@@ -247,6 +247,22 @@ describe("invoice workspace browser recovery coordinator", () => {
     expect(state.unresolved).toBe(true);
   });
 
+  test("generation hashes the exact submitted proposal and displays server failures", async () => {
+    const { state } = coordinator();
+    const text = { key: "nfse_description", content: "manual", candidate: null as string | null, error: null as string | null };
+    state.proposal.generatedTexts.push(text);
+    state.request = async (_url: string, payload: any) => {
+      expect(payload.inputDigest).toBe(await state.digest({ key: payload.generatorKey, proposal: payload.proposal }));
+      return { outcome: "ready", ...payload, candidate: "" };
+    };
+    await state.generateCandidate(text);
+    expect(text.candidate).toBe("");
+    expect(text.content).toBe("manual");
+    state.request = async () => ({ outcome: "rejected", message: "Template needs review" });
+    await state.generateCandidate(text);
+    expect(text.error).toBe("Template needs review");
+  });
+
   test("a delayed candidate cannot replace a newer candidate, and typing after a request makes its candidate obsolete", async () => {
     const { state } = coordinator();
     const text: { key: string; content: string; candidate: string | null; undo: string | null } = { key: "text", content: "saved", candidate: null, undo: null };
@@ -259,9 +275,9 @@ describe("invoice workspace browser recovery coordinator", () => {
     state.proposal.invoice.notes = "typed after A";
     const candidateB = state.generateCandidate(text);
     await new Promise((done) => setTimeout(done, 0));
-    pending[1]!.resolve({ inputDigest: pending[1]!.payload.inputDigest, sequence: pending[1]!.payload.sequence, candidate: "B" });
+    pending[1]!.resolve({ outcome: "ready", inputDigest: pending[1]!.payload.inputDigest, sequence: pending[1]!.payload.sequence, candidate: "B" });
     await candidateB;
-    pending[0]!.resolve({ inputDigest: pending[0]!.payload.inputDigest, sequence: pending[0]!.payload.sequence, candidate: "A" });
+    pending[0]!.resolve({ outcome: "ready", inputDigest: pending[0]!.payload.inputDigest, sequence: pending[0]!.payload.sequence, candidate: "A" });
     await candidateA;
 
     expect(text.candidate).toBe("B");
@@ -271,7 +287,7 @@ describe("invoice workspace browser recovery coordinator", () => {
     await new Promise((done) => setTimeout(done, 0));
     state.proposal.invoice.notes = "typed after request";
     const latest = pending[2]!;
-    latest.resolve({ inputDigest: latest.payload.inputDigest, sequence: latest.payload.sequence, candidate: "obsolete" });
+    latest.resolve({ outcome: "ready", inputDigest: latest.payload.inputDigest, sequence: latest.payload.sequence, candidate: "obsolete" });
     await candidateAfterTyping;
     expect(text.candidate).toBeNull();
   });

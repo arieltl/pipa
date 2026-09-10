@@ -6,6 +6,7 @@ import {
   invoiceGeneratedTexts,
   invoices,
 } from "../../db/schema.ts";
+import { getInvoiceDetail, workspaceGeneratedTexts } from "../invoices/invoices.service.ts";
 import { nowIso } from "../../domain/dates.ts";
 import {
   createTextGenerator,
@@ -126,4 +127,19 @@ describe("client text generators", () => {
       }),
     ).toThrow(LiquidSourceError);
   });
+});
+
+test("workspace shows unsaved generators, preserves saved blanks and edits, and never writes on read", () => {
+  const { client, invoice } = clientAndInvoice();
+  const nfse = createTextGenerator(client.id, { key: "nfse_description", name: "NFS-e", purpose: "nfse-description", source: "Service {{ invoice.number }}" });
+  const email = createTextGenerator(client.id, { key: "email", name: "Email", purpose: "custom", source: "Hello {{ customer.name }}" });
+  const read = () => workspaceGeneratedTexts(getInvoiceDetail(invoice.id)!);
+  expect(read().map(text => text.content)).toEqual([`Service ${invoice.number}`, "Hello Generator client"]);
+  expect(read().every(text => !text.saved)).toBe(true);
+  expect(db.select().from(invoiceGeneratedTexts).all()).toHaveLength(0);
+  expect(getInvoiceDetail(invoice.id)!.invoice.workspaceRevision).toBe(invoice.workspaceRevision);
+  saveGeneratedText(invoice.id, nfse, "");
+  saveGeneratedText(invoice.id, email, "Manually reviewed");
+  expect(Object.fromEntries(read().map(text => [text.generatorKey, text.content]))).toEqual({ nfse_description: "", email: "Manually reviewed" });
+  expect(read().every(text => text.saved)).toBe(true);
 });

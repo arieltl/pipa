@@ -14,7 +14,7 @@ port to loopback, so other computers cannot connect through that port by default
 Follow the [GHCR installation instructions](../README.md#install-with-docker-compose-ghcr),
 keeping `INVOICE_BIND_ADDRESS=127.0.0.1`. Then open <http://localhost:3000>.
 The published Docker image targets Linux amd64. For native ARM64 use, choose a
-standalone executable below instead. The pinned image version is `0.3.0`.
+standalone executable below instead. The pinned image version is `0.3.1`.
 
 Run these commands from the directory containing your Compose file:
 

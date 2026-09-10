@@ -36,7 +36,7 @@ export function Layout({
         <link rel="icon" type="image/svg+xml" href="/public/pipa-logo.svg" />
         <title>{pageTitle}</title>
         <link rel="stylesheet" href="/public/app.css?v=pdf-preview-1" />
-        <script src="/public/app.js?v=pdf-preview-1" defer></script>
+        <script src="/public/app.js?v=0.3.1" defer></script>
         <script src="/public/htmx.min.js" defer></script>
         <script src="/public/alpine.min.js" defer></script>
       </head>
