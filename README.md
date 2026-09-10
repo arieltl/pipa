@@ -47,15 +47,19 @@ Client workspaces and recent invoicing activity. All pictured data is fictional.
 
 ![Overview with fictional clients and invoices](docs/images/overview.png)
 
-An invoice workspace with editable generated text, status controls, and supporting records:
+A compact invoice overview with generated text, supporting field values, and document actions:
 
-![Invoice workspace with fictional overseas client and line items](docs/images/invoice-workspace.png)
+![Saved invoice overview with fictional line items, generated text, and supporting record values](docs/images/invoice-workspace.png)
+
+Preview the saved PDF in the app, with selectable text, zoom, page controls, and a separate download action:
+
+![In-page PDF preview of a fictional invoice](docs/images/invoice-preview.png)
 
 An actual generated invoice PDF, shown here as an image:
 
 <img src="docs/images/invoice-pdf.png" alt="Generated USD invoice PDF with fictional client details, line items, total, and payment information" width="640">
 
-See the [screenshot gallery and demo setup](docs/demo.md) for client configuration and images rendered from actual generated invoice PDFs.
+See the [screenshot gallery and demo setup](docs/demo.md) for the continuous invoice editor, client configuration, and images rendered from actual generated invoice PDFs.
 
 ## Install with Docker Compose (GHCR)
 
