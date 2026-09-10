@@ -2,7 +2,7 @@ services:
   invoice:
     # Pin a versioned release by default. Change INVOICE_IMAGE_TAG only as
     # part of the documented upgrade procedure.
-    image: ghcr.io/arieltl/invoice:${INVOICE_IMAGE_TAG:-0.2.0}
+    image: ghcr.io/arieltl/invoice:${INVOICE_IMAGE_TAG:-0.3.0}
     container_name: invoice
     restart: unless-stopped
 
