@@ -1,0 +1,1 @@
+ALTER TABLE `invoice_record_attachments` ADD `removed_at` text;

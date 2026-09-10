@@ -151,6 +151,15 @@ describe("archiveInvoicePdf", () => {
     expect(existsSync(absolutePath(second))).toBe(true);
   });
 
+  test("refuses an obsolete archive request without selecting a PDF", async () => {
+    const detail = newInvoice();
+    db.update(invoices).set({ workspaceRevision: detail.invoice.workspaceRevision + 1, updatedAt: nowIso() }).where(eq(invoices.id, detail.invoice.id)).run();
+    await expect(archiveInvoicePdf(detail)).rejects.toMatchObject({ code: "STALE_REVISION" });
+    const current = getInvoiceDetail(detail.invoice.id)!;
+    expect(current.invoice.archivedPdfFileId).toBeNull();
+    expect(current.invoice.workspaceRevision).toBe(detail.invoice.workspaceRevision + 1);
+  });
+
   test("a failed HTML render does not archive or advance issue status", async () => {
     const originalUrl = process.env.GOTENBERG_URL;
     const originalTimeout = process.env.GOTENBERG_TIMEOUT_MS;

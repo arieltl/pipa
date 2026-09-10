@@ -15,10 +15,26 @@ invoices are excluded.
 
 ## Invoice workspace
 
-An issued invoice marked sent, with line items, editable generated text, and
-supporting documentation alongside the invoice.
+A sent invoice with compact line items, copyable generated text, and supporting
+record values visible alongside the saved document.
 
 ![Invoice workspace with fictional data](images/invoice-workspace.png)
+
+## Invoice editor
+
+Document fields, text, notes, and supporting records share one continuous page
+and one **Save changes** action. This sent invoice has a locked document; its
+notes, generated text, and supporting records remain editable.
+
+![Continuous invoice editor with text, supporting fields, and one Save changes action](images/invoice-editor.png)
+
+## In-page PDF preview
+
+The PDF.js viewer displays the exact saved PDF without leaving the invoice or
+starting a download. It includes selectable text, page navigation, zoom, and a
+separate download action. The editor can also preview unsaved changes.
+
+![Saved fictional invoice displayed in the in-page PDF viewer](images/invoice-preview.png)
 
 ## Client document fields
 
@@ -69,9 +85,19 @@ data. Demo databases and archived files stay gitignored under `data/`.
 ## Refresh the images
 
 Capture the demo at a desktop viewport (these UI captures used 1440 × 1000 CSS
-pixels). Wait for fonts, styles, and transitions to settle. Use
-`/invoices/2` for the sent invoice and `/clients/1/edit?section=details` for the
-client field picker. Review captures for private data before committing them.
+pixels). Wait for fonts, styles, and transitions to settle. Capture these views:
+
+| Image | Route and state |
+| --- | --- |
+| `overview.png` | `/`, showing client totals and recent invoices |
+| `invoice-workspace.png` | `/invoices/2`, the saved sent invoice |
+| `invoice-editor.png` | `/invoices/2/edit`, after the editing session is ready |
+| `invoice-preview.png` | `/invoices/2`, click **Preview PDF** and wait for the page to finish rendering at **Fit page** zoom |
+| `client-field-picker.png` | `/clients/1/edit?section=details`, open the field picker |
+
+Capture the actual viewport with Playwright or a browser preview tool. Keep the
+Save bar visible in the editor capture. Review every image for private data
+before committing; do not use a populated personal installation.
 
 PDFs are generated through the ordinary invoice issue/archive workflow. The
 seed prints their local paths. With Poppler's `pdftoppm` installed, convert the

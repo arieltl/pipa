@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db/client.ts";
 import {
   clients,
@@ -16,6 +16,8 @@ import {
   type NotaFiscalLink,
 } from "../../db/schema.ts";
 import { nowIso } from "../../domain/dates.ts";
+import { OUTSTANDING_INVOICE_STATUSES } from "../../domain/invoice-status.ts";
+import type { OutstandingTotal } from "../../domain/outstanding-totals.ts";
 
 export type InvoiceListRow = Invoice & {
   clientName: string;
@@ -79,9 +81,11 @@ export function listInvoicesByClient(clientId: number): InvoiceListRow[] {
 export type ClientInvoiceStats = {
   clientId: number;
   invoiceCount: number;
-  /** Total of invoices not yet paid or void (draft + issued + sent), in minor units. */
-  outstandingMinor: number;
+  /** Totals of draft, issued, and sent invoices, separated by invoice currency. */
+  outstandingByCurrency: OutstandingTotal[];
 };
+
+export type { OutstandingTotal } from "../../domain/outstanding-totals.ts";
 
 /** Per-client invoice counts and outstanding totals, for the Overview. */
 export function clientInvoiceStats(): ClientInvoiceStats[] {
@@ -97,21 +101,39 @@ export function clientInvoiceStats(): ClientInvoiceStats[] {
     .groupBy(invoiceItems.invoiceId)
     .as("invoice_item_totals");
 
-  return db
+  const counts = db
     .select({
       clientId: invoices.clientId,
       invoiceCount: sql<number>`count(*)`,
-      outstandingMinor: sql<number>`coalesce(sum(
-        case when ${invoices.status} in ('draft', 'issued', 'sent')
-          then coalesce(${totalsByInvoice.total}, 0)
-          else 0
-        end
-      ), 0)`,
+    })
+    .from(invoices)
+    .groupBy(invoices.clientId)
+    .all();
+
+  const outstanding = db
+    .select({
+      clientId: invoices.clientId,
+      currency: invoices.currency,
+      totalMinor: sql<number>`coalesce(sum(${totalsByInvoice.total}), 0)`,
     })
     .from(invoices)
     .leftJoin(totalsByInvoice, eq(totalsByInvoice.invoiceId, invoices.id))
-    .groupBy(invoices.clientId)
+    .where(inArray(invoices.status, OUTSTANDING_INVOICE_STATUSES))
+    .groupBy(invoices.clientId, invoices.currency)
+    .orderBy(asc(invoices.clientId), asc(invoices.currency))
     .all();
+
+  const outstandingByClient = new Map<number, OutstandingTotal[]>();
+  for (const total of outstanding) {
+    const totals = outstandingByClient.get(total.clientId) ?? [];
+    totals.push({ currency: total.currency, totalMinor: total.totalMinor });
+    outstandingByClient.set(total.clientId, totals);
+  }
+
+  return counts.map((count) => ({
+    ...count,
+    outstandingByCurrency: outstandingByClient.get(count.clientId) ?? [],
+  }));
 }
 
 export function getInvoiceById(id: number): Invoice | null {

@@ -1,7 +1,11 @@
 import type { Client, ClientInvoiceRecordType, ClientTextGenerator, NumberingProfile, PdfTemplate } from "../../db/schema.ts";
+import type { Child } from "hono/jsx";
+import { outstandingTotalsForInvoices } from "../../domain/outstanding-totals.ts";
 import { PageHeader } from "../../web/components/page-header.tsx";
-import { formatMoney } from "../../domain/money.ts";
 import { InvoicesTable } from "../invoices/components/invoices-table.tsx";
+import {
+  OutstandingTotals,
+} from "../invoices/components/outstanding-totals.tsx";
 import type { InvoiceListRow } from "../invoices/invoices.repository.ts";
 import {
   ClientForm,
@@ -37,9 +41,7 @@ export function ClientWorkspacePage({
   client: Client;
   invoices: InvoiceListRow[];
 }) {
-  const outstanding = invoices
-    .filter((inv) => inv.status === "draft" || inv.status === "sent")
-    .reduce((acc, inv) => acc + inv.total, 0);
+  const outstanding = outstandingTotalsForInvoices(invoices);
 
   return (
     <div>
@@ -68,7 +70,12 @@ export function ClientWorkspacePage({
         <SummaryCard label="Invoices" value={String(invoices.length)} />
         <SummaryCard
           label="Outstanding"
-          value={formatMoney(outstanding, client.defaultCurrency)}
+          value={
+            <OutstandingTotals
+              totals={outstanding}
+              emptyCurrency={client.defaultCurrency}
+            />
+          }
         />
         <SummaryCard
           label="Default currency"
@@ -88,7 +95,7 @@ function SummaryCard({
   badge,
 }: {
   label: string;
-  value: string;
+  value: Child;
   badge?: string;
 }) {
   return (

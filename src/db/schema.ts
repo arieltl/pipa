@@ -121,6 +121,8 @@ export const invoices = sqliteTable(
     issuerSnapshotJson: text("issuer_snapshot_json"),
     clientSnapshotJson: text("client_snapshot_json"),
     pdfTemplateRevisionId: integer("pdf_template_revision_id"),
+    /** Monotonic fence shared by every invoice-affecting command. */
+    workspaceRevision: integer("workspace_revision").notNull().default(0),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -226,10 +228,154 @@ export const invoiceRecords = sqliteTable(
     purpose: text("purpose").notNull(),
     definitionsSnapshotJson: text("definitions_snapshot_json").notNull(),
     valuesJson: text("values_json").notNull().default("{}"),
+    /** Logical removal preserves snapshots and attachment download ownership. */
+    removedAt: text("removed_at"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
   (table) => [index("invoice_records_invoice_idx").on(table.invoiceId)],
+);
+
+/** Durable ownership makes every immutable artifact downloadable by invoice. */
+export const invoiceFileOwnership = sqliteTable(
+  "invoice_file_ownership",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+    fileId: integer("file_id").notNull().references(() => files.id, { onDelete: "restrict" }),
+    purpose: text("purpose").notNull(),
+    provenanceJson: text("provenance_json").notNull().default("{}"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("invoice_file_ownership_invoice_file_unique").on(table.invoiceId, table.fileId),
+    index("invoice_file_ownership_invoice_idx").on(table.invoiceId),
+  ],
+);
+
+export const invoiceEditSessions = sqliteTable(
+  "invoice_edit_sessions",
+  {
+    id: text("id").primaryKey(),
+    invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+    currentGeneration: integer("current_generation").notNull().default(1),
+    state: text("state").notNull().default("active"),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("invoice_edit_sessions_invoice_idx").on(table.invoiceId)],
+);
+
+export const invoiceEditGenerations = sqliteTable(
+  "invoice_edit_generations",
+  {
+    sessionId: text("session_id").notNull().references(() => invoiceEditSessions.id, { onDelete: "cascade" }),
+    generation: integer("generation").notNull(),
+    invoiceRevision: integer("invoice_revision").notNull(),
+    snapshotJson: text("snapshot_json").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [uniqueIndex("invoice_edit_generations_session_generation_unique").on(table.sessionId, table.generation)],
+);
+
+export const invoiceOperations = sqliteTable(
+  "invoice_operations",
+  {
+    id: text("id").notNull(),
+    invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+    sessionId: text("session_id"),
+    kind: text("kind").notNull(),
+    digest: text("digest").notNull(),
+    state: text("state").notNull(),
+    fencingGeneration: integer("fencing_generation").notNull().default(1),
+    leaseExpiresAt: text("lease_expires_at"),
+    resultJson: text("result_json"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("invoice_operations_invoice_id_unique").on(table.invoiceId, table.id),
+    index("invoice_operations_invoice_idx").on(table.invoiceId),
+  ],
+);
+
+export const invoiceRebases = sqliteTable(
+  "invoice_rebases",
+  {
+    id: text("id").notNull(),
+    sessionId: text("session_id").notNull().references(() => invoiceEditSessions.id, { onDelete: "cascade" }),
+    digest: text("digest").notNull(),
+    state: text("state").notNull(),
+    fromGeneration: integer("from_generation").notNull(),
+    toGeneration: integer("to_generation"),
+    resultJson: text("result_json").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [uniqueIndex("invoice_rebases_session_id_unique").on(table.sessionId, table.id)],
+);
+
+/** Terminal identity for a physically deleted invoice; intentionally has no FK. */
+export const invoiceDeletionReceipts = sqliteTable("invoice_deletion_receipts", {
+  invoiceId: integer("invoice_id").notNull(), operationId: text("operation_id").notNull(), kind: text("kind").notNull(), digest: text("digest").notNull(), outcome: text("outcome").notNull(), code: text("code"), message: text("message").notNull(), createdAt: text("created_at").notNull(),
+}, (table) => [uniqueIndex("invoice_deletion_receipts_invoice_operation_unique").on(table.invoiceId, table.operationId)]);
+
+export const invoiceStagedFiles = sqliteTable(
+  "invoice_staged_files",
+  {
+    token: text("token").primaryKey(),
+    uploadId: text("upload_id").notNull(),
+    sessionId: text("session_id").notNull().references(() => invoiceEditSessions.id, { onDelete: "cascade" }),
+    invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+    recordKey: text("record_key").notNull(),
+    definitionKey: text("definition_key").notNull(),
+    digest: text("digest").notNull(),
+    storedPath: text("stored_path").notNull(),
+    originalFilename: text("original_filename").notNull(),
+    mimeType: text("mime_type"),
+    sizeBytes: integer("size_bytes").notNull(),
+    state: text("state").notNull().default("staged"),
+    fencingGeneration: integer("fencing_generation"),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [uniqueIndex("invoice_staged_files_session_upload_unique").on(table.sessionId, table.uploadId)],
+);
+
+export const invoicePdfVersions = sqliteTable(
+  "invoice_pdf_versions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+    fileId: integer("file_id").notNull().references(() => files.id, { onDelete: "restrict" }),
+    sourceRevision: integer("source_revision").notNull(),
+    sourceStatus: text("source_status").notNull(),
+    invoiceNumber: text("invoice_number").notNull(),
+    templateRevisionId: integer("template_revision_id"),
+    dependencySignature: text("dependency_signature").notNull(),
+    fingerprintVersion: integer("fingerprint_version").notNull().default(1),
+    savedAt: text("saved_at").notNull(),
+  },
+  (table) => [index("invoice_pdf_versions_invoice_idx").on(table.invoiceId)],
+);
+
+export const invoicePreviews = sqliteTable(
+  "invoice_previews",
+  {
+    id: text("id").primaryKey(),
+    invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+    sessionId: text("session_id"),
+    workspaceRevision: integer("workspace_revision").notNull(),
+    baseGeneration: integer("base_generation"),
+    sourceKind: text("source_kind").notNull(),
+    inputDigest: text("input_digest").notNull(),
+    dependencySignature: text("dependency_signature").notNull(),
+    fileId: integer("file_id").notNull().references(() => files.id, { onDelete: "restrict" }),
+    byteHash: text("byte_hash").notNull(),
+    expiresAt: text("expires_at"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("invoice_previews_invoice_idx").on(table.invoiceId)],
 );
 
 export const invoiceRecordAttachments = sqliteTable(
@@ -240,6 +386,7 @@ export const invoiceRecordAttachments = sqliteTable(
     definitionKey: text("definition_key"),
     storedFileId: integer("stored_file_id").notNull().references(() => files.id, { onDelete: "restrict" }),
     supersedesAttachmentId: integer("supersedes_attachment_id"),
+    removedAt: text("removed_at"),
     createdAt: text("created_at").notNull(),
   },
   (table) => [index("invoice_record_attachments_record_idx").on(table.invoiceRecordId)],
@@ -382,3 +529,6 @@ export type ClientInvoiceRecordType = typeof clientInvoiceRecordTypes.$inferSele
 export type NewClientInvoiceRecordType = typeof clientInvoiceRecordTypes.$inferInsert;
 export type InvoiceRecord = typeof invoiceRecords.$inferSelect;
 export type InvoiceRecordAttachment = typeof invoiceRecordAttachments.$inferSelect;
+export type InvoiceEditSession = typeof invoiceEditSessions.$inferSelect;
+export type InvoiceOperation = typeof invoiceOperations.$inferSelect;
+export type InvoicePdfVersion = typeof invoicePdfVersions.$inferSelect;

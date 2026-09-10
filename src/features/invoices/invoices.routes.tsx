@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { existsSync } from "node:fs";
 import {
   getClient as getClientById,
   getDefaultClient,
@@ -106,8 +107,26 @@ import {
   itemFormValuesFromBody,
   itemFormValuesFromRow,
 } from "./invoices.view.ts";
+import { InvoiceWorkspaceEditor } from "./components/invoice-workspace.tsx";
+import { cancelEditSessionSchema, commandSchema, createEditSessionSchema, generatorPreviewSchema, pdfPreviewSchema, rebaseSchema, workspaceSaveEnvelopeSchema } from "./invoice-workspace.schema.ts";
+import { cancelEditSession, createEditSession, createSavedDataPreview, executeWorkspaceCommand, generateWorkspaceCandidate, getPreviewFile, operationResult, rebaseResult, rebaseWorkspace, saveWorkspace, stageWorkspaceFile } from "./invoice-workspace.service.ts";
+import { WorkspaceConflictError, WorkspaceValidationError } from "../../domain/invoice-workspace.ts";
+import { PageHeader } from "../../web/components/page-header.tsx";
 
 export const invoicesRoutes = new Hono();
+
+// Retire every former per-card mutation entry point. They cannot participate
+// in the workspace revision/receipt protocol and therefore fail before body
+// parsing, uploads, rendering, or writes. Read/download compatibility remains.
+invoicesRoutes.use("*", async (c, next) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(c.req.method)) return next();
+  const match = /^\/invoices\/(\d+)(\/.*)?$/.exec(c.req.path);
+  if (!match) return next();
+  const suffix = match[2] ?? "";
+  if (/^\/(?:edit-sessions(?:\/|$)|edit-operations$|commands\/|previews(?:\/|$))/.test(suffix)) return next();
+  c.status(409);
+  return c.html(<div role="alert" class="alert alert-warning" data-workspace-outcome="rejected" data-workspace-result={JSON.stringify({ outcome:"rejected",code:"STALE_CLIENT",message:"This older save control is no longer accepted. Reopen the invoice editor so all changes use one revision-checked operation." })}>This older save control is no longer accepted. <a class="link" href={`/invoices/${match[1]}/edit`}>Reopen the invoice editor</a>.</div>);
+});
 
 invoicesRoutes.get("/", (c) =>
   c.render(<InvoicesListPage invoices={listInvoices()} />, { title: "Invoices" }),
@@ -174,7 +193,11 @@ invoicesRoutes.post("/", async (c) => {
 
 invoicesRoutes.get("/:id", async (c) => {
   const detail = detailFromParam(c.req.param("id"));
-  if (!detail) return c.notFound();
+  if (!detail) {
+    // Keep the command receipt checker mounted after a deleted invoice reload.
+    c.status(404);
+    return c.render(<div><h1 class="text-xl font-semibold">Invoice unavailable</h1><div id="invoice-command-result" class="mt-4" aria-live="polite"/><a class="btn btn-ghost mt-4" href="/invoices">Back to invoices</a></div>, { title: "Invoice unavailable" });
+  }
 
   // Auto-fill the nota fiscal text from the template when none is saved yet, so
   // the user never has to click "generate" first (it still needs an explicit
@@ -210,6 +233,68 @@ invoicesRoutes.get("/:id", async (c) => {
     { title: detail.invoice.number },
   );
 });
+
+invoicesRoutes.get("/:id/edit", (c) => {
+  const detail = detailFromParam(c.req.param("id")); if (!detail) return c.notFound();
+  return c.render(<InvoiceWorkspaceEditor detail={detail}/>, { title: `Edit ${detail.invoice.number}` });
+});
+
+invoicesRoutes.post("/:id/edit-sessions", async (c) => {
+  const invoiceId = numericId(c.req.param("id")); if (!invoiceId || !getInvoiceDetail(invoiceId)) return c.notFound();
+  const parsed = createEditSessionSchema.safeParse(await workspaceJson(c)); if (!parsed.success) return workspaceError(c, 422, "INVALID_ENVELOPE", "The editing session request is invalid.");
+  try { const result = createEditSession(invoiceId, parsed.data.editSessionId, parsed.data.desiredBaseRevision); return c.html(<WorkspaceOutcome outcome="ready" data={result}/>); } catch (error) { return workspaceException(c, error); }
+});
+
+invoicesRoutes.post("/:id/edit-operations", async (c) => {
+  const invoiceId = numericId(c.req.param("id")); if (!invoiceId || !getInvoiceDetail(invoiceId)) return c.notFound();
+  const raw = await workspaceJson(c); const parsed = workspaceSaveEnvelopeSchema.safeParse(raw);
+  if (!parsed.success) return workspaceError(c, 422, "INVALID_ENVELOPE", "No changes saved. The save payload was invalid.", parsed.error.issues.map(issue => ({ path: issue.path.join("."), label: issue.path.at(-1)?.toString() ?? "Field", message: issue.message, section: sectionForPath(issue.path.join(".")) })));
+  try { const result = saveWorkspace(invoiceId, parsed.data); return c.html(<WorkspaceOutcome outcome={result.outcome} data={result}/>, result.outcome === "rejected" ? result.code === "VALIDATION" ? 422 : 409 : result.outcome === "processing" ? 202 : 200); } catch (error) { return workspaceException(c, error); }
+});
+
+invoicesRoutes.get("/:id/operations/:operation", (c) => {
+  const invoiceId = numericId(c.req.param("id")); if (!invoiceId) return c.notFound(); const result = operationResult(invoiceId, c.req.param("operation"));
+  if (!result) return c.html(<WorkspaceOutcome outcome="unknown" data={{ outcome:"unknown", message:"No operation with this identity was found." }}/>, 404);
+  return c.html(<WorkspaceOutcome outcome={result.outcome} data={result}/>, result.outcome === "processing" ? 202 : 200);
+});
+
+invoicesRoutes.post("/:id/edit-sessions/:session/rebase", async (c) => {
+  const invoiceId = numericId(c.req.param("id")); if (!invoiceId) return c.notFound(); const parsed = rebaseSchema.safeParse(await workspaceJson(c));
+  if (!parsed.success || parsed.data.editSessionId !== c.req.param("session")) return workspaceError(c, 422, "INVALID_ENVELOPE", "The rebase request is invalid.");
+  try { return c.html(<WorkspaceOutcome outcome="committed" data={rebaseWorkspace(invoiceId, parsed.data)}/>); } catch (error) { return workspaceException(c, error); }
+});
+
+invoicesRoutes.get("/:id/edit-sessions/:session/rebases/:rebase", (c) => {
+  const invoiceId = numericId(c.req.param("id")); if (!invoiceId) return c.notFound(); const result = rebaseResult(invoiceId, c.req.param("session"), c.req.param("rebase"));
+  if (result === null) return workspaceError(c, 410, "SESSION_EXPIRED", "This editing session is no longer available.");
+  if (result === undefined) return c.html(<WorkspaceOutcome outcome="unknown" data={{ outcome:"unknown",message:"The rebase result is not available yet." }}/>,404);
+  return c.html(<WorkspaceOutcome outcome={result.outcome} data={result}/>);
+});
+
+invoicesRoutes.post("/:id/edit-sessions/:session/cancel", async (c) => {
+  const invoiceId = numericId(c.req.param("id")); if (!invoiceId) return c.notFound(); const parsed = cancelEditSessionSchema.safeParse(await workspaceJson(c)); if (!parsed.success) return workspaceError(c,422,"INVALID_ENVELOPE","The cancel request is invalid.");
+  try { return c.html(<WorkspaceOutcome outcome="cancelled" data={cancelEditSession(invoiceId,c.req.param("session"),parsed.data.baseGeneration)}/>); } catch(error) { return workspaceException(c,error); }
+});
+
+invoicesRoutes.post("/:id/edit-sessions/:session/staged-files", async (c) => {
+  const invoiceId = numericId(c.req.param("id")); if (!invoiceId) return c.notFound(); const body = await c.req.parseBody(); const file = body.file;
+  if (!(file instanceof File)) return workspaceError(c,422,"FILE_REQUIRED","Choose a file.");
+  try { const staged = await stageWorkspaceFile(invoiceId,c.req.param("session"),formString(body.uploadId),formString(body.recordKey),formString(body.definitionKey),file); return c.html(<WorkspaceOutcome outcome="ready" data={{ outcome:"ready",token:staged.token,uploadId:staged.uploadId,digest:staged.digest,message:"File staged for Save changes." }}/>); } catch(error) { return workspaceException(c,error); }
+});
+
+invoicesRoutes.post("/:id/edit-sessions/:session/preview/generate", async (c) => {
+  const invoiceId=numericId(c.req.param("id"));if(!invoiceId)return c.notFound();const parsed=generatorPreviewSchema.safeParse(await workspaceJson(c));if(!parsed.success)return workspaceError(c,422,"INVALID_ENVELOPE","The generation preview request is invalid.");
+  try{return c.html(<WorkspaceOutcome outcome="ready" data={generateWorkspaceCandidate(invoiceId,c.req.param("session"),parsed.data)}/>);}catch(error){return workspaceException(c,error);}
+});
+
+invoicesRoutes.post("/:id/commands/:kind", async(c)=>{
+  const invoiceId=numericId(c.req.param("id"));if(!invoiceId)return c.notFound();const parsed=commandSchema.safeParse(await workspaceJson(c));if(!parsed.success||parsed.data.kind!==c.req.param("kind"))return workspaceError(c,422,"INVALID_ENVELOPE","The invoice command is invalid.");
+  try{const result=await executeWorkspaceCommand(invoiceId,parsed.data);return c.html(<WorkspaceOutcome outcome={result.outcome} data={result}/>,result.outcome==="processing"?202:result.outcome==="rejected"?409:200);}catch(error){return workspaceException(c,error);}
+});
+
+invoicesRoutes.post("/:id/previews",async(c)=>{const invoiceId=numericId(c.req.param("id"));if(!invoiceId)return c.notFound();const parsed=pdfPreviewSchema.safeParse(await workspaceJson(c));if(!parsed.success)return workspaceError(c,422,"INVALID_ENVELOPE","The PDF preview request is invalid.");try{return c.html(<WorkspaceOutcome outcome="ready" data={await createSavedDataPreview(invoiceId,parsed.data)}/>);}catch(error){const failure=pdfRenderFailure(error);if(failure)return workspaceError(c,failure.status,"RENDER_FAILED",failure.message);return workspaceException(c,error);}});
+
+invoicesRoutes.get("/:id/previews/:preview",async(c)=>{const invoiceId=numericId(c.req.param("id"));if(!invoiceId)return c.notFound();const owned=getPreviewFile(invoiceId,c.req.param("preview"));if(!owned)return workspaceError(c,410,"PREVIEW_EXPIRED","This PDF preview expired. Generate a new preview explicitly.");const path=absolutePath(owned.file);if(!existsSync(path))return c.notFound();c.header("Content-Type","application/pdf");c.header("Content-Disposition",contentDisposition(`invoice-preview-${owned.preview.id}.pdf`));return c.body(await Bun.file(path).arrayBuffer());});
 
 invoicesRoutes.post("/:id/status", async (c) => {
   const detail = detailFromParam(c.req.param("id"));
@@ -1026,6 +1111,13 @@ function renderInvoiceRecords(c: Context, invoiceId: number, saved?: string, err
 }
 
 function errorMessage(error: unknown) { return error instanceof Error ? error.message : "The record could not be saved"; }
+
+function numericId(raw: string): number | null { const id = Number(raw); return Number.isInteger(id) && id > 0 ? id : null; }
+async function workspaceJson(c: Context): Promise<unknown> { if (c.req.header("content-type")?.includes("application/json")) return c.req.json().catch(() => null); const body = await c.req.parseBody(); const raw = formString(body.workspaceEnvelope); try { return JSON.parse(raw); } catch { return null; } }
+function sectionForPath(path: string): "document" | "text" | "records" { return path.startsWith("generatedTexts") || path === "setNotes" ? "text" : path.startsWith("records") || path.startsWith("attachments") || path.startsWith("legacy") ? "records" : "document"; }
+function WorkspaceOutcome({ outcome, data }: { outcome: string; data: unknown }) { const value = data as { message?: string; fieldErrors?: Array<{path:string;label:string;message:string}> }; return <div data-workspace-outcome={outcome} data-workspace-result={JSON.stringify({ ...(typeof data === "object" && data ? data : { value:data }), outcome })} role={outcome === "rejected" ? "alert" : "status"} class={outcome === "rejected" ? "alert alert-error my-3" : outcome === "processing" || outcome === "unknown" ? "alert alert-warning my-3" : "alert alert-success my-3"}><div><p>{value.message ?? (outcome === "ready" ? "Editing session ready." : outcome)}</p>{value.fieldErrors?.length ? <ul class="mt-2 list-disc pl-5">{value.fieldErrors.map(error => <li><button type="button" class="link" data-error-path={error.path}>{error.label}: {error.message}</button></li>)}</ul> : null}</div></div>; }
+function workspaceError(c: Context, status: number, code: string, message: string, fieldErrors?: Array<{path:string;label:string;message:string;section:"document"|"text"|"records"}>) { c.status(status as any); return c.html(<WorkspaceOutcome outcome="rejected" data={{ outcome:"rejected",code,message,fieldErrors }}/>); }
+function workspaceException(c: Context, error: unknown) { if (error instanceof WorkspaceValidationError) return workspaceError(c,422,"VALIDATION",error.message,error.errors); if (error instanceof WorkspaceConflictError) return workspaceError(c,error.code === "SESSION_EXPIRED" ? 410 : 409,error.code,error.message); throw error; }
 
 /**
  * Build a safe `Content-Disposition` header. The filename is ASCII-sanitized

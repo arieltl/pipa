@@ -2,6 +2,9 @@ import type {
   ClientTextGenerator,
   InvoiceGeneratedText,
 } from "../../db/schema.ts";
+import { invoices } from "../../db/schema.ts";
+import { db } from "../../db/client.ts";
+import { eq, sql } from "drizzle-orm";
 import { nowIso } from "../../domain/dates.ts";
 import {
   LiquidSourceError,
@@ -193,7 +196,7 @@ export function saveGeneratedText(
   sourceSnapshot = generator.source,
 ): InvoiceGeneratedText {
   const now = nowIso();
-  return repo.upsertInvoiceGeneratedText({
+  return db.transaction(() => { const saved=repo.upsertInvoiceGeneratedText({
     invoiceId,
     generatorId: generator.id,
     generatorKey: generator.key,
@@ -202,7 +205,7 @@ export function saveGeneratedText(
     content: content.trim(),
     createdAt: now,
     updatedAt: now,
-  });
+  }); db.update(invoices).set({workspaceRevision:sql`${invoices.workspaceRevision} + 1`,updatedAt:nowIso()}).where(eq(invoices.id,invoiceId)).run();return saved; });
 }
 
 export function saveGeneratedTextSnapshot(
@@ -213,7 +216,7 @@ export function saveGeneratedTextSnapshot(
   sourceSnapshot = "",
 ): InvoiceGeneratedText {
   const now = nowIso();
-  return repo.upsertInvoiceGeneratedText({
+  return db.transaction(() => { const saved=repo.upsertInvoiceGeneratedText({
     invoiceId,
     generatorId: null,
     generatorKey: key,
@@ -222,5 +225,5 @@ export function saveGeneratedTextSnapshot(
     content: content.trim(),
     createdAt: now,
     updatedAt: now,
-  });
+  }); db.update(invoices).set({workspaceRevision:sql`${invoices.workspaceRevision} + 1`,updatedAt:nowIso()}).where(eq(invoices.id,invoiceId)).run();return saved; });
 }

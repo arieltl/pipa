@@ -1,7 +1,7 @@
 import type { Client } from "../../db/schema.ts";
 import { PageHeader } from "../../web/components/page-header.tsx";
-import { formatMoney } from "../../domain/money.ts";
 import { InvoicesTable } from "../invoices/components/invoices-table.tsx";
+import { OutstandingTotals } from "../invoices/components/outstanding-totals.tsx";
 import type { InvoiceListRow } from "../invoices/invoices.repository.ts";
 import type { ClientInvoiceStats } from "../invoices/invoices.repository.ts";
 
@@ -58,7 +58,7 @@ function ClientCard({
   stats?: ClientInvoiceStats;
 }) {
   const count = stats?.invoiceCount ?? 0;
-  const outstanding = stats?.outstandingMinor ?? 0;
+  const outstanding = stats?.outstandingByCurrency ?? [];
   return (
     <a
       href={`/clients/${client.id}`}
@@ -87,7 +87,10 @@ function ClientCard({
             Outstanding
           </div>
           <div class="text-xl font-semibold tabular-nums">
-            {formatMoney(outstanding, client.defaultCurrency)}
+            <OutstandingTotals
+              totals={outstanding}
+              emptyCurrency={client.defaultCurrency}
+            />
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { join } from "node:path";
 import { db } from "../../db/client.ts";
-import { files, invoiceRecordAttachments, invoiceRecords, type ClientInvoiceRecordType } from "../../db/schema.ts";
+import { files, invoiceFileOwnership, invoiceRecordAttachments, invoiceRecords, invoices, type ClientInvoiceRecordType } from "../../db/schema.ts";
 import { parseRecordDefinitions } from "../../domain/invoice-records.ts";
 import { isValidDateString } from "../../domain/dates.ts";
 import { paths } from "../../config/paths.ts";
@@ -13,14 +13,15 @@ export type InvoiceRecordView = ReturnType<typeof listInvoiceRecords>[number];
 
 /** Keep supporting-document uploads bounded even when routes are called directly. */
 export const MAX_RECORD_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+function recordWrite<T>(invoiceId: number, write: () => T): T { return db.transaction(() => { const result=write(); db.update(invoices).set({workspaceRevision:sql`${invoices.workspaceRevision} + 1`}).where(eq(invoices.id,invoiceId)).run(); return result; }); }
 
-export function listInvoiceRecords(invoiceId: number) {
-  const records = db.select().from(invoiceRecords).where(eq(invoiceRecords.invoiceId, invoiceId)).orderBy(asc(invoiceRecords.id)).all();
+export function listInvoiceRecords(invoiceId: number, includeRemoved = false) {
+  const records = db.select().from(invoiceRecords).where(includeRemoved ? eq(invoiceRecords.invoiceId, invoiceId) : and(eq(invoiceRecords.invoiceId, invoiceId), isNull(invoiceRecords.removedAt))).orderBy(asc(invoiceRecords.id)).all();
   return records.map((record) => ({
     ...record,
     definitions: JSON.parse(record.definitionsSnapshotJson) as ReturnType<typeof parseRecordDefinitions>,
     values: JSON.parse(record.valuesJson) as Record<string, string | boolean>,
-    attachments: db.select({ attachment: invoiceRecordAttachments, file: files }).from(invoiceRecordAttachments).innerJoin(files, eq(invoiceRecordAttachments.storedFileId, files.id)).where(eq(invoiceRecordAttachments.invoiceRecordId, record.id)).orderBy(asc(invoiceRecordAttachments.id)).all(),
+    attachments: db.select({ attachment: invoiceRecordAttachments, file: files }).from(invoiceRecordAttachments).innerJoin(files, eq(invoiceRecordAttachments.storedFileId, files.id)).where(includeRemoved ? eq(invoiceRecordAttachments.invoiceRecordId, record.id) : and(eq(invoiceRecordAttachments.invoiceRecordId, record.id), isNull(invoiceRecordAttachments.removedAt))).orderBy(asc(invoiceRecordAttachments.id)).all(),
   }));
 }
 
@@ -34,14 +35,14 @@ export function createInvoiceRecord(detail: InvoiceDetail, recordTypeId: number,
   const definitions = parseRecordDefinitions(type.fieldDefinitionsJson, type.attachmentDefinitionsJson);
   const clean = validateValues(definitions.fields, values, false);
   const now = new Date().toISOString();
-  return db.insert(invoiceRecords).values({ invoiceId: detail.invoice.id, recordTypeId: type.id, recordTypeKey: type.key, recordTypeName: type.name, purpose: type.purpose, definitionsSnapshotJson: JSON.stringify(definitions), valuesJson: JSON.stringify(clean), createdAt: now, updatedAt: now }).returning().get();
+  return recordWrite(detail.invoice.id, () => db.insert(invoiceRecords).values({ invoiceId: detail.invoice.id, recordTypeId: type.id, recordTypeKey: type.key, recordTypeName: type.name, purpose: type.purpose, definitionsSnapshotJson: JSON.stringify(definitions), valuesJson: JSON.stringify(clean), createdAt: now, updatedAt: now }).returning().get());
 }
 
 export function updateInvoiceRecord(detail: InvoiceDetail, recordId: number, values: Record<string, string | boolean>) {
   const record = ownedRecord(detail.invoice.id, recordId);
   const definitions = JSON.parse(record.definitionsSnapshotJson) as ReturnType<typeof parseRecordDefinitions>;
   const clean = validateValues(definitions.fields, values);
-  db.update(invoiceRecords).set({ valuesJson: JSON.stringify(clean), updatedAt: new Date().toISOString() }).where(eq(invoiceRecords.id, record.id)).run();
+  recordWrite(detail.invoice.id, () => db.update(invoiceRecords).set({ valuesJson: JSON.stringify(clean), updatedAt: new Date().toISOString() }).where(eq(invoiceRecords.id, record.id)).run());
 }
 
 export async function attachToInvoiceRecord(detail: InvoiceDetail, recordId: number, definitionKey: string, upload: File) {
@@ -53,7 +54,8 @@ export async function attachToInvoiceRecord(detail: InvoiceDetail, recordId: num
   if (definition.acceptedTypes.length && !definition.acceptedTypes.includes(upload.type)) throw new Error(`Expected ${definition.acceptedTypes.join(", ")}`);
   const bytes = new Uint8Array(await upload.arrayBuffer());
 
-  return db.transaction((tx) => {
+  return recordWrite(detail.invoice.id, () => {
+    const tx=db;
     // Re-read while holding SQLite's write transaction. This makes a concurrent
     // upload observe the replacement/count recorded by the first request.
     const current = tx.select({ attachment: invoiceRecordAttachments, file: files }).from(invoiceRecordAttachments).innerJoin(files, eq(invoiceRecordAttachments.storedFileId, files.id)).where(and(eq(invoiceRecordAttachments.invoiceRecordId, record.id), eq(invoiceRecordAttachments.definitionKey, definitionKey))).orderBy(asc(invoiceRecordAttachments.id)).all();
@@ -71,6 +73,8 @@ export async function attachToInvoiceRecord(detail: InvoiceDetail, recordId: num
 }
 
 export function recordFile(detail: InvoiceDetail, fileId: number) {
+  const owned = db.select().from(invoiceFileOwnership).where(and(eq(invoiceFileOwnership.invoiceId, detail.invoice.id), eq(invoiceFileOwnership.fileId, fileId))).get();
+  if (owned) return db.select().from(files).where(eq(files.id, fileId)).get() ?? null;
   const recordIds = new Set(listInvoiceRecords(detail.invoice.id).map((record) => record.id));
   return db.select({ attachment: invoiceRecordAttachments, file: files }).from(invoiceRecordAttachments).innerJoin(files, eq(invoiceRecordAttachments.storedFileId, files.id)).where(eq(invoiceRecordAttachments.storedFileId, fileId)).all().find((row) => recordIds.has(row.attachment.invoiceRecordId))?.file ?? null;
 }
