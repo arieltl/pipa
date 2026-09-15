@@ -4,6 +4,7 @@ import {
   importTemplatePackageZip,
   packageFromSource,
   TemplatePackageError,
+  type TemplatePackageFile,
   validateTemplatePackage,
   MAX_TEMPLATE_TEXT_FILE_BYTES,
 } from "./template-package.ts";
@@ -16,7 +17,7 @@ const html = (body: string, head = "") =>
 
 describe("template packages", () => {
   test("enforces nesting limits when shared partials are reached by a longer path", () => {
-    const files = Array.from({ length: 18 }, (_, index) => ({
+    const files = Array.from({ length: 18 }, (_, index): TemplatePackageFile => ({
       path: `p${String(index).padStart(2, "0")}.liquid`,
       content: index === 0 ? "Leaf" : `{% render 'p${String(index - 1).padStart(2, "0")}.liquid' %}`,
       encoding: "utf8",
