@@ -22,8 +22,7 @@ Pipa is a web app designed for self-hosting, but it is also practical to use on 
 ## Planned features
 
 - Built-in authentication.
-- An improved template text editor.
-- Better invoice and template previews.
+- Further improvements to text-generator authoring and invoice previews.
 - Simpler configuration and onboarding.
 - Easier setup for the optional HTML-to-PDF renderer (Gotenberg).
 - Backup and restore assistance.

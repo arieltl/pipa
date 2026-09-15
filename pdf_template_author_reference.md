@@ -74,11 +74,14 @@ should use the names above.
 - The entry document is `index.html`, containing `<!doctype html>`, `<html>`,
   `<head>`, and `<body>`.
 - Stylesheets, images, and Liquid partials can live inside the same template
-  package. Remote assets and application filesystem access are not supported.
+  package. The package cannot load remote or absolute resources, access the
+  application filesystem, use scripts, or use SVG images.
 - HTML templates support package-local `render` partials. `include` and
-  `layout` remain unsupported. Text generators do not support partials.
-- Unknown variables, tags, and filters fail validation rather than rendering
-  silently.
+  `layout` remain unsupported. The multiline `{% liquid %}` tag is also
+  unsupported; write individual Liquid tags instead. Text generators do not
+  support partials.
+- Unknown variables, tags, and filters fail when Pipa validates or renders the
+  template; they do not silently become empty output.
 - Saving an edit creates an immutable revision. Existing invoices keep their
   selected revision.
 - The web editor's PDF preview uses fictional sample invoice data and unsaved
@@ -108,14 +111,16 @@ save your edits first to include them.
 Packages support UTF-8 text and PNG, JPEG, WebP, and GIF images. SVG images are
 not supported. Limits are 64 files, 200 KB per text file, 8 MiB of decoded
 package contents, and a 10 MiB ZIP upload. Paths must be unique and stay within
-the package; absolute paths and ZIP symlinks are rejected.
+the package; absolute paths and ZIP symlinks are rejected. Data-image URLs are
+also accepted only for those raster formats.
 
 Link a stylesheet from `index.html` with a relative path such as
 `styles/invoice.css`. Image paths are relative to the HTML or stylesheet that
 uses them. For example, `url('../images/logo.png')` in `styles/invoice.css`
 resolves to `images/logo.png` within the package. Moving a file requires updating
 its references. Local CSS `@import` is supported with literal package-relative
-paths; remote imports are rejected.
+paths; remote imports are rejected. CSS `image-set()` resources are not
+supported.
 
 ## Package-local partials
 

@@ -66,7 +66,7 @@ HTTP requests are limited to 20 MiB and individual supporting-record attachments
 Gotenberg is optional. The built-in React PDF renderer needs no separate
 service. Configure Gotenberg through environment variables; there is currently
 no UI form for changing its address. These instructions describe the current
-source and version `0.2.0`; older `0.1.x` images predate this functionality.
+source; releases before `0.2.0` predate this functionality.
 
 ### Use the bundled Docker service
 
@@ -132,9 +132,10 @@ In this direct-run case, `127.0.0.1` refers to the computer running Pipa.
 
 ### Choose a template and verify the connection
 
-- Open **PDF templates** to see the connection status: unconfigured, connected,
-  unavailable, or invalid configuration.
-- Choose an **HTML/Gotenberg** template for the client or draft invoice you
+- Open **PDF templates** to see the connection status: unconfigured, healthy,
+  unhealthy, or invalid configuration. The check is advisory; an actual
+  conversion remains the definitive test.
+- Choose an **HTML / Liquid** template for the client or draft invoice you
   want to render. Setting the URL does not change existing template selections.
 - Generate a sample PDF or preview an invoice to verify an actual conversion;
   a successful health check alone does not prove rendering works.
