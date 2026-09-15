@@ -29,8 +29,21 @@ export class PdfPreviewPanel {
     root.querySelector('[data-previous]').onclick = () => this.move(-1);
     root.querySelector('[data-next]').onclick = () => this.move(1);
     this.pageInput.onchange = () => { if (this.current) { this.current.viewer.currentPageNumber = Math.max(1,Math.min(this.current.viewer.pagesCount, Number(this.pageInput.value) || 1)); this.sync(); } };
-    this.zoom.onchange = () => { if(this.current) this.current.viewer.currentScaleValue = this.zoom.value; };
+    this.zoom.onchange = () => {
+      if (!this.current) return;
+      const viewer = this.current.viewer;
+      const page = viewer.currentPageNumber;
+      viewer.currentScaleValue = this.zoom.value;
+      viewer.currentPageNumber = page;
+      this.sync();
+    };
     this.sync();
+  }
+  /** Cancel an in-progress replacement while keeping the last successful PDF. */
+  cancelPending() {
+    this.generation++;
+    this.pending?.dispose();
+    this.pending = null;
   }
   move(step) { if (this.current) { this.current.viewer.currentPageNumber += step; this.sync(); } }
   sync() {
@@ -42,7 +55,7 @@ export class PdfPreviewPanel {
     this.root.querySelector('[data-previous]').disabled = !viewer || viewer.currentPageNumber <= 1;
     this.root.querySelector('[data-next]').disabled = !viewer || viewer.currentPageNumber >= viewer.pagesCount;
   }
-  async load(url, { label = 'PDF preview' } = {}) {
+  async load(url, { label = 'PDF preview', objectUrl = false } = {}) {
     const generation = ++this.generation;
     this.message.textContent = this.current ? 'Updating preview…' : 'Loading PDF…';
     this.message.dataset.error = '';
@@ -52,7 +65,7 @@ export class PdfPreviewPanel {
       const resolved = new URL(url, location.href);
       if (resolved.origin !== location.origin) throw new Error('Preview must come from this app.');
       await stylesReady();
-      if (generation !== this.generation) return;
+      if (generation !== this.generation) { if (objectUrl) URL.revokeObjectURL(resolved.href); return false; }
       const container = document.createElement('div'); container.className = 'pdf-preview-scroll pdf-preview-pending';
       const pages = document.createElement('div'); pages.className = 'pdfViewer'; container.append(pages); this.body.append(container);
       const eventBus = new EventBus(); const linkService = new PDFLinkService({eventBus, externalLinkTarget:2});
@@ -60,10 +73,10 @@ export class PdfPreviewPanel {
       linkService.setViewer(viewer);
       const task = getDocument({url:resolved.href, cMapUrl:new URL('./pdfjs/cmaps/',import.meta.url).href, cMapPacked:true, standardFontDataUrl:new URL('./pdfjs/standard_fonts/',import.meta.url).href, wasmUrl:new URL('./pdfjs/wasm/',import.meta.url).href, iccUrl:new URL('./pdfjs/iccs/',import.meta.url).href, isEvalSupported:false});
       let rejectReady;
-      candidate = { viewer, container, dispose() { rejectReady?.(new Error('Preview replaced.')); viewer.setDocument(null); container.remove(); void task.destroy().catch(()=>{}); } };
+      candidate = { viewer, container, dispose() { rejectReady?.(new Error('Preview replaced.')); viewer.setDocument(null); container.remove(); void task.destroy().catch(()=>{}); if (objectUrl) URL.revokeObjectURL(resolved.href); } };
       this.pending = candidate;
       const pdf = await task.promise;
-      if (generation !== this.generation) { candidate.dispose(); return; }
+      if (generation !== this.generation) { candidate.dispose(); return false; }
       const previousPage = this.current?.viewer.currentPageNumber || 1;
       const previousOffset = this.current ? this.current.container.scrollTop - (this.current.viewer.getPageView(previousPage-1)?.div.offsetTop || 0) : 0;
       const rendered = new Promise((resolve, reject) => {
@@ -73,22 +86,37 @@ export class PdfPreviewPanel {
       });
       viewer.setDocument(pdf); linkService.setDocument(pdf);
       await rendered; rejectReady = null;
-      if (generation !== this.generation) { candidate.dispose(); return; }
+      if (generation !== this.generation) { candidate.dispose(); return false; }
       const previous = this.current; this.current = candidate; this.pending = null;
       container.classList.remove('pdf-preview-pending');
       if (previous) container.scrollTop = (viewer.getPageView(viewer.currentPageNumber-1)?.div.offsetTop || 0) + previousOffset;
       previous?.dispose();
       eventBus.on('pagechanging', () => { if(this.current === candidate) this.sync(); });
       const download = this.root.querySelector('[data-download]'); download.href = resolved.href; download.hidden = false;
+      if (objectUrl) download.setAttribute('download', 'template-sample.pdf');
+      else download.removeAttribute('download');
       this.message.textContent = label; this.sync();
       this.root.dispatchEvent(new CustomEvent('pdf-preview-ready', {detail:{url:resolved.href,pages:pdf.numPages}}));
+      return true;
     } catch (error) {
       candidate?.dispose();
+      if (objectUrl && !candidate) URL.revokeObjectURL(url);
       if (generation !== this.generation) return;
       this.pending = null;
       this.message.dataset.error = 'true';
       this.message.textContent = `${error.status === 410 ? 'This preview expired. Close it and generate a new preview.' : 'Could not display this PDF. Close it and try again.'}${this.current ? ' The previous preview is still shown.' : ''}`;
+      return false;
     }
+  }
+  /** Load memory bytes without storing them on the server. The Blob URL lives
+   * only for the active preview and is revoked when replaced or destroyed. */
+  async loadData(data, options = {}) {
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+    try { return await this.load(url, { ...options, objectUrl: true }); }
+    catch (error) { URL.revokeObjectURL(url); throw error; }
+  }
+  refresh() {
+    if (this.current && (this.zoom.value === 'page-width' || this.zoom.value === 'page-fit')) this.current.viewer.currentScaleValue = this.zoom.value;
   }
   destroy() { this.generation++; this.pending?.dispose(); this.current?.dispose(); this.pending = this.current = null; this.root.replaceChildren(); }
 }

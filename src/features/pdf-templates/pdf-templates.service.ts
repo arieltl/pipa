@@ -1,14 +1,22 @@
 import type { Client, IssuerSettings, PdfTemplate, PdfTemplateRevision } from "../../db/schema.ts";
 import * as repo from "./pdf-templates.repository.ts";
-import { createHash } from "node:crypto";
 import { nowIso } from "../../domain/dates.ts";
 import {
-  renderLiquidHtml,
-  validateLiquidHtmlSource,
+  renderLiquidHtmlPackage,
+  validateLiquidHtmlPackage,
 } from "../../pdf/html/liquid-engine.ts";
 import { isGotenbergConfigured } from "../../config/gotenberg.ts";
 import { renderPdf } from "../../pdf/renderer-registry.ts";
+import type { PdfRenderRequest } from "../../pdf/renderer.ts";
 import { sampleInvoiceDocument } from "../../pdf/sample-document.ts";
+import {
+  findPackageFile,
+  packageFromSource,
+  templatePackageConfiguration,
+  templatePackageFromRevision,
+  templatePackageHash,
+  type TemplatePackage,
+} from "../../domain/template-package.ts";
 
 export class PdfTemplateNotFoundError extends Error {}
 export class PdfTemplateArchivedError extends Error {}
@@ -56,21 +64,28 @@ export function listTemplateRevisions(templateId: number) {
   return repo.listRevisions(templateId);
 }
 
-function validateHtml(source: string): void {
-  validateLiquidHtmlSource(source);
-  renderLiquidHtml(source, sampleInvoiceDocument);
+function validateHtml(templatePackage: TemplatePackage): TemplatePackage {
+  const normalized = validateLiquidHtmlPackage(templatePackage);
+  renderLiquidHtmlPackage(normalized, sampleInvoiceDocument);
+  return normalized;
 }
 
-function sha256(source: string): string {
-  return createHash("sha256").update(source).digest("hex");
+function packageForInput(source: string, templatePackage?: TemplatePackage): TemplatePackage {
+  return validateHtml(templatePackage ?? packageFromSource(source));
 }
 
-export function createHtmlTemplate(name: string, source: string): PdfTemplate {
-  validateHtml(source);
+export function getRevisionPackage(revision: PdfTemplateRevision): TemplatePackage {
+  return templatePackageFromRevision(revision.source, revision.configurationJson);
+}
+
+export function createHtmlTemplate(name: string, source: string, templatePackage?: TemplatePackage): PdfTemplate {
+  const normalized = packageForInput(source, templatePackage);
+  const entry = findPackageFile(normalized, normalized.entry)!;
   return repo.insertHtmlTemplate({
     name,
-    source,
-    contentSha256: sha256(source),
+    source: entry.content,
+    configurationJson: templatePackageConfiguration(normalized),
+    contentSha256: templatePackageHash(normalized),
     createdAt: nowIso(),
   });
 }
@@ -79,6 +94,7 @@ export function reviseHtmlTemplate(
   templateId: number,
   name: string,
   source: string,
+  templatePackage?: TemplatePackage,
 ): PdfTemplateRevision {
   const template = getTemplate(templateId);
   if (template.engine !== "gotenberg-html") {
@@ -88,12 +104,14 @@ export function reviseHtmlTemplate(
     throw new PdfTemplateImmutableError("Duplicate a built-in template before editing it");
   }
   if (template.archivedAt) throw new PdfTemplateArchivedError("The template is archived");
-  validateHtml(source);
+  const normalized = packageForInput(source, templatePackage);
+  const entry = findPackageFile(normalized, normalized.entry)!;
   return repo.insertRevision({
     templateId,
     name,
-    source,
-    contentSha256: sha256(source),
+    source: entry.content,
+    configurationJson: templatePackageConfiguration(normalized),
+    contentSha256: templatePackageHash(normalized),
     createdAt: nowIso(),
   });
 }
@@ -107,13 +125,51 @@ export function duplicateHtmlTemplate(
     throw new PdfTemplateImmutableError("Only HTML templates can be duplicated in the editor");
   }
   const revision = getRevision(template.currentRevisionId ?? 0);
-  if (!revision.source) throw new PdfTemplateNotFoundError("Template source was not found");
-  return createHtmlTemplate(name?.trim() || `${template.name} copy`, revision.source);
+  const templatePackage = getRevisionPackage(revision);
+  return createHtmlTemplate(
+    name?.trim() || `${template.name} copy`,
+    findPackageFile(templatePackage, templatePackage.entry)!.content,
+    templatePackage,
+  );
 }
 
-export function renderHtmlSample(source: string): string {
-  validateHtml(source);
-  return renderLiquidHtml(source, sampleInvoiceDocument);
+export function renderHtmlSample(source: string, templatePackage?: TemplatePackage): string {
+  const rendered = renderLiquidHtmlPackage(packageForInput(source, templatePackage), sampleInvoiceDocument);
+  return findPackageFile(rendered, rendered.entry)!.content;
+}
+
+/**
+ * Renders unsaved editor source with fictional data. The revision-shaped value
+ * exists only for the renderer call and is deliberately never persisted.
+ */
+export async function renderHtmlPreviewPdf(
+  source: string,
+  renderer: (request: PdfRenderRequest) => Promise<Buffer> = renderPdf,
+  templatePackage?: TemplatePackage,
+): Promise<Buffer> {
+  // Validate before testing the renderer or making a network request, so the
+  // editor can always surface actionable Liquid errors.
+  const normalized = packageForInput(source, templatePackage);
+  const entry = findPackageFile(normalized, normalized.entry)!;
+  if (!isGotenbergConfigured()) {
+    throw new PdfEngineNotConfiguredError(
+      "Gotenberg is not configured for HTML PDF previews",
+    );
+  }
+  return renderer({
+    template: {
+      id: 0,
+      templateId: 0,
+      revision: 0,
+      rendererKey: null,
+      source: entry.content,
+      configurationJson: templatePackageConfiguration(normalized),
+      contentSha256: templatePackageHash(normalized),
+      createdAt: nowIso(),
+    },
+    document: sampleInvoiceDocument,
+    traceId: crypto.randomUUID(),
+  });
 }
 
 export async function renderTemplateSamplePdf(templateId: number): Promise<Buffer> {

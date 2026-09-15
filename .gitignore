@@ -41,3 +41,4 @@ Thumbs.db
 
 src/public/pdfjs/
 src/public/pdf-preview.mjs
+src/public/template-editor.mjs

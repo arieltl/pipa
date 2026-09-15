@@ -2,7 +2,7 @@
 
 ## First setup
 
-1. Open **Issuer settings** and enter details for new invoices.
+1. Open **Settings → Issuer** and enter details for new invoices.
 2. Create a client. Client defaults seed future invoices and never rewrite historical ones.
 3. Optionally configure the client's numbering profile, currency, recurring item, PDF template, text generators, and supporting record types.
 
@@ -34,7 +34,33 @@ Clients can define reusable text generators and invoice record types. Generated 
 
 ## Templates and historical data
 
-PDF templates are revisioned. Saving an HTML template creates an immutable revision, and an invoice keeps its selected revision. See the [template reference](../pdf_template_author_reference.md) for Liquid syntax and variables.
+Open **Settings → PDF templates** to create a layout, import a document or ZIP,
+or open an existing template. Duplicate a built-in HTML template to customize it.
+React PDF layouts are implemented in application code and have no editable
+HTML source.
+
+The desktop workspace keeps files on the left, the source editor in the center,
+and the PDF preview on the right. Toggle **Files**, **Preview**, and **Tools** to
+make room, or resize the panels. Open files have separate editor tabs. Add a
+stylesheet, a local image, or a Liquid partial when the layout needs it;
+`index.html` remains the entry document.
+
+The **Tools** panel contains problems, used fields, available fields, and
+template information and revision history. Click a used-field occurrence to
+open its file and select the reference. The field list helps navigate source;
+the server validates the actual template when rendering or saving it.
+
+The PDF.js preview refreshes after a short pause while its panel is open. It
+renders the entire unsaved package with fictional sample invoice data; it never
+creates a revision or changes an invoice. If rendering fails, the last
+successful preview stays visible with an outdated warning. Editing and saving
+remain available when Gotenberg is unavailable.
+
+**Save new revision** captures every file in an immutable revision. Invoices
+keep their selected revision. Export downloads a plain HTML file for a
+single-file template, or a ZIP for a template with additional files. See the
+[template reference](../pdf_template_author_reference.md) for package rules,
+Liquid syntax, and variables.
 
 Invoice party details and template choices are snapshotted so later settings changes do not silently rewrite the document. Archived PDFs remain authoritative; regenerating a PDF does not overwrite an archive.
 

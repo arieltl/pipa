@@ -36,3 +36,25 @@ console.log("vendored client assets copied to src/public");
 for (const directory of ["cmaps", "standard_fonts", "wasm", "iccs", "web/images"]) {
   await cp(join(ROOT, "node_modules/pdfjs-dist", directory), join(PUBLIC_DIR, "pdfjs", directory === "web/images" ? "images" : directory), { recursive: true });
 }
+
+const editorBuild = await Bun.build({
+  entrypoints: [join(ROOT, "assets", "template-editor.ts")],
+  outdir: PUBLIC_DIR,
+  naming: "template-editor.mjs",
+  target: "browser",
+  format: "esm",
+  minify: true,
+  plugins: [{
+    name: "shared-pdf-preview",
+    setup(build) {
+      build.onResolve({ filter: /pdf-preview\.mjs$/ }, () => ({
+        path: "./pdf-preview.mjs",
+        external: true,
+      }));
+    },
+  }],
+});
+if (!editorBuild.success) {
+  for (const log of editorBuild.logs) console.error(log);
+  process.exitCode = 1;
+} else console.log("✓ template-editor.mjs");

@@ -53,6 +53,23 @@ If a selected Gotenberg renderer is unconfigured or unavailable, the user sees t
 the invoice/archive state is left unchanged. Keep Gotenberg on the private
 Compose network because rendered content contains invoice and payment data.
 
+### Template packages
+
+HTML templates use one package model: an `index.html` entry document plus
+optional stylesheets, images, and Liquid partials. A single-file template is
+the same model with only its entry document. Import and export select plain
+text or ZIP automatically; users do not choose an internal template type.
+
+Each saved revision captures the complete package. Existing single-file
+revisions are adapted when read, without rewriting historical rows. Previewing
+an unsaved package does not create a revision or change an invoice. The editor
+and invoice renderer use the same package-resolution rules.
+
+Dependencies belong to the package that contains them. Local assets and Liquid
+`render` partials cannot reach other templates, application files, or remote
+resources. See the [template reference](../pdf_template_author_reference.md)
+for the supported file types and authoring rules.
+
 ## Access boundary
 
 Authentication is intentionally not implemented in the beta. The deployment

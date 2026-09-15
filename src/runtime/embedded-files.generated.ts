@@ -317,6 +317,7 @@ import file312 from "../public/pdfjs/wasm/qcms_bg.wasm" with { type: "file" };
 import file313 from "../public/pdfjs/wasm/quickjs-eval.js" with { type: "file" };
 import file314 from "../public/pdfjs/wasm/quickjs-eval.wasm" with { type: "file" };
 import file315 from "../public/pipa-logo.svg" with { type: "file" };
+import file316 from "../public/template-editor.mjs" with { type: "file" };
 
 export const embeddedRuntimeFiles = [
   { source: file0, target: "drizzle/0000_mushy_the_call.sql" },
@@ -635,4 +636,5 @@ export const embeddedRuntimeFiles = [
   { source: file313, target: "src/public/pdfjs/wasm/quickjs-eval.js" },
   { source: file314, target: "src/public/pdfjs/wasm/quickjs-eval.wasm" },
   { source: file315, target: "src/public/pipa-logo.svg" },
+  { source: file316, target: "src/public/template-editor.mjs" },
 ] as const;

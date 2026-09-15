@@ -25,6 +25,7 @@ export function listRevisions(templateId: number): PdfTemplateRevision[] {
 export function insertHtmlTemplate(values: {
   name: string;
   source: string;
+  configurationJson: string;
   contentSha256: string;
   createdAt: string;
 }): PdfTemplate {
@@ -50,7 +51,7 @@ export function insertHtmlTemplate(values: {
         revision: 1,
         rendererKey: null,
         source: values.source,
-        configurationJson: "{}",
+        configurationJson: values.configurationJson,
         contentSha256: values.contentSha256,
         createdAt: values.createdAt,
       })
@@ -69,6 +70,7 @@ export function insertRevision(values: {
   templateId: number;
   name: string;
   source: string;
+  configurationJson: string;
   contentSha256: string;
   createdAt: string;
 }): PdfTemplateRevision {
@@ -85,7 +87,7 @@ export function insertRevision(values: {
         revision: (row?.value ?? 0) + 1,
         rendererKey: null,
         source: values.source,
-        configurationJson: "{}",
+        configurationJson: values.configurationJson,
         contentSha256: values.contentSha256,
         createdAt: values.createdAt,
       })
