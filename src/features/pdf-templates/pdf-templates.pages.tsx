@@ -309,12 +309,13 @@ function TemplateWorkspace({
         class="contents"
       >
         <header class="template-workspace-toolbar">
+          <a href="/settings/pdf-templates" class="template-icon-button" aria-label="Back to template library" title="Back to template library">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14" /></svg>
+          </a>
           <nav class="template-workspace-menus" aria-label="Editor menus">
             <EditorMenu label="File">
               {editable ? <MenuButton command="save">{submitLabel} <kbd data-shortcut="save" /></MenuButton> : null}
               {templateId ? <a href={`/settings/pdf-templates/${templateId}/source`}>Export saved revision <small>Unsaved edits excluded</small></a> : null}
-              <span class="template-menu-separator" />
-              <a href="/settings/pdf-templates">Back to template library</a>
             </EditorMenu>
             <EditorMenu label="Edit">
               <MenuButton command="undo">Undo <kbd data-shortcut="undo" /></MenuButton>
@@ -342,15 +343,20 @@ function TemplateWorkspace({
             </EditorMenu>
           </nav>
           <div class="template-title-field">
-            <input
-              name="name"
-              value={values.name}
-              maxlength={120}
-              readonly={!editable}
-              aria-label="Template name"
-            />
+            <label class="template-title-input">
+              <input
+                name="name"
+                value={values.name}
+                maxlength={120}
+                readonly={!editable}
+                aria-label="Template name"
+              />
+              {editable ? <svg class="template-title-pencil" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6L16 3Zm-3 3 5 5" /></svg> : null}
+            </label>
             <span>Revision {revision || "draft"}</span>
           </div>
+          <span data-format-status class="template-format-status" role="status" aria-live="polite"></span>
+          <div class="template-toolbar-spacer" />
           <span class="badge badge-outline badge-sm">
             {engine === "react-pdf" ? "React PDF" : "HTML / Liquid"}
           </span>
@@ -360,8 +366,6 @@ function TemplateWorkspace({
           <span data-template-saved class="template-save-state">
             Saved
           </span>
-          <span data-format-status class="template-format-status" role="status" aria-live="polite"></span>
-          <div class="template-toolbar-spacer" />
           <PanelToggle panel="files" label="left" />
           <PanelToggle panel="tools" label="bottom" />
           <PanelToggle panel="preview" label="right" />
