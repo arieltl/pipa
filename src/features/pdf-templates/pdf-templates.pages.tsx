@@ -7,6 +7,7 @@ export type HtmlTemplateValues = {
   name: string;
   source: string;
   packageJson?: string;
+  engine?: "gotenberg-html" | "react-pdf";
 };
 
 export function PdfTemplatesPage({
@@ -29,9 +30,24 @@ export function PdfTemplatesPage({
         title="PDF templates"
         description="Create and maintain the layouts used for invoice PDFs."
         actions={
-          <a href="/settings/pdf-templates/new" class="btn btn-primary btn-sm">
-            New template
-          </a>
+          <div class="dropdown dropdown-end">
+            <button type="button" tabindex={0} class="btn btn-primary btn-sm">
+              New template
+            </button>
+            <ul
+              tabindex={0}
+              class="dropdown-content menu z-10 mt-2 w-56 rounded-box border border-base-300 bg-base-100 p-2 shadow-xl"
+            >
+              <li>
+                <a href="/settings/pdf-templates/new">HTML / Liquid</a>
+              </li>
+              <li>
+                <a href="/settings/pdf-templates/new?engine=react-pdf">
+                  React PDF
+                </a>
+              </li>
+            </ul>
+          </div>
         }
       />
       {errors._form ? (
@@ -93,7 +109,7 @@ export function PdfTemplatesPage({
               </div>
               <p>
                 {template.engine === "react-pdf"
-                  ? "Code-defined React PDF layout"
+                  ? "React PDF, TSX and local assets"
                   : "HTML, Liquid and local assets"}
               </p>
             </div>
@@ -161,18 +177,28 @@ function FilterLink({
 }
 
 export function PdfTemplateNewPage({
-  values = { name: "Untitled template", source: defaultTemplateSource },
+  values,
+  engine = values?.engine ?? "gotenberg-html",
   errors = {},
   gotenbergStatus,
 }: {
   values?: HtmlTemplateValues;
+  engine?: "gotenberg-html" | "react-pdf";
   errors?: FieldErrors;
   gotenbergStatus: GotenbergStatus;
 }) {
+  const resolvedValues = values ?? {
+    name: "Untitled template",
+    source:
+      engine === "react-pdf"
+        ? defaultReactTemplateSource
+        : defaultTemplateSource,
+    engine,
+  };
   return (
     <TemplateWorkspace
       action="/settings/pdf-templates"
-      values={values}
+      values={resolvedValues}
       errors={errors}
       gotenbergStatus={gotenbergStatus}
       submitLabel="Create template"
@@ -180,6 +206,7 @@ export function PdfTemplateNewPage({
       revision={0}
       revisions={[]}
       editable
+      engine={engine}
     />
   );
 }
@@ -200,34 +227,6 @@ export function PdfTemplateDetailPage({
   renderedSample?: string;
   gotenbergStatus: GotenbergStatus;
 }) {
-  if (template.engine === "react-pdf")
-    return (
-      <div>
-        <PageHeader
-          title={template.name}
-          description={`Code-defined React PDF layout · revision ${revision.revision}`}
-          actions={
-            <a href="/settings/pdf-templates" class="btn btn-ghost btn-sm">
-              Back to templates
-            </a>
-          }
-        />
-        <div class="app-card rounded-xl p-6">
-          <h2 class="font-semibold">Application layout</h2>
-          <p class="mt-2 max-w-2xl text-sm text-base-content/65">
-            This layout ships with Pipa and is implemented in application code.
-            It can be selected and revision-pinned, but its source is not
-            editable in this workspace.
-          </p>
-          <a
-            href={`/settings/pdf-templates/${template.id}/sample.pdf`}
-            class="btn btn-primary btn-sm mt-5"
-          >
-            Open sample PDF
-          </a>
-        </div>
-      </div>
-    );
   return (
     <TemplateWorkspace
       action={`/settings/pdf-templates/${template.id}/revisions`}
@@ -240,6 +239,7 @@ export function PdfTemplateDetailPage({
       revision={revision.revision}
       revisions={revisions}
       editable={template.sourceKind !== "builtin"}
+      engine={template.engine as "gotenberg-html" | "react-pdf"}
     />
   );
 }
@@ -255,6 +255,7 @@ function TemplateWorkspace({
   revision,
   revisions,
   editable,
+  engine,
 }: {
   action: string;
   values: HtmlTemplateValues;
@@ -266,26 +267,34 @@ function TemplateWorkspace({
   revision: number;
   revisions: PdfTemplateRevision[];
   editable: boolean;
+  engine: "gotenberg-html" | "react-pdf";
 }) {
   const packageJson =
     values.packageJson ??
     JSON.stringify({
       version: 1,
-      entry: "index.html",
-      files: [{ path: "index.html", content: values.source, encoding: "utf8" }],
+      entry: engine === "react-pdf" ? "index.tsx" : "index.html",
+      files: [
+        {
+          path: engine === "react-pdf" ? "index.tsx" : "index.html",
+          content: values.source,
+          encoding: "utf8",
+        },
+      ],
     });
   return (
     <section
       data-template-editor
       data-template-key={templateKey}
       data-template-editable={editable ? "true" : "false"}
+      data-template-engine={engine}
       data-template-initial-dirty={
         Boolean(
           revision === 0 ||
-            errors._form ||
-            errors.name ||
-            errors.source ||
-            errors.packageJson,
+          errors._form ||
+          errors.name ||
+          errors.source ||
+          errors.packageJson,
         )
           ? "true"
           : undefined
@@ -318,6 +327,9 @@ function TemplateWorkspace({
             />
             <span>Revision {revision || "draft"}</span>
           </div>
+          <span class="badge badge-outline badge-sm">
+            {engine === "react-pdf" ? "React PDF" : "HTML / Liquid"}
+          </span>
           <span data-template-dirty class="template-save-state" hidden>
             Unsaved
           </span>
@@ -391,6 +403,7 @@ function TemplateWorkspace({
           value={packageJson}
           data-template-package
         />
+        <input type="hidden" name="engine" value={engine} />
         <textarea name="source" hidden>
           {values.source}
         </textarea>
@@ -513,20 +526,29 @@ function TemplateWorkspace({
                 <div data-used-fields></div>
               </div>
               <div data-tool-view="available" hidden>
-                <AvailableFields />
+                <AvailableFields engine={engine} />
               </div>
               <div data-tool-view="info" hidden>
                 <p>
                   Every save creates an immutable package revision. The preview
                   uses fictional invoice data.
                 </p>
-                <p>
-                  Reuse local markup with{" "}
-                  <code>{`{% render 'partials/header.liquid', invoice: invoice %}`}</code>
-                  . Partials must be package-local <code>.liquid</code> files
-                  and receive named values explicitly.
-                </p>
-                {gotenbergStatus.state !== "healthy" ? (
+                {engine === "gotenberg-html" ? (
+                  <p>
+                    Reuse local markup with{" "}
+                    <code>{`{% render 'partials/header.liquid', invoice: invoice %}`}</code>
+                    . Partials must be package-local <code>.liquid</code> files
+                    and receive named values explicitly.
+                  </p>
+                ) : (
+                  <p>
+                    Split layouts into local TSX modules and keep images in this
+                    package. The entry file must export the template as its
+                    default function.
+                  </p>
+                )}
+                {engine === "gotenberg-html" &&
+                gotenbergStatus.state !== "healthy" ? (
                   <p class="template-tool-warning">
                     Preview unavailable: {gotenbergStatus.message}
                   </p>
@@ -550,7 +572,12 @@ function TemplateWorkspace({
   );
 }
 
-function AvailableFields() {
+function AvailableFields({
+  engine,
+}: {
+  engine: "gotenberg-html" | "react-pdf";
+}) {
+  if (engine === "react-pdf") return <ReactAvailableFields />;
   const groups = [
     {
       name: "Invoice",
@@ -638,4 +665,98 @@ function AvailableFields() {
   );
 }
 
+function ReactAvailableFields() {
+  const groups = [
+    {
+      name: "Invoice",
+      entries: [
+        ["invoice.number", "{document.invoice.number}"],
+        ["invoice.dateDisplay", "{document.invoice.dateDisplay}"],
+        ["invoice.currency", "{document.invoice.currency}"],
+        ["invoice.notes", "{document.invoice.notes}"],
+      ],
+    },
+    {
+      name: "Parties",
+      entries: [
+        ["issuer.name", "{document.issuer.name}"],
+        ["customer.name", "{document.customer.name}"],
+        ["customer.code", "{document.customer.code}"],
+        [
+          "issuer/customer fields",
+          "{document.issuer.fields.map((field) => (\n  <Text key={field.key}>{field.label}: {field.value}</Text>\n))}",
+        ],
+      ],
+    },
+    {
+      name: "Totals & items",
+      entries: [
+        ["total.display", "{document.total.display}"],
+        ["total.decimal", "{document.total.decimal}"],
+        [
+          "items",
+          "{document.items.map((item, index) => (\n  <Text key={index}>{item.name} — {item.valueDisplay}</Text>\n))}",
+        ],
+      ],
+    },
+    {
+      name: "Linked NFS-e",
+      entries: [
+        [
+          "optional notaFiscal",
+          "{document.notaFiscal ? (\n  <Text>{document.notaFiscal.number} · {document.notaFiscal.issueDateDisplay}</Text>\n) : null}",
+        ],
+        [
+          "notaFiscal public URL",
+          "{document.notaFiscal?.publicUrl ? <Text>{document.notaFiscal.publicUrl}</Text> : null}",
+        ],
+      ],
+    },
+    {
+      name: "Supporting records",
+      entries: [
+        [
+          "records",
+          "{document.records.map((record, index) => (\n  <Text key={index}>{record.typeName} — {record.purpose}</Text>\n))}",
+        ],
+      ],
+    },
+  ];
+  return (
+    <div class="template-field-groups">
+      {groups.map((group) => (
+        <section>
+          <h3>{group.name}</h3>
+          <div>
+            {group.entries.map(([label, snippet]) => (
+              <button type="button" data-insert-field={snippet}>
+                <code>{label}</code>
+                <span>Insert</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 const defaultTemplateSource = `<!doctype html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>Invoice {{ invoice.number }}</title>\n  <style>body { font-family: sans-serif; padding: 32px; }</style>\n</head>\n<body>\n  <h1>Invoice {{ invoice.number }}</h1>\n  <p>{{ customer.name }}</p>\n  <p>Total: {{ total.display }}</p>\n</body>\n</html>`;
+
+const defaultReactTemplateSource = `import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+
+const styles = StyleSheet.create({
+  page: { padding: 40, fontSize: 11 },
+  title: { fontSize: 22, marginBottom: 18 },
+  total: { marginTop: 18, fontSize: 14 },
+});
+
+export default function Template({ document }) {
+  return <Document>
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.title}>Invoice {document.invoice.number}</Text>
+      <Text>{document.customer.name}</Text>
+      <View style={styles.total}><Text>Total: {document.total.display}</Text></View>
+    </Page>
+  </Document>;
+}`;

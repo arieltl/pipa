@@ -8,12 +8,13 @@ export type WorkspacePackage = TemplatePackage;
 export function normaliseWorkspacePackage(
   input: WorkspacePackage,
 ): WorkspacePackage {
-  if (normalisePath(input.entry) !== "index.html")
-    throw new Error("Template entry must be index.html.");
+  const entry = normalisePath(input.entry);
+  if (entry !== "index.html" && entry !== "index.tsx")
+    throw new Error("Template entry must be index.html or index.tsx.");
   const files = [...input.files]
     .map((file) => ({ ...file, path: normalisePath(file.path) }))
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  return { version: 1, entry: "index.html", files };
+  return { version: 1, entry, files };
 }
 
 export function normalisePath(value: string): string {
@@ -123,6 +124,198 @@ export type LiquidOccurrence = {
   line: number;
   column: number;
 };
+
+export type ReactOccurrence = LiquidOccurrence;
+
+/** Finds document-model references in stored React PDF source. This is a small
+ * source navigator rather than a TypeScript parser: strings and comments are
+ * masked, and only explicit `document.*` references plus map callback aliases
+ * are accepted. */
+export function findReactOccurrences(pkg: WorkspacePackage): ReactOccurrence[] {
+  const occurrences: ReactOccurrence[] = [];
+  for (const file of pkg.files.filter(
+    (candidate) =>
+      isEditableTextFile(candidate) && /\.(?:[jt]sx?)$/i.test(candidate.path),
+  )) {
+    const masked = maskJavaScriptTrivia(file.content);
+    const aliases: Array<{
+      name: string;
+      canonicalRoot: string;
+      from: number;
+      to: number;
+    }> = [];
+    for (const match of masked.matchAll(
+      /\bdocument\.([A-Za-z_]\w*(?:\??\.[A-Za-z_]\w*)*)\??\.map\s*\(\s*(?:\(\s*)?([A-Za-z_]\w*)\b/g,
+    )) {
+      const mapOffset = match[0].lastIndexOf(".map"),
+        open = masked.indexOf("(", match.index + mapOffset),
+        close = matchingDelimiter(masked, open, "(", ")");
+      if (open >= 0 && close > open)
+        aliases.push({
+          name: match[2]!,
+          canonicalRoot: `document.${match[1]!.replaceAll("?.", ".")}[]`,
+          from: match.index + match[0].length,
+          to: close,
+        });
+    }
+
+    const candidates: Array<{ raw: string; canonical: string; from: number }> =
+      [];
+    for (const match of masked.matchAll(
+      /\bdocument\.[A-Za-z_]\w*(?:\??\.[A-Za-z_]\w*)*/g,
+    )) {
+      // The collection expression in `.map(...)` is useful by itself, while
+      // `.map` is an Array method and not part of the document model.
+      const raw = match[0].replace(/\??\.map$/, "");
+      candidates.push({
+        raw,
+        canonical: raw.replaceAll("?.", "."),
+        from: match.index,
+      });
+    }
+    for (const { name: alias, canonicalRoot, from, to } of aliases) {
+      const pattern = new RegExp(
+        `\\b${escapeRegExp(alias)}\\.[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*`,
+        "g",
+      );
+      for (const match of masked.slice(from, to).matchAll(pattern)) {
+        candidates.push({
+          raw: match[0],
+          canonical: canonicalRoot + match[0].slice(alias.length),
+          from: from + match.index,
+        });
+      }
+    }
+    candidates.sort((a, b) => a.from - b.from || b.raw.length - a.raw.length);
+    for (const candidate of candidates) {
+      if (
+        occurrences.some(
+          (item) => item.path === file.path && item.from === candidate.from,
+        )
+      )
+        continue;
+      const before = file.content.slice(0, candidate.from);
+      const lastBreak = before.lastIndexOf("\n");
+      occurrences.push({
+        path: file.path,
+        field: candidate.canonical,
+        from: candidate.from,
+        to: candidate.from + candidate.raw.length,
+        line: before.split("\n").length,
+        column: candidate.from - lastBreak,
+      });
+    }
+  }
+  return occurrences;
+}
+
+function matchingDelimiter(
+  source: string,
+  start: number,
+  opening: string,
+  closing: string,
+): number {
+  let depth = 0;
+  for (let index = start; index < source.length; index++) {
+    if (source[index] === opening) depth++;
+    else if (source[index] === closing && --depth === 0) return index;
+  }
+  return -1;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function maskJavaScriptTrivia(source: string): string {
+  const result = source.split("");
+  let state: "code" | "single" | "double" | "template" | "line" | "block" =
+    "code";
+  let escaped = false;
+  const templateExpressionDepth: number[] = [];
+  for (let index = 0; index < source.length; index++) {
+    const char = source[index]!,
+      next = source[index + 1];
+    if (state === "line") {
+      if (char === "\n") state = "code";
+      else result[index] = " ";
+      continue;
+    }
+    if (state === "block") {
+      result[index] = char === "\n" ? "\n" : " ";
+      if (char === "*" && next === "/") {
+        result[++index] = " ";
+        state = "code";
+      }
+      continue;
+    }
+    if (state === "single" || state === "double") {
+      result[index] = char === "\n" ? "\n" : " ";
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (
+        (state === "single" && char === "'") ||
+        (state === "double" && char === '"')
+      )
+        state = "code";
+      continue;
+    }
+    if (state === "template") {
+      result[index] = char === "\n" ? "\n" : " ";
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === "`") state = "code";
+      else if (char === "$" && next === "{") {
+        result[index] = result[index + 1] = " ";
+        index++;
+        templateExpressionDepth.push(1);
+        state = "code";
+      }
+      continue;
+    }
+    if (char === "/" && next === "/") {
+      result[index] = result[++index] = " ";
+      state = "line";
+      continue;
+    }
+    if (char === "/" && next === "*") {
+      result[index] = result[++index] = " ";
+      state = "block";
+      continue;
+    }
+    if (char === "'") {
+      result[index] = " ";
+      state = "single";
+      continue;
+    }
+    if (char === '"') {
+      result[index] = " ";
+      state = "double";
+      continue;
+    }
+    if (char === "`") {
+      result[index] = " ";
+      state = "template";
+      continue;
+    }
+    if (templateExpressionDepth.length) {
+      const depthIndex = templateExpressionDepth.length - 1;
+      if (char === "{")
+        templateExpressionDepth[depthIndex] =
+          templateExpressionDepth[depthIndex]! + 1;
+      else if (char === "}") {
+        templateExpressionDepth[depthIndex] =
+          templateExpressionDepth[depthIndex]! - 1;
+        if (templateExpressionDepth[depthIndex] === 0) {
+          templateExpressionDepth.pop();
+          result[index] = " ";
+          state = "template";
+        }
+      }
+    }
+  }
+  return result.join("");
+}
 
 /** A deliberately conservative scanner: only output/tag expressions are scanned,
  * so field-looking text in HTML, CSS and Liquid comments is never reported. */

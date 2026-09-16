@@ -10,9 +10,9 @@ describes direction, not promises or a schedule.
 - Basic editors for issuer, client, invoice, generated text, and supporting
   records.
 - React PDF generation and basic invoice preview/download.
-- Revisioned PDF templates, including a desktop HTML/Liquid workspace with
-  package files, live Gotenberg/PDF.js previews, and optional Gotenberg
-  rendering.
+- Revisioned PDF templates, including a desktop workspace for HTML/Liquid and
+  editable React PDF packages, live PDF.js previews, and optional Gotenberg
+  rendering for HTML.
 - Local, append-only archived PDFs and supporting files.
 
 These are practical first versions of the editing and preview experiences;

@@ -4,10 +4,18 @@ import { PdfRendererUnavailableError } from "./renderer.ts";
 import { renderLiquidHtml, renderLiquidHtmlPackage } from "./html/liquid-engine.ts";
 import { convertHtmlPackageToPdf, convertHtmlToPdf } from "./html/gotenberg-client.ts";
 import { revisionHasTemplatePackage, templatePackageFromRevision } from "../domain/template-package.ts";
+import { templatePackageEngine } from "../domain/template-package.ts";
+import { renderReactTemplatePackage } from "./react-template-renderer.tsx";
 
 const reactPdfRenderer: PdfRenderer = {
   engine: "react-pdf",
-  render: renderInvoicePdfBuffer,
+  async render(request) {
+    // The shipped classic renderer is deliberately pinned to its implementation
+    // so old invoices stay byte-for-byte governed by the historical renderer.
+    if (request.template.rendererKey === "classic") return renderInvoicePdfBuffer(request);
+    const templatePackage = templatePackageFromRevision(request.template.source, request.template.configurationJson);
+    return renderReactTemplatePackage(templatePackage, request.document);
+  },
 };
 
 const htmlRenderer: PdfRenderer = {
@@ -44,9 +52,12 @@ export function rendererFor(engine: string): PdfRenderer {
 }
 
 export function renderPdf(request: PdfRenderRequest): Promise<Buffer> {
-  // Revisions intentionally carry only immutable rendering data. Resolve the
-  // engine through their renderer key: all current built-ins are React PDF;
-  // HTML revisions have source and no renderer key.
+  // A package marker is authoritative for new revisions. Check it before the
+  // legacy source/renderer-key shape, which remains necessary for old rows.
+  if (revisionHasTemplatePackage(request.template.configurationJson)) {
+    const templatePackage = templatePackageFromRevision(request.template.source, request.template.configurationJson);
+    return rendererFor(templatePackageEngine(templatePackage)).render(request);
+  }
   const hasRendererKey = Boolean(request.template.rendererKey);
   const hasSource = Boolean(request.template.source);
   if (hasRendererKey === hasSource) {

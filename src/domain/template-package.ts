@@ -5,6 +5,10 @@ import { parse } from "parse5";
 import * as csstree from "css-tree";
 
 export const TEMPLATE_PACKAGE_ENTRY = "index.html" as const;
+export const REACT_TEMPLATE_PACKAGE_ENTRY = "index.tsx" as const;
+export type TemplatePackageEntry =
+  typeof TEMPLATE_PACKAGE_ENTRY | typeof REACT_TEMPLATE_PACKAGE_ENTRY;
+export type TemplatePackageEngine = "gotenberg-html" | "react-pdf";
 export const MAX_TEMPLATE_PACKAGE_FILES = 64;
 export const MAX_TEMPLATE_TEXT_FILE_BYTES = 200 * 1024;
 export const MAX_TEMPLATE_PACKAGE_BYTES = 8 * 1024 * 1024;
@@ -19,9 +23,17 @@ export type TemplatePackageFile = {
 
 export type TemplatePackage = {
   version: 1;
-  entry: typeof TEMPLATE_PACKAGE_ENTRY;
+  entry: TemplatePackageEntry;
   files: TemplatePackageFile[];
 };
+
+export function templatePackageEngine(
+  templatePackage: Pick<TemplatePackage, "entry">,
+): TemplatePackageEngine {
+  return templatePackage.entry === REACT_TEMPLATE_PACKAGE_ENTRY
+    ? "react-pdf"
+    : "gotenberg-html";
+}
 
 export class TemplatePackageError extends Error {
   constructor(message: string) {
@@ -149,11 +161,12 @@ export function validateTemplatePackage(
   if (
     !input ||
     input.version !== 1 ||
-    input.entry !== TEMPLATE_PACKAGE_ENTRY ||
+    (input.entry !== TEMPLATE_PACKAGE_ENTRY &&
+      input.entry !== REACT_TEMPLATE_PACKAGE_ENTRY) ||
     !Array.isArray(input.files)
   ) {
     throw new TemplatePackageError(
-      "Template package must use version 1 and entry index.html",
+      "Template package must use version 1 and entry index.html or index.tsx",
     );
   }
   if (!input.files.length || input.files.length > MAX_TEMPLATE_PACKAGE_FILES) {
@@ -190,13 +203,20 @@ export function validateTemplatePackage(
   const files = canonicalFiles(input.files.map((file) => ({ ...file })));
   const packageValue: TemplatePackage = {
     version: 1,
-    entry: TEMPLATE_PACKAGE_ENTRY,
+    entry: input.entry,
     files,
   };
-  const entry = findPackageFile(packageValue, TEMPLATE_PACKAGE_ENTRY);
+  const entry = findPackageFile(packageValue, packageValue.entry);
   if (!entry || entry.encoding !== "utf8")
     throw new TemplatePackageError(
-      "Template package must contain UTF-8 index.html",
+      `Template package must contain UTF-8 ${packageValue.entry}`,
+    );
+  if (
+    files.some((file) => file.path === "index.html") &&
+    files.some((file) => file.path === "index.tsx")
+  )
+    throw new TemplatePackageError(
+      "A package must have only one entry: index.html or index.tsx",
     );
   validatePackageReferences(packageValue);
   return packageValue;
@@ -208,6 +228,16 @@ export function packageFromSource(source: string): TemplatePackage {
     entry: TEMPLATE_PACKAGE_ENTRY,
     files: [
       { path: TEMPLATE_PACKAGE_ENTRY, content: source, encoding: "utf8" },
+    ],
+  });
+}
+
+export function reactPackageFromSource(source: string): TemplatePackage {
+  return validateTemplatePackage({
+    version: 1,
+    entry: REACT_TEMPLATE_PACKAGE_ENTRY,
+    files: [
+      { path: REACT_TEMPLATE_PACKAGE_ENTRY, content: source, encoding: "utf8" },
     ],
   });
 }
@@ -602,6 +632,10 @@ function validatePartialGraph(templatePackage: TemplatePackage): void {
 export function validatePackageReferences(
   templatePackage: TemplatePackage,
 ): void {
+  if (templatePackageEngine(templatePackage) === "react-pdf") {
+    validateReactModuleReferences(templatePackage);
+    return;
+  }
   for (const file of templatePackage.files) {
     if (file.encoding !== "utf8") continue;
     if (file.path.endsWith(".html") || file.path.endsWith(".htm"))
@@ -610,6 +644,77 @@ export function validatePackageReferences(
       validateCssReferences(templatePackage, file);
   }
   validatePartialGraph(templatePackage);
+}
+
+function validateReactModuleReferences(templatePackage: TemplatePackage): void {
+  for (const file of templatePackage.files) {
+    if (file.encoding !== "utf8" || !/\.[cm]?[jt]sx?$/i.test(file.path))
+      continue;
+    try {
+      const loader = /\.tsx$/i.test(file.path)
+        ? "tsx"
+        : /\.jsx$/i.test(file.path)
+          ? "jsx"
+          : /\.[cm]?ts$/i.test(file.path)
+            ? "ts"
+            : "js";
+      const imports = new Bun.Transpiler({
+        loader,
+        tsconfig: {
+          compilerOptions: {
+            jsx: "react",
+            jsxFactory: "createElement",
+            jsxFragmentFactory: "Fragment",
+          },
+        },
+      }).scanImports(file.content);
+      for (const item of imports) {
+        const specifier = item.path;
+        // Bun scanImports also reports its generated JSX runtime helpers.
+        if (
+          [
+            "react",
+            "react/jsx-runtime",
+            "react/jsx-dev-runtime",
+            "@react-pdf/renderer",
+          ].includes(specifier) &&
+          item.kind !== "dynamic-import"
+        )
+          continue;
+        if (item.kind !== "import-statement")
+          throw new TemplatePackageError(
+            `Only static imports are supported in “${file.path}”`,
+          );
+        if (!specifier.startsWith("./") && !specifier.startsWith("../"))
+          throw new TemplatePackageError(
+            `React PDF module “${file.path}” cannot import “${specifier}”; use React, React PDF, or local package files`,
+          );
+        const resolved = localPath(file.path, specifier);
+        const candidates = resolved
+          ? [
+              resolved,
+              ...[".tsx", ".ts", ".jsx", ".js"].flatMap((suffix) => [
+                resolved + suffix,
+                resolved + "/index" + suffix,
+              ]),
+            ]
+          : [];
+        if (
+          !candidates.some((candidate) =>
+            findPackageFile(templatePackage, candidate),
+          )
+        )
+          throw new TemplatePackageError(
+            `React PDF import “${specifier}” from “${file.path}” does not exist in this template package`,
+          );
+      }
+    } catch (error) {
+      if (error instanceof TemplatePackageError) throw error;
+      throw new TemplatePackageError(
+        `Cannot parse ${file.path}: ${error instanceof Error ? error.message : "invalid source"}`,
+      );
+    }
+  }
 }
 
 export function templatePackageFromRevision(
@@ -628,7 +733,7 @@ export function templatePackageFromRevision(
     );
   }
   if (source === null)
-    throw new TemplatePackageError("HTML template source is missing");
+    throw new TemplatePackageError("Template source is missing");
   return packageFromSource(source);
 }
 
@@ -835,19 +940,27 @@ export function importTemplatePackageZip(bytes: Uint8Array): TemplatePackage {
     throw new TemplatePackageError("Template ZIP has no files");
   const paths = [...extracted.keys()];
   let prefix = "";
-  if (!extracted.has(TEMPLATE_PACKAGE_ENTRY)) {
-    const firstParts = paths.map((filePath) => filePath.split("/")[0]!);
+  const entries = [
+    TEMPLATE_PACKAGE_ENTRY,
+    REACT_TEMPLATE_PACKAGE_ENTRY,
+  ] as const;
+  if (!entries.some((entry) => extracted.has(entry))) {
+    const folder = paths[0]!.split("/")[0]!;
     if (
-      firstParts.length &&
-      firstParts.every((part) => part === firstParts[0]) &&
-      extracted.has(`${firstParts[0]}/${TEMPLATE_PACKAGE_ENTRY}`)
+      paths.every((filePath) => filePath.startsWith(folder + "/")) &&
+      entries.some((entry) => extracted.has(folder + "/" + entry))
     )
-      prefix = `${firstParts[0]}/`;
+      prefix = folder + "/";
     else
       throw new TemplatePackageError(
-        "Template ZIP must contain index.html at its root (or inside one enclosing folder)",
+        "Template ZIP must contain index.html or index.tsx at its root (or inside one enclosing folder)",
       );
   }
+  const foundEntries = entries.filter((entry) => extracted.has(prefix + entry));
+  if (foundEntries.length !== 1)
+    throw new TemplatePackageError(
+      "Template ZIP must have exactly one entry: index.html or index.tsx",
+    );
   const files: TemplatePackageFile[] = paths.map((filePath) => {
     const relative = prefix ? filePath.slice(prefix.length) : filePath;
     if (!relative || relative.includes("/../"))
@@ -875,7 +988,7 @@ export function importTemplatePackageZip(bytes: Uint8Array): TemplatePackage {
   });
   return validateTemplatePackage({
     version: 1,
-    entry: TEMPLATE_PACKAGE_ENTRY,
+    entry: foundEntries[0]!,
     files,
   });
 }

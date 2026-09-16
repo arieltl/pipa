@@ -21,6 +21,7 @@ import {
 } from "@codemirror/commands";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
+import { javascript } from "@codemirror/lang-javascript";
 import {
   bracketMatching,
   syntaxHighlighting,
@@ -41,6 +42,7 @@ import {
   defaultPanelState,
   deleteWorkspaceFile,
   findLiquidOccurrences,
+  findReactOccurrences,
   isEditableTextFile,
   isWorkspaceDirty,
   normalisePath,
@@ -100,6 +102,7 @@ const liquidHighlight = ViewPlugin.fromClass(
 
 function extensions(
   path: string,
+  engine: "gotenberg-html" | "react-pdf",
   editable: boolean,
   onChange: (source: string) => void,
 ) {
@@ -114,8 +117,15 @@ function extensions(
     highlightActiveLine(),
     highlightSelectionMatches(),
     syntaxHighlighting(highlights),
-    path.toLowerCase().endsWith(".css") ? css() : html({ autoCloseTags: true }),
-    liquidHighlight,
+    path.toLowerCase().endsWith(".css")
+      ? css()
+      : /\.[jt]sx?$/i.test(path)
+        ? javascript({
+            jsx: /x$/i.test(path),
+            typescript: /\.tsx?$/i.test(path),
+          })
+        : html({ autoCloseTags: true }),
+    ...(engine === "gotenberg-html" ? [liquidHighlight] : []),
     theme,
     EditorView.contentAttributes.of({ "aria-label": `Source: ${path}` }),
     EditorState.readOnly.of(!editable),
@@ -161,6 +171,10 @@ function initialise(root: HTMLElement) {
     dirtyBadge = must<HTMLElement>(root, "[data-template-dirty]"),
     savedBadge = must<HTMLElement>(root, "[data-template-saved]");
   const editable = root.dataset.templateEditable === "true",
+    engine =
+      root.dataset.templateEngine === "react-pdf"
+        ? "react-pdf"
+        : "gotenberg-html",
     initialName = name.value,
     initiallyUnsaved = root.dataset.templateInitialDirty === "true";
   let pkg: WorkspacePackage;
@@ -171,9 +185,13 @@ function initialise(root: HTMLElement) {
   } catch {
     pkg = {
       version: 1,
-      entry: "index.html",
+      entry: engine === "react-pdf" ? "index.tsx" : "index.html",
       files: [
-        { path: "index.html", content: sourceInput.value, encoding: "utf8" },
+        {
+          path: engine === "react-pdf" ? "index.tsx" : "index.html",
+          content: sourceInput.value,
+          encoding: "utf8",
+        },
       ],
     };
   }
@@ -204,7 +222,7 @@ function initialise(root: HTMLElement) {
   const makeState = (file: WorkspaceFile) =>
     EditorState.create({
       doc: file.content,
-      extensions: extensions(file.path, editable, commit),
+      extensions: extensions(file.path, engine, editable, commit),
     });
   view = new EditorView({
     state: makeState(pkg.files.find((f) => f.path === activePath)!),
@@ -227,7 +245,9 @@ function initialise(root: HTMLElement) {
     dirtyBadge.hidden = !changed;
     savedBadge.hidden = changed;
     const active = pkg.files.find((file) => file.path === activePath);
-    for (const button of root.querySelectorAll<HTMLButtonElement>("[data-insert-field]")) {
+    for (const button of root.querySelectorAll<HTMLButtonElement>(
+      "[data-insert-field]",
+    )) {
       button.disabled = !editable || !active || !isEditableTextFile(active);
     }
     renderFiles();
@@ -359,10 +379,16 @@ function initialise(root: HTMLElement) {
   }
   function renderUsedFields() {
     const target = must<HTMLElement>(root, "[data-used-fields]"),
-      occurrences = findLiquidOccurrences(pkg);
+      occurrences =
+        engine === "react-pdf"
+          ? findReactOccurrences(pkg)
+          : findLiquidOccurrences(pkg);
     target.replaceChildren();
     if (!occurrences.length) {
-      target.textContent = "No Liquid field references found.";
+      target.textContent =
+        engine === "react-pdf"
+          ? "No document field references found."
+          : "No Liquid field references found.";
       return;
     }
     const grouped = new Map<string, typeof occurrences>();
@@ -388,6 +414,7 @@ function initialise(root: HTMLElement) {
     }
     if (!pkg.files.some((file) => file.path === pkg.entry))
       result.push({ path: pkg.entry, message: "Entry document is missing." });
+    if (engine !== "gotenberg-html") return result;
     for (const file of pkg.files.filter(isEditableTextFile)) {
       for (const match of file.content.matchAll(
         /<(?:img\b[^>]*?\bsrc|link\b[^>]*?\bhref)\s*=\s*["']([^"']+)["']/gi,
@@ -401,7 +428,10 @@ function initialise(root: HTMLElement) {
           });
           continue;
         }
-        const resolved = resolveRelative(file.path.endsWith(".liquid") ? pkg.entry : file.path, ref.split(/[?#]/)[0]!);
+        const resolved = resolveRelative(
+          file.path.endsWith(".liquid") ? pkg.entry : file.path,
+          ref.split(/[?#]/)[0]!,
+        );
         if (!pkg.files.some((candidate) => candidate.path === resolved))
           result.push({
             path: file.path,
@@ -432,8 +462,12 @@ function initialise(root: HTMLElement) {
       ...problems.map((problem) => {
         const button = document.createElement("button");
         button.type = "button";
-        button.textContent = problem.path ? `${problem.path}: ${problem.message}` : problem.message;
-        button.onclick = () => { if (problem.path) selectFile(problem.path); };
+        button.textContent = problem.path
+          ? `${problem.path}: ${problem.message}`
+          : problem.message;
+        button.onclick = () => {
+          if (problem.path) selectFile(problem.path);
+        };
         return button;
       }),
     );
@@ -464,6 +498,7 @@ function initialise(root: HTMLElement) {
       retry.hidden = true;
       const data = new FormData();
       data.set("packageJson", packageJson);
+      data.set("engine", engine);
       const response = await fetch("/settings/pdf-templates/preview.pdf", {
         method: "POST",
         headers: { Accept: "application/pdf" },
@@ -591,7 +626,10 @@ function initialise(root: HTMLElement) {
   root
     .querySelector<HTMLButtonElement>("[data-add-text]")
     ?.addEventListener("click", () => {
-      const path = prompt("Relative file path", "styles/main.css");
+      const path = prompt(
+        "Relative file path",
+        engine === "react-pdf" ? "components/Header.tsx" : "styles/main.css",
+      );
       if (!path) return;
       try {
         const nextPath = normalisePath(path);

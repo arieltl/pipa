@@ -53,7 +53,7 @@ Keep Chromium in optional Gotenberg, not inside the application. Avoid adding Pu
 - Keep generated text editable. Templates are helpers, not authority.
 - Client defaults are copied into invoices/items at creation time and must not mutate historical invoices.
 - PDF revisions and invoice presentation snapshots preserve historical documents. A renderer failure must not silently select another engine or advance invoice status.
-- HTML templates use one package model, including single-file templates. Revisions capture all files; imports/exports choose plain HTML or ZIP automatically. Liquid partials are package-local only. See `pdf_template_author_reference.md` for the contract.
+- Editable HTML/Liquid and React PDF templates use one package model, including single-file templates. Revisions capture all files; imports/exports choose HTML, TSX, or ZIP automatically. Dependencies stay package-local; React template code runs only in the bounded QuickJS sandbox, never through host eval or Node/Bun imports. See `pdf_template_author_reference.md` for the contract.
 - Text generators already have saved editable invoice fields. A separate generator-to-record linking feature was explicitly declined; do not implement old target/apply proposals.
 
 ## Domain Invariants

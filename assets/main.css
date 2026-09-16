@@ -630,7 +630,7 @@ main.page-enter:has(.invoice-workspace) { animation: none; }
 @media (max-width: 700px) { .pdf-preview-dialog { width: calc(100vw - 16px); height: 96vh; } .pdf-preview-toolbar { gap: 10px; } }
 
 /* Template library and the desktop authoring workspace. Template source is
-   only rendered in Gotenberg; it is never inserted into the application DOM. */
+   rendered by the selected PDF engine; it is never inserted into the application DOM. */
 .template-library-bar, .template-engine-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .template-library-bar { margin-bottom: 12px; }
 .template-engine-strip { margin-bottom: 18px; padding: 9px 12px; border: 1px solid var(--app-line); border-radius: 7px; background: #0b1422aa; }

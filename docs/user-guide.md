@@ -35,15 +35,17 @@ Clients can define reusable text generators and invoice record types. Generated 
 ## Templates and historical data
 
 Open **Settings → PDF templates** to create a layout, import a document or ZIP,
-or open an existing template. Duplicate a built-in HTML template to customize it.
-React PDF layouts are implemented in application code and have no editable
-HTML source.
+or open an existing template. Duplicate **Classic** for an editable React PDF
+starting point, or **Classic HTML** for an HTML/Liquid layout. Built-ins remain
+read-only; your copy has its own saved revisions. React PDF works without
+Gotenberg.
 
 The desktop workspace keeps files on the left, the source editor in the center,
 and the PDF preview on the right. Toggle **Files**, **Preview**, and **Tools** to
 make room, or resize the panels. Open files have separate editor tabs. Add a
-stylesheet, a local image, or a Liquid partial when the layout needs it;
-`index.html` remains the entry document.
+local image or supporting text file when the layout needs it. HTML/Liquid uses
+`index.html`, with optional stylesheets and Liquid partials. React PDF uses
+`index.tsx`, with React PDF styles and local component files.
 
 The **Tools** panel contains problems, used fields, available fields, and
 template information and revision history. Click a used-field occurrence to
@@ -57,10 +59,10 @@ successful preview stays visible with an outdated warning. Editing and saving
 remain available when Gotenberg is unavailable.
 
 **Save new revision** captures every file in an immutable revision. Invoices
-keep their selected revision. Export downloads a plain HTML file for a
+keep their selected revision. Export downloads an HTML or TSX file for a
 single-file template, or a ZIP for a template with additional files. See the
 [template reference](../pdf_template_author_reference.md) for package rules,
-Liquid syntax, and variables.
+React PDF and Liquid syntax, and variables.
 
 Invoice party details and template choices are snapshotted so later settings changes do not silently rewrite the document. Archived PDFs remain authoritative; regenerating a PDF does not overwrite an archive.
 

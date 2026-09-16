@@ -4,6 +4,7 @@ import {
   clampPanelState,
   deleteWorkspaceFile,
   findLiquidOccurrences,
+  findReactOccurrences,
   isWorkspaceDirty,
   renameWorkspaceFile,
   serialiseWorkspacePackage,
@@ -34,6 +35,20 @@ test("workspace file operations preserve entry and reject collisions", () => {
   ).toThrow();
   expect(() => deleteWorkspaceFile(added, "index.html")).toThrow();
   expect(deleteWorkspaceFile(added, "styles/main.css")).toEqual(base);
+});
+
+test("workspace operations preserve a React PDF entry", () => {
+  const react = {
+    version: 1 as const,
+    entry: "index.tsx" as const,
+    files: [{ path: "index.tsx", content: "", encoding: "utf8" as const }],
+  } as WorkspacePackage;
+  expect(
+    addWorkspaceFile(react, { path: "theme.ts", content: "", encoding: "utf8" })
+      .entry,
+  ).toBe("index.tsx");
+  expect(() => renameWorkspaceFile(react, "index.tsx", "main.tsx")).toThrow();
+  expect(() => deleteWorkspaceFile(react, "index.tsx")).toThrow();
 });
 
 test("dirty comparison is stable across file order", () => {
@@ -127,6 +142,62 @@ test("field scanner preserves nested collection aliases and locates partial vari
     expect(content.slice(item.from, item.to)).toMatch(
       /^(?:invoice|customer|items|row|person|bill|party)/,
     );
+});
+
+test("React field scanner finds source expressions and map aliases without false positives", () => {
+  const content = `import icon from "document.invoice.fake";
+// document.invoice.comment
+const label = 'document.total.literal';
+export default ({ document }: Props) => <View>
+  <Text>{document.invoice.number}</Text>
+  <Text>{document.notaFiscal?.publicUrl}</Text>
+  <Text>{\`Total: \${document.total.display}\`}</Text>
+  {document.items.map((item) => <Text>{item.name}: {item.valueDisplay}</Text>)}
+  {document.records.map(record => <Text>{record.typeName}</Text>)}
+</View>;`;
+  const pkg = {
+    version: 1,
+    entry: "index.tsx",
+    files: [{ path: "index.tsx", encoding: "utf8", content }],
+  } as WorkspacePackage;
+  const refs = findReactOccurrences(pkg);
+  expect(refs.map(({ field }) => field)).toEqual([
+    "document.invoice.number",
+    "document.notaFiscal.publicUrl",
+    "document.total.display",
+    "document.items",
+    "document.items[].name",
+    "document.items[].valueDisplay",
+    "document.records",
+    "document.records[].typeName",
+  ]);
+  for (const ref of refs) {
+    expect(content.slice(ref.from, ref.to)).toMatch(
+      /^(?:document|item|record)\./,
+    );
+    const before = content.slice(0, ref.from);
+    expect(ref.line).toBe(before.split("\n").length);
+    expect(ref.column).toBe(ref.from - before.lastIndexOf("\n"));
+  }
+});
+
+test("React field scanner scopes reused map aliases to their callbacks", () => {
+  const content = `export default ({ document }) => <View>
+  {document.issuer.fields.map((field) => <Text>{field.label}</Text>)}
+  {document.customer.fields.map((field) => <Text>{field.value}</Text>)}
+  {field.unrelated}
+</View>;`;
+  const pkg = {
+    version: 1,
+    entry: "index.tsx",
+    files: [{ path: "components/Parties.tsx", encoding: "utf8", content }],
+  } as WorkspacePackage;
+  expect(findReactOccurrences(pkg).map(({ field }) => field)).toEqual([
+    "document.issuer.fields",
+    "document.issuer.fields[].label",
+    "document.customer.fields",
+    "document.customer.fields[].value",
+  ]);
 });
 
 test("panel state clamps to preserve useful editor space", () => {

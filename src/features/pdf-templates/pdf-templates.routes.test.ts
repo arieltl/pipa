@@ -51,8 +51,8 @@ describe("HTML template preview route", () => {
       expect(response.status).toBe(422);
       expect(response.headers.get("content-type")).toContain("text/plain");
     }
-    expect(await missing.text()).toContain("HTML source or a template package is required");
-    expect(await empty.text()).toContain("HTML source is required");
+    expect(await missing.text()).toContain("Template source or a template package is required");
+    expect(await empty.text()).toContain("Template source is required");
     expect(await overlong.text()).toContain("204,800");
   });
 
