@@ -56,6 +56,7 @@ import {
   type PreviewDataPayload,
   type PreviewField,
 } from "./template-preview-data.ts";
+import { detectTemplatePartyFields } from "./template-field-detection.ts";
 import { previewFieldSnippet } from "./template-field-snippet.ts";
 import {
   addWorkspaceFile,
@@ -232,6 +233,7 @@ function initialise(root: HTMLElement) {
     lastPreviewIdentity = "",
     hasSuccessfulPreview = false;
   let previewData: PreviewDataPayload = { version: 1 };
+  let previewDataVersion = 0;
   let previewDataDescription = "loading preview values";
   let previewProblem = "";
   let operationProblem = "";
@@ -245,6 +247,9 @@ function initialise(root: HTMLElement) {
   const previewPanel = new PdfPreviewPanel(panelRoot),
     observer = new ResizeObserver(() => previewPanel.refresh());
   observer.observe(panelRoot);
+  let previewDataEditor: ReturnType<typeof createPreviewDataEditor> | undefined;
+  let detectedPackage = pkg;
+  let detectionTimer: ReturnType<typeof setTimeout> | undefined;
   let view: EditorView;
   const commit = (content: string) => {
     const active = pkg.files.find((file) => file.path === activePath);
@@ -318,6 +323,13 @@ function initialise(root: HTMLElement) {
     renderFiles();
     renderTabs();
     renderUsedFields();
+    if (previewDataEditor && detectedPackage !== pkg) {
+      detectedPackage = pkg;
+      clearTimeout(detectionTimer);
+      detectionTimer = setTimeout(() => {
+        if (!destroyed) previewDataEditor?.setDetectedFields(detectTemplatePartyFields(pkg, engine));
+      }, 120);
+    }
     renderProblems();
   }
   function selectFile(path: string, selection?: { from: number; to: number }) {
@@ -557,7 +569,7 @@ function initialise(root: HTMLElement) {
     if (panelState.previewOpen) queue.schedule(previewIdentity());
   }
 
-  const previewIdentity = () => JSON.stringify({ packageJson: serialiseWorkspacePackage(pkg), previewData });
+  const previewIdentity = () => JSON.stringify({ packageJson: serialiseWorkspacePackage(pkg), previewData, previewDataVersion });
 
   const queue = new TemplatePreviewQueue(async (identity) => {
     if (destroyed || !panelState.previewOpen || identity !== previewIdentity()) return;
@@ -637,17 +649,18 @@ function initialise(root: HTMLElement) {
       return button;
     }));
   }
-  const previewDataEditor = createPreviewDataEditor(previewDataRoot, (next, nextDescription) => {
+  previewDataEditor = createPreviewDataEditor(previewDataRoot, (next, nextDescription) => {
     previewData = next;
     previewDataDescription = nextDescription;
     markPreviewStale();
   }, renderAvailableFields, (next, nextDescription) => {
+    previewDataVersion++;
     previewData = next;
     previewDataDescription = nextDescription;
     previewPanel.cancelPending();
     status.textContent = hasSuccessfulPreview ? "Out of date — preview values changed" : "Preview values changed";
     status.dataset.state = "outdated";
-  });
+  }, detectTemplatePartyFields(pkg, engine));
 
   const storageKey = `pipa-template-workspace:${root.dataset.templateKey}`;
   let panelState: PanelState = { ...defaultPanelState };
@@ -950,7 +963,8 @@ function initialise(root: HTMLElement) {
     previewPanel.destroy();
     observer.disconnect();
     formatter.dispose();
-    previewDataEditor.destroy();
+    clearTimeout(detectionTimer);
+    previewDataEditor?.destroy();
     view.destroy();
     document.removeEventListener("pointerdown", clickAway);
     window.removeEventListener("beforeunload", beforeUnload);

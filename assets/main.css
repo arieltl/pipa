@@ -691,3 +691,26 @@ main.page-enter:has(.invoice-workspace) { animation: none; }
 
 .template-preview-field-grid textarea { min-width: 0; min-height: 25px; height: 25px; max-height: 150px; resize: vertical; padding: 3px 6px; border: 1px solid #ffffff16; border-radius: 3px; color: #e4edf7; background: #0b1522; }
 .template-preview-field-grid textarea:disabled { opacity: .5; }
+.template-preview-items { display: grid; gap: 7px; padding: 9px; border: 1px solid #ffffff12; border-radius: 6px; background: #07111d66; }
+.template-preview-items > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.template-preview-items > header h3,.template-preview-items > header p,.template-preview-items > p { margin: 0; }
+.template-preview-items > header p,.template-preview-items > p { color: #8295ac; font-size: 9px; }
+.template-preview-items > header button { padding: 4px 8px; border: 1px solid #4da5e255; border-radius: 4px; color: #9dd6ff; }
+.template-preview-items [data-preview-item-list] { display: grid; gap: 5px; }
+.template-preview-item { display: grid; grid-template-columns: minmax(180px,1fr) minmax(120px,180px) auto; align-items: end; gap: 7px; }
+.template-preview-item label { display: grid; gap: 3px; min-width: 0; }
+.template-preview-item label > span { color: #8295ac; font-size: 9px; }
+.template-preview-item input { min-width: 0; height: 27px; padding: 3px 7px; border: 1px solid #ffffff19; border-radius: 4px; color: #d7e3f1; background: #0b1523; }
+.template-preview-item input[aria-invalid="true"] { border-color: #e6b56f; }
+.template-preview-item > button { height: 27px; color: #d89999; font-size: 9px; }
+.template-preview-field-origin { align-self: center; color: #7590aa; font-size: 8px; white-space: nowrap; }
+@media (max-width: 700px) { .template-preview-item { grid-template-columns: 1fr; } .template-preview-search { margin-left: 0; } }
+
+.template-preview-items[hidden], .template-preview-custom-field[hidden] { display: none; }
+
+.template-preview-source-settings { border-bottom: 1px solid #ffffff12; padding-bottom: 5px; }
+.template-preview-source-settings > summary { color: #c7d3e2; cursor: pointer; }
+.template-preview-source-settings > summary span { margin-left: 6px; color: #8295ac; font-size: 9px; }
+.template-preview-source-settings[open] > summary { margin-bottom: 8px; }
+.template-preview-filters > label { flex: 1; min-width: 0; }
+.template-preview-filters :is(input,select) { width: 100%; min-width: 0; }

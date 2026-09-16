@@ -708,16 +708,27 @@ function PreviewDataEditor() {
           <button type="button" data-preview-restore-samples>Restore samples</button>
         </div>
       </header>
-      <div class="template-preview-sources">
+      <details class="template-preview-source-settings">
+        <summary>Data sources <span data-preview-sources-summary></span></summary>
+        <div class="template-preview-sources">
         <label><span>Company</span><select data-preview-source="issuerSource"><option value="settings">Settings</option><option value="sample">Sample</option><option value="empty">All empty</option></select></label>
         <label><span>Customer</span><select data-preview-source="customerSource"><option value="sample">Sample</option><option value="client">Saved customer</option><option value="empty">All empty</option></select></label>
         <label class="template-preview-client" hidden><span>Saved customer</span><select data-preview-client hidden><option>Choose a customer</option></select></label>
         <label><span>Invoice, items & records</span><select data-preview-source="invoiceSource"><option value="sample">Sample</option><option value="empty">All empty</option></select></label>
+        </div>
+      </details>
+      <div class="template-preview-sources template-preview-filters">
+        <label><span>Field group</span><select data-preview-group-filter><option value="">All fields</option><option value="invoice">Invoice</option><option value="items">Line items</option><option value="issuer">Company</option><option value="customer">Customer</option><option value="records">Supporting records</option></select></label>
         <label class="template-preview-search"><span>Find a field</span><input type="search" data-preview-field-search placeholder="Name or path" /></label>
       </div>
-      <p class="template-preview-data-help">Empty values let template defaults show. Dates and totals are calculated from the invoice fields and items; numeric amounts stay zero when empty.</p>
+      <p class="template-preview-data-help">Choose a field group to edit. Custom company/customer fields used in your template appear automatically.</p>
+      <section class="template-preview-items" data-preview-items>
+        <header><div><h3>Line items</h3><p data-preview-items-mode>Using rows from the selected source</p></div><button type="button" data-preview-add-item>Add line item</button></header>
+        <div data-preview-item-list></div>
+        <p>Amounts use the invoice currency and accept decimal values, such as <code>125.50</code>.</p>
+      </section>
       <details class="template-preview-custom-field">
-        <summary>Add a preview-only party field</summary>
+        <summary>Add a preview-only company or customer field</summary>
         <div>
           <label><span>Party</span><select data-preview-custom-party><option value="issuer">Company</option><option value="customer">Customer</option></select></label>
           <label><span>Key</span><input data-preview-custom-key maxlength={64} placeholder="purchase_order" /></label>

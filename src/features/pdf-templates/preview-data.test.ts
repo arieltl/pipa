@@ -43,6 +43,58 @@ describe("template preview data", () => {
     expect(() => resolvePreviewData({ customerSource: "client", customerClientId: 99999999 })).toThrow(PreviewDataError);
   });
 
+  test("uses explicitly configured preview line items as a transient replacement and recalculates totals", () => {
+    const configured = resolvePreviewData({
+      invoiceSource: "sample",
+      items: [{ name: "Discovery", valueMinor: 1250 }, { name: "Implementation", valueMinor: 8750 }],
+    });
+    expect(configured.config.items).toEqual([{ name: "Discovery", valueMinor: 1250 }, { name: "Implementation", valueMinor: 8750 }]);
+    expect(configured.document.items.map(({ name, valueMinor }) => ({ name, valueMinor }))).toEqual([
+      { name: "Discovery", valueMinor: 1250 }, { name: "Implementation", valueMinor: 8750 },
+    ]);
+    expect(configured.document.total.minor).toBe(10000);
+    expect(configured.document.total.decimal).toBe("100.00");
+    expect(configured.fields.map((field) => field.path)).toEqual(expect.arrayContaining(["items.0.name", "items.0.valueMinor", "items.1.name", "items.1.valueMinor"]));
+    expect(resolvePreviewData({ invoiceSource: "sample" }).document.items.map(({ name, valueMinor }) => ({ name, valueMinor }))).toEqual([
+      { name: "Software development services", valueMinor: 100000 },
+    ]);
+
+    const removed = resolvePreviewData({ invoiceSource: "sample", items: [] });
+    expect(removed.config.items).toEqual([]);
+    expect(removed.document.items).toEqual([]);
+    expect(removed.document.total.minor).toBe(0);
+    expect(removed.document.total.decimal).toBe("0.00");
+  });
+
+  test("omitted items follow their source while explicit rows work with an empty invoice source", () => {
+    const sample = resolvePreviewData({ invoiceSource: "sample" });
+    expect(sample.config.items).toBeUndefined();
+    expect(sample.document.items).toHaveLength(1);
+
+    const empty = resolvePreviewData({ invoiceSource: "empty" });
+    expect(empty.config.items).toBeUndefined();
+    expect(empty.document.items).toEqual([]);
+    expect(empty.document.total).toEqual({ minor: 0, decimal: "", display: "" });
+
+    const explicit = resolvePreviewData({ invoiceSource: "empty", items: [{ name: "Standalone", valueMinor: 4242 }] });
+    expect(explicit.document.items.map(({ name, valueMinor }) => ({ name, valueMinor }))).toEqual([{ name: "Standalone", valueMinor: 4242 }]);
+    expect(explicit.document.total.minor).toBe(4242);
+    expect(explicit.document.total.decimal).toBe("42.42");
+  });
+
+  test("applies item overrides after configured rows and bounds item input", () => {
+    const overridden = resolvePreviewData({ items: [{ name: "Original", valueMinor: 500 }], overrides: { "items.0.name": "Changed", "items.0.valueMinor": "750" } });
+    expect(overridden.document.items[0]).toMatchObject({ name: "Changed", valueMinor: 750 });
+    expect(overridden.document.total.minor).toBe(750);
+    expect(() => resolvePreviewData({ items: [{ name: "Bad", valueMinor: -1 }] })).toThrow();
+    expect(() => resolvePreviewData({ items: [{ name: "Bad", valueMinor: 1.5 }] })).toThrow();
+    expect(() => resolvePreviewData({ items: [{ name: "Bad", valueMinor: Number.MAX_SAFE_INTEGER + 1 }] })).toThrow();
+    expect(() => resolvePreviewData({ items: Array.from({ length: 101 }, () => ({ name: "Too many", valueMinor: 0 })) })).toThrow();
+    expect(() => resolvePreviewData({ items: [{ name: "x".repeat(501), valueMinor: 0 }] })).toThrow();
+    expect(() => parsePreviewData(JSON.stringify({ version: 1, items: [{ name: "Bad", valueMinor: 1, constructor: "pollute" }] }))).toThrow(PreviewDataError);
+    expect(() => parsePreviewData('{"version":1,"items":[{"name":"Bad","valueMinor":1,"__proto__":"pollute"}]}')).toThrow(PreviewDataError);
+  });
+
   test("rejects unsafe or unknown override paths", () => {
     expect(() => parsePreviewData(JSON.stringify({ version: 1, overrides: { "customer.__proto__.value": "x" } }))).toThrow(PreviewDataError);
     expect(() => resolvePreviewData({ overrides: { "customer.field.nope.value": "x" } })).toThrow("not allowed");

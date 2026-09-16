@@ -65,7 +65,8 @@ formatted. Formatting is manual, not part of saving.
 reference. Use Ctrl+S (Cmd+S on macOS) to save the entire template package as a
 revision, including edits in other tabs.
 
-Use **Preview data** to control the values shown in the PDF. Company data starts
+Use **Preview data** to control the values shown in the PDF. Expand **Data
+sources** to change where values come from. Company data starts
 from your company settings when available. Customer data starts with a fictional
 sample; choose a saved client to use its document-visible fields instead. Each
 source can also be set to **All empty**, or use **Empty all** to test fallback
@@ -74,8 +75,21 @@ fields and line items. Numeric amounts stay zero when empty.
 Manually editing a value changes only the preview. Clearing a value is an
 explicit empty override; resetting it restores the selected source's value.
 
-Configured custom fields appear with their labels and template paths. Fields
-hidden from invoices are excluded. You can also add a preview-only custom field
+Use **Field group** to jump to invoice fields, line items, company/customer
+fields, or supporting records. **Add line item** adds a preview row; each row
+has a name, decimal amount, and **Remove** action. Totals recalculate from these
+rows, including when starting with empty data. The application has fixed
+invoice metadata and line-item fields; configurable custom fields belong to
+companies/customers and supporting records attached to invoices.
+
+Configured custom fields appear with their labels and template paths. Custom
+company/customer fields referenced in your template also appear automatically,
+marked **From template**, even when the current sample has no value. Detection
+covers literal field paths, common aliases, and package-local Liquid partials.
+Runtime-computed field keys can still be added manually. If you remove a
+reference after entering a sample value, its **Retained sample** remains
+available until you remove or reset it. Fields hidden from invoices never load
+their saved values into the preview. You can also add a preview-only custom field
 to test a template before adding that field to a company or client; **Remove**
 discards that preview-only definition. These
 choices and overrides are temporary and reset when you leave or reload the

@@ -13,6 +13,10 @@ import { getIssuerSettings } from "../settings/settings.repository.ts";
 const sourceSchema = z.enum(["sample", "empty"]);
 const safeKey = z.string().min(1).max(64).regex(/^[a-z][a-z0-9_]*$/)
   .refine((key) => !["__proto__", "prototype", "constructor"].includes(key), "That field key is reserved");
+const previewItemSchema = z.object({
+  name: z.string().max(500),
+  valueMinor: z.number().nonnegative().refine(Number.isSafeInteger, "Preview item amount must be a whole minor-unit value"),
+}).strict();
 
 export const previewDataSchema = z.object({
   version: z.literal(1).default(1),
@@ -20,6 +24,8 @@ export const previewDataSchema = z.object({
   customerSource: z.enum(["sample", "empty", "client"]).optional(),
   customerClientId: z.number().int().positive().optional(),
   invoiceSource: sourceSchema.optional(),
+  /** When present, this deliberately replaces the selected source's line items, including with []. */
+  items: z.array(previewItemSchema).max(100).optional(),
   customFieldDefinitions: z.array(z.object({
     party: z.enum(["issuer", "customer"]), key: safeKey,
     label: z.string().trim().min(1).max(120), section: z.enum(PARTY_FIELD_SECTIONS),
@@ -41,9 +47,21 @@ export const previewDataSchema = z.object({
 export type PreviewDataConfig = z.infer<typeof previewDataSchema>;
 
 export type PreviewField = { path: string; label: string; group: "issuer" | "customer" | "invoice" | "items" | "records"; kind: "text" | "boolean" | "money"; value: string | boolean; emptyValue: string | boolean; editable: true };
-export type PreviewDataResponse = { config: Required<Pick<PreviewDataConfig, "version" | "issuerSource" | "customerSource" | "invoiceSource">> & { customerClientId?: number }; clientOptions: Array<{ id: number; name: string; code: string }>; document: InvoiceDocumentModel; fields: PreviewField[]; warnings: Array<{ path: string; message: string }> };
+export type PreviewDataResponse = { config: Required<Pick<PreviewDataConfig, "version" | "issuerSource" | "customerSource" | "invoiceSource">> & { customerClientId?: number; items?: PreviewDataConfig["items"] }; clientOptions: Array<{ id: number; name: string; code: string }>; document: InvoiceDocumentModel; fields: PreviewField[]; warnings: Array<{ path: string; message: string }> };
 
 export class PreviewDataError extends Error {}
+
+/** Reject keys/prototypes which can alter object lookup before schema parsing. */
+function assertSafePreviewPayload(value: unknown): void {
+  if (Array.isArray(value)) { for (const entry of value) assertSafePreviewPayload(entry); return; }
+  if (!value || typeof value !== "object") return;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) throw new PreviewDataError("Preview data has an invalid object prototype");
+  for (const [key, entry] of Object.entries(value)) {
+    if (["__proto__", "prototype", "constructor"].includes(key)) throw new PreviewDataError("Preview data contains a reserved key");
+    assertSafePreviewPayload(entry);
+  }
+}
 
 function sections(): DocumentParty["sections"] {
   return { identity: [], contact: [], address: [], payment: [], other: [] };
@@ -69,7 +87,7 @@ function addPreviewDefinitions(party: DocumentParty, definitions: Array<{ key: s
 }
 
 function defaults(input: Partial<PreviewDataConfig>, issuer: IssuerSettings | null): PreviewDataConfig {
-  return { version: 1, issuerSource: input.issuerSource ?? (issuer ? "settings" : "sample"), customerSource: input.customerSource ?? "sample", ...(input.customerClientId ? { customerClientId: input.customerClientId } : {}), invoiceSource: input.invoiceSource ?? "sample", customFieldDefinitions: input.customFieldDefinitions ?? [], overrides: input.overrides ?? {} };
+  return { version: 1, issuerSource: input.issuerSource ?? (issuer ? "settings" : "sample"), customerSource: input.customerSource ?? "sample", ...(input.customerClientId ? { customerClientId: input.customerClientId } : {}), invoiceSource: input.invoiceSource ?? "sample", ...(input.items !== undefined ? { items: input.items } : {}), customFieldDefinitions: input.customFieldDefinitions ?? [], overrides: input.overrides ?? {} };
 }
 
 function allowedPaths(document: InvoiceDocumentModel): Map<string, PreviewField> {
@@ -119,6 +137,7 @@ function normalizeParty(party: DocumentParty): void {
 
 /** Resolves only the selected client. The returned model is preview-only. */
 export function resolvePreviewData(raw: Partial<PreviewDataConfig> = {}, includeOptions = true): PreviewDataResponse {
+  assertSafePreviewPayload(raw);
   const issuer = getIssuerSettings(); const config = defaults(previewDataSchema.parse(raw), issuer);
   const document = copySample();
   if (config.issuerSource === "settings") document.issuer = issuer ? fieldParty(issuer) : emptyParty();
@@ -134,6 +153,7 @@ export function resolvePreviewData(raw: Partial<PreviewDataConfig> = {}, include
     document.invoice = { number: "", dateIso: "", dateDisplay: "", dateYear: "", dateMonth: "", currency: "", notes: "" };
     document.items = []; document.records = []; document.notaFiscal = null;
   }
+  if (config.items !== undefined) document.items = config.items.map((item) => ({ name: item.name, valueMinor: item.valueMinor, valueDisplay: "" }));
   addPreviewDefinitions(document.issuer, config.customFieldDefinitions!.filter((item) => item.party === "issuer"));
   addPreviewDefinitions(document.customer, config.customFieldDefinitions!.filter((item) => item.party === "customer"));
   const catalog = allowedPaths(document);
@@ -148,14 +168,14 @@ export function resolvePreviewData(raw: Partial<PreviewDataConfig> = {}, include
   if (document.invoice.dateIso !== "" && !isValidDateString(document.invoice.dateIso)) throw new PreviewDataError("Preview invoice date must be empty or a valid YYYY-MM-DD date");
   if (document.invoice.currency !== "" && !SUPPORTED_CURRENCIES.includes(document.invoice.currency as typeof SUPPORTED_CURRENCIES[number])) throw new PreviewDataError("Preview currency must be empty or a supported currency");
   recalculate(document);
-  if (config.invoiceSource === "empty") document.total = { minor: 0, decimal: "", display: "" };
+  if (config.invoiceSource === "empty" && config.items === undefined) document.total = { minor: 0, decimal: "", display: "" };
   normalizeParty(document.issuer); normalizeParty(document.customer);
-  return { config: { version: 1, issuerSource: config.issuerSource!, customerSource: config.customerSource!, ...(config.customerSource === "client" ? { customerClientId: config.customerClientId } : {}), invoiceSource: config.invoiceSource! }, clientOptions: includeOptions ? listClients().map((client) => ({ id: client.id, name: client.name, code: client.code })) : [], document, fields: [...catalog.values()], warnings: [] };
+  return { config: { version: 1, issuerSource: config.issuerSource!, customerSource: config.customerSource!, ...(config.customerSource === "client" ? { customerClientId: config.customerClientId } : {}), invoiceSource: config.invoiceSource!, ...(config.items !== undefined ? { items: config.items } : {}) }, clientOptions: includeOptions ? listClients().map((client) => ({ id: client.id, name: client.name, code: client.code })) : [], document, fields: [...catalog.values()], warnings: [] };
 }
 
 export function parsePreviewData(value: string | undefined): PreviewDataConfig | undefined {
   if (!value) return undefined;
   if (value.length > 100 * 1024) throw new PreviewDataError("Preview data is too large");
-  try { return previewDataSchema.parse(JSON.parse(value)); }
+  try { const raw = JSON.parse(value); assertSafePreviewPayload(raw); return previewDataSchema.parse(raw); }
   catch (error) { throw new PreviewDataError(error instanceof Error ? `Invalid preview data: ${error.message}` : "Invalid preview data"); }
 }

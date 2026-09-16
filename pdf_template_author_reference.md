@@ -97,6 +97,18 @@ field catalog includes configured document-visible custom fields, including
 blank definitions that are omitted from the rendered document until populated.
 Preview-only custom field definitions do not add fields to saved parties.
 The preview choices reset on navigation or reload and are excluded from exports.
+You can add and remove preview line items and enter decimal amounts; totals
+are calculated from the resulting rows. Invoice metadata and line-item fields
+are fixed. Custom invoice-attached data belongs to supporting records rather
+than arbitrary `invoice.field` or `item.field` properties.
+
+Literal custom party-field references are discovered across HTML/Liquid and
+React template files. Detection handles quoted bracket access, optional React
+access, common field helpers, and named party arguments to Liquid partials.
+It never executes template code. Keys assembled at runtime or passed through
+more complex application logic may need a manually added preview field.
+Detected fields start blank when absent from the chosen source, so `default`
+continues to work.
 Dates and totals are derived from invoice fields and items; empty mode keeps
 numeric totals at zero while clearing textual totals and collections.
 
