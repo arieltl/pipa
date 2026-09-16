@@ -14,6 +14,10 @@ const ASSETS: Array<{ from: string; to: string }> = [
   { from: "node_modules/alpinejs/dist/cdn.min.js", to: "alpine.min.js" },
   { from: "assets/app.js", to: "app.js" },
   { from: "assets/pdf-preview.mjs", to: "pdf-preview.mjs" },
+  { from: "pdf_template_author_reference.md", to: "template-author-reference.txt" },
+  { from: "node_modules/prettier/LICENSE", to: "template-formatter-LICENSE-prettier.txt" },
+  { from: "node_modules/@shopify/prettier-plugin-liquid/standalone.js.LICENSE.txt", to: "template-formatter-LICENSE-liquid.txt" },
+  { from: "node_modules/@shopify/prettier-plugin-liquid/ThirdPartyNotices.txt", to: "template-formatter-THIRD-PARTY-NOTICES.txt" },
   { from: "node_modules/pdfjs-dist/build/pdf.min.mjs", to: "pdfjs/pdf.mjs" },
   { from: "node_modules/pdfjs-dist/build/pdf.worker.min.mjs", to: "pdfjs/pdf.worker.mjs" },
   { from: "node_modules/pdfjs-dist/web/pdf_viewer.mjs", to: "pdfjs/pdf_viewer.mjs" },
@@ -58,3 +62,26 @@ if (!editorBuild.success) {
   for (const log of editorBuild.logs) console.error(log);
   process.exitCode = 1;
 } else console.log("✓ template-editor.mjs");
+
+const formatterWorkerBuild = await Bun.build({
+  entrypoints: [join(ROOT, "assets", "template-formatter.worker.ts")],
+  outdir: PUBLIC_DIR,
+  naming: "template-formatter.worker.mjs",
+  target: "browser",
+  format: "esm",
+  minify: true,
+  plugins: [{
+    // Shopify's browser standalone build asks for "prettier" as a CommonJS
+    // dependency. Resolve that request to Prettier's browser standalone entry.
+    name: "browser-prettier-standalone",
+    setup(build) {
+      build.onResolve({ filter: /^prettier$/ }, () => ({
+        path: join(ROOT, "node_modules", "prettier", "standalone.mjs"),
+      }));
+    },
+  }],
+});
+if (!formatterWorkerBuild.success) {
+  for (const log of formatterWorkerBuild.logs) console.error(log);
+  process.exitCode = 1;
+} else console.log("✓ template-formatter.worker.mjs");

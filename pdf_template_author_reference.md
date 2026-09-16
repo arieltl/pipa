@@ -5,6 +5,12 @@ invoice document model. HTML output escapes values by default; text-generator
 output preserves literal text. Filenames and recurring-item names continue to
 use the smaller legacy interpolation syntax.
 
+In the web editor, **Edit → Format document** formats the active supported text
+file. It changes unsaved source only and can be undone. Invalid syntax leaves
+the source untouched. HTML/Liquid formatting uses whitespace-sensitive rules;
+check the PDF preview after formatting whitespace-dependent layouts. Saving
+does not automatically format files.
+
 Editable React PDF templates receive that same model as the `document` prop.
 They use TSX and React PDF components instead of Liquid or browser HTML.
 

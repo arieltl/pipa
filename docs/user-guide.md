@@ -41,16 +41,29 @@ read-only; your copy has its own saved revisions. React PDF works without
 Gotenberg.
 
 The desktop workspace keeps files on the left, the source editor in the center,
-and the PDF preview on the right. Toggle **Files**, **Preview**, and **Tools** to
-make room, or resize the panels. Open files have separate editor tabs. Add a
+and the PDF preview on the right. The header's layout icons toggle the **left**,
+**bottom**, and **right** panels; hover or focus them to see their labels.
+Resize the panels to make room. Open files have separate editor tabs. Add a
 local image or supporting text file when the layout needs it. HTML/Liquid uses
 `index.html`, with optional stylesheets and Liquid partials. React PDF uses
 `index.tsx`, with React PDF styles and local component files.
 
-The **Tools** panel contains problems, used fields, available fields, and
+The **bottom** panel contains problems, used fields, available fields, and
 template information and revision history. Click a used-field occurrence to
 open its file and select the reference. The field list helps navigate source;
 the server validates the actual template when rendering or saving it.
+
+The **File**, **Edit**, **View**, and **Help** menus expose editing commands and
+workspace controls. Use **Edit → Format document** to format the active HTML,
+Liquid, CSS, JavaScript, or TypeScript file. This expands one-line source into
+readable code without saving it; Undo restores the previous source. Formatting
+errors leave the file untouched. Images and read-only built-ins cannot be
+formatted. Formatting is manual, not part of saving.
+
+**View → Word wrap** changes how long lines appear without changing the file.
+**Help** lists keyboard shortcuts and opens the bundled template author
+reference. Use Ctrl+S (Cmd+S on macOS) to save the entire template package as a
+revision, including edits in other tabs.
 
 The PDF.js preview refreshes after a short pause while its panel is open. It
 renders the entire unsaved package with fictional sample invoice data; it never
@@ -59,10 +72,11 @@ successful preview stays visible with an outdated warning. Editing and saving
 remain available when Gotenberg is unavailable.
 
 **Save new revision** captures every file in an immutable revision. Invoices
-keep their selected revision. Export downloads an HTML or TSX file for a
+keep their selected revision. **Export saved revision** downloads an HTML or TSX file for a
 single-file template, or a ZIP for a template with additional files. See the
 [template reference](../pdf_template_author_reference.md) for package rules,
 React PDF and Liquid syntax, and variables.
+Export includes the last saved revision; save first to include unsaved edits.
 
 Invoice party details and template choices are snapshotted so later settings changes do not silently rewrite the document. Archived PDFs remain authoritative; regenerating a PDF does not overwrite an archive.
 

@@ -78,6 +78,8 @@ try {
   assert.match(await (await get("/")).text(), /Pipa/);
   assert.match(await (await get("/public/pipa-logo.svg")).text(), /<svg/);
   assert.ok((await (await get("/public/app.css")).text()).length > 1000);
+  assert.ok((await (await get("/public/template-formatter.worker.mjs")).text()).length > 1000);
+  assert.match(await (await get("/public/template-author-reference.txt")).text(), /React PDF templates/);
   const created = await fetch(`${base}/clients`, {
     method: "POST",
     body: new URLSearchParams({

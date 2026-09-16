@@ -1,4 +1,4 @@
-import { EditorSelection, EditorState } from "@codemirror/state";
+import { Compartment, EditorSelection, EditorState } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -16,8 +16,14 @@ import {
   defaultKeymap,
   history,
   historyKeymap,
+  undoDepth,
+  redoDepth,
   indentWithTab,
+  isolateHistory,
+  redo,
+  selectAll,
   toggleTabFocusMode,
+  undo,
 } from "@codemirror/commands";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
@@ -28,7 +34,12 @@ import {
   HighlightStyle,
 } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
-import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import {
+  gotoLine,
+  highlightSelectionMatches,
+  openSearchPanel,
+  searchKeymap,
+} from "@codemirror/search";
 import {
   autocompletion,
   closeBrackets,
@@ -36,6 +47,10 @@ import {
 } from "@codemirror/autocomplete";
 import { PdfPreviewPanel } from "./pdf-preview.mjs";
 import { TemplatePreviewQueue } from "../src/features/pdf-templates/template-preview-queue.ts";
+import {
+  createTemplateFormatterClient,
+  getFormatterForPath,
+} from "./template-formatter-client.ts";
 import {
   addWorkspaceFile,
   clampPanelState,
@@ -99,11 +114,13 @@ const liquidHighlight = ViewPlugin.fromClass(
   },
   { decorations: (plugin) => plugin.decorations },
 );
+const wordWrap = new Compartment();
 
 function extensions(
   path: string,
   engine: "gotenberg-html" | "react-pdf",
   editable: boolean,
+  wrapEnabled: boolean,
   onChange: (source: string) => void,
 ) {
   return [
@@ -127,6 +144,7 @@ function extensions(
         : html({ autoCloseTags: true }),
     ...(engine === "gotenberg-html" ? [liquidHighlight] : []),
     theme,
+    wordWrap.of(wrapEnabled ? EditorView.lineWrapping : []),
     EditorView.contentAttributes.of({ "aria-label": `Source: ${path}` }),
     EditorState.readOnly.of(!editable),
     keymap.of([
@@ -169,7 +187,8 @@ function initialise(root: HTMLElement) {
     status = must<HTMLElement>(root, "[data-template-preview-status]"),
     retry = must<HTMLButtonElement>(root, "[data-template-preview-retry]"),
     dirtyBadge = must<HTMLElement>(root, "[data-template-dirty]"),
-    savedBadge = must<HTMLElement>(root, "[data-template-saved]");
+    savedBadge = must<HTMLElement>(root, "[data-template-saved]"),
+    formatStatus = must<HTMLElement>(root, "[data-format-status]");
   const editable = root.dataset.templateEditable === "true",
     engine =
       root.dataset.templateEngine === "react-pdf"
@@ -199,6 +218,7 @@ function initialise(root: HTMLElement) {
     editorStates = new Map<string, EditorState>(),
     openTabs: string[] = [pkg.entry];
   let activePath: string = pkg.entry;
+  let navigationGeneration = 0;
   let destroyed = false,
     submitting = false,
     previewStarted = false,
@@ -206,6 +226,13 @@ function initialise(root: HTMLElement) {
     hasSuccessfulPreview = false;
   let previewProblem = "";
   let operationProblem = "";
+  let formatting = false;
+  let wrapEnabled = true;
+  const wrapStorageKey = `pipa-template-word-wrap:${root.dataset.templateKey}`;
+  try {
+    wrapEnabled = localStorage.getItem(wrapStorageKey) !== "false";
+  } catch {}
+  const formatter = createTemplateFormatterClient();
   const previewPanel = new PdfPreviewPanel(panelRoot),
     observer = new ResizeObserver(() => previewPanel.refresh());
   observer.observe(panelRoot);
@@ -222,7 +249,7 @@ function initialise(root: HTMLElement) {
   const makeState = (file: WorkspaceFile) =>
     EditorState.create({
       doc: file.content,
-      extensions: extensions(file.path, engine, editable, commit),
+      extensions: extensions(file.path, engine, editable, wrapEnabled, commit),
     });
   view = new EditorView({
     state: makeState(pkg.files.find((f) => f.path === activePath)!),
@@ -245,6 +272,35 @@ function initialise(root: HTMLElement) {
     dirtyBadge.hidden = !changed;
     savedBadge.hidden = changed;
     const active = pkg.files.find((file) => file.path === activePath);
+    const textActive = Boolean(active && isEditableTextFile(active) && !mount.hidden);
+    for (const command of ["find", "goto-line", "select-all", "replace", "undo", "redo"]) {
+      const button = root.querySelector<HTMLButtonElement>(`[data-editor-command="${command}"]`);
+      if (button) button.disabled = !textActive ||
+        (["replace", "undo", "redo"].includes(command) && !editable) ||
+        (command === "undo" && undoDepth(view.state) === 0) ||
+        (command === "redo" && redoDepth(view.state) === 0);
+    }
+    const formatReason = !editable
+      ? "Built-in templates are read-only. Duplicate this template to format it."
+      : !active || !isEditableTextFile(active)
+        ? "Only editable text files can be formatted."
+        : !getFormatterForPath(active.path)
+          ? "This file type is not supported by the formatter."
+        : formatting
+          ? "Formatting is already in progress."
+          : "";
+    const formatButton = root.querySelector<HTMLButtonElement>(
+      '[data-editor-command="format"]',
+    );
+    if (formatButton) {
+      formatButton.disabled = Boolean(formatReason);
+      formatButton.title = formatReason;
+    }
+    const formatReasonLabel = root.querySelector<HTMLElement>("[data-format-reason]");
+    if (formatReasonLabel) {
+      formatReasonLabel.textContent = formatReason;
+      formatReasonLabel.hidden = !formatReason;
+    }
     for (const button of root.querySelectorAll<HTMLButtonElement>(
       "[data-insert-field]",
     )) {
@@ -258,6 +314,7 @@ function initialise(root: HTMLElement) {
   function selectFile(path: string, selection?: { from: number; to: number }) {
     const file = pkg.files.find((item) => item.path === path);
     if (!file) return;
+    navigationGeneration++;
     const previous = pkg.files.find((item) => item.path === activePath);
     if (previous && isEditableTextFile(previous) && !mount.hidden)
       editorStates.set(activePath, view.state);
@@ -311,6 +368,7 @@ function initialise(root: HTMLElement) {
         const nextPath = normalisePath(next),
           old = activePath,
           selection = view.state.selection;
+        navigationGeneration++;
         pkg = renameWorkspaceFile(pkg, old, nextPath);
         activePath = nextPath;
         const tab = openTabs.indexOf(old);
@@ -571,6 +629,11 @@ function initialise(root: HTMLElement) {
         `[data-panel-toggle=${key}]`,
       );
       toggle?.setAttribute("aria-pressed", String(open));
+      const position = key === "files" ? "left" : key === "tools" ? "bottom" : "right";
+      toggle?.setAttribute("aria-label", `${open ? "Hide" : "Show"} ${position} panel`);
+      toggle?.setAttribute("title", `${open ? "Hide" : "Show"} ${position} panel`);
+      root.querySelector<HTMLButtonElement>(`[data-editor-command=toggle-${key}]`)
+        ?.setAttribute("aria-pressed", String(open));
     }
     try {
       localStorage.setItem(storageKey, JSON.stringify(panelState));
@@ -584,16 +647,14 @@ function initialise(root: HTMLElement) {
     }
     requestAnimationFrame(() => previewPanel.refresh());
   }
-  for (const toggle of root.querySelectorAll<HTMLButtonElement>(
-    "[data-panel-toggle]",
-  ))
-    toggle.onclick = () => {
-      const key = toggle.dataset.panelToggle as "files" | "preview" | "tools",
-        wasOpen = panelState[`${key}Open`];
+  function togglePanel(key: "files" | "preview" | "tools") {
+      const wasOpen = panelState[`${key}Open`];
       panelState[`${key}Open`] = !wasOpen;
       if (key === "preview" && wasOpen) previewPanel.cancelPending();
       applyPanels(key === "preview" && !wasOpen);
-    };
+  }
+  for (const toggle of root.querySelectorAll<HTMLButtonElement>("[data-panel-toggle]"))
+    toggle.onclick = () => togglePanel(toggle.dataset.panelToggle as "files" | "preview" | "tools");
   for (const handle of root.querySelectorAll<HTMLElement>("[data-resizer]"))
     installResizer(handle, (delta) => {
       const key = handle.dataset.resizer!;
@@ -623,6 +684,147 @@ function initialise(root: HTMLElement) {
       view.dispatch(view.state.replaceSelection(button.dataset.insertField!));
       view.focus();
     };
+  const isApple = /Mac|iPhone|iPad/.test(navigator.platform),
+    mod = isApple ? "⌘" : "Ctrl+";
+  const shortcuts: Record<string, { label: string; keys: string }> = {
+    save: { label: "Save new revision", keys: `${mod}S` },
+    undo: { label: "Undo", keys: `${mod}Z` },
+    redo: { label: "Redo", keys: isApple ? "⇧⌘Z" : "Ctrl+Y" },
+    find: { label: "Find", keys: `${mod}F` },
+    replace: { label: "Replace", keys: isApple ? "⌥⌘F" : "Ctrl+H" },
+    "goto-line": { label: "Go to line", keys: isApple ? "⌥⌘G" : "Alt+Ctrl+G" },
+    "select-all": { label: "Select all", keys: `${mod}A` },
+    format: { label: "Format document", keys: isApple ? "⇧⌥F" : "Shift+Alt+F" },
+  };
+  for (const key of root.querySelectorAll<HTMLElement>("[data-shortcut]"))
+    key.textContent = shortcuts[key.dataset.shortcut!]?.keys ?? "";
+  const shortcutList = must<HTMLElement>(root, "[data-shortcuts-list]");
+  shortcutList.replaceChildren(...Object.values(shortcuts).flatMap(({ label, keys }) => {
+    const term = document.createElement("dt"), definition = document.createElement("dd");
+    term.textContent = label;
+    definition.innerHTML = `<kbd>${escapeHtml(keys)}</kbd>`;
+    return [term, definition];
+  }));
+  const closeMenus = (except?: HTMLDetailsElement) => {
+    for (const menu of root.querySelectorAll<HTMLDetailsElement>(".template-editor-menu[open]"))
+      if (menu !== except) menu.open = false;
+  };
+  for (const menu of root.querySelectorAll<HTMLDetailsElement>(".template-editor-menu")) {
+    menu.addEventListener("toggle", () => { if (menu.open) closeMenus(menu); });
+    menu.querySelector("div")?.addEventListener("click", () => { menu.open = false; });
+  }
+  const clickAway = (event: PointerEvent) => {
+    if (!(event.target as Element).closest?.(".template-editor-menu")) closeMenus();
+  };
+  document.addEventListener("pointerdown", clickAway);
+  function focusEditor() {
+    if (!mount.hidden) view.focus();
+  }
+  async function formatDocument() {
+    const file = pkg.files.find((item) => item.path === activePath);
+    if (
+      formatting ||
+      !editable ||
+      !file ||
+      !isEditableTextFile(file) ||
+      !getFormatterForPath(file.path) ||
+      mount.hidden
+    ) return;
+    const capturedPath = activePath,
+      capturedSource = file.content,
+      capturedDoc = view.state.doc,
+      capturedNavigation = navigationGeneration,
+      cursorOffset = view.state.selection.main.head;
+    formatting = true;
+    formatStatus.textContent = `Formatting ${capturedPath}…`;
+    refreshChrome();
+    try {
+      const result = await formatter.format({ path: capturedPath, source: capturedSource, cursorOffset });
+      const current = pkg.files.find((item) => item.path === capturedPath);
+      if (destroyed || navigationGeneration !== capturedNavigation || activePath !== capturedPath || view.state.doc !== capturedDoc || current?.content !== capturedSource) return;
+      if (result.source === capturedSource) {
+        formatStatus.textContent = "Already formatted";
+        focusEditor();
+        return;
+      }
+      const cursor = Math.max(0, Math.min(result.cursorOffset, result.source.length));
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: result.source },
+        selection: EditorSelection.cursor(cursor),
+        scrollIntoView: true,
+        annotations: isolateHistory.of("full"),
+        userEvent: "input.format",
+      });
+      formatStatus.textContent = `Formatted ${capturedPath}`;
+      focusEditor();
+    } catch (error) {
+      const current = pkg.files.find((item) => item.path === capturedPath);
+      if (!destroyed && navigationGeneration === capturedNavigation && activePath === capturedPath && view.state.doc === capturedDoc && current?.content === capturedSource) {
+        const message = (error as Error).message;
+        formatStatus.textContent = message;
+        showProblem(message);
+      }
+    } finally {
+      formatting = false;
+      if (!destroyed) {
+        if (formatStatus.textContent === `Formatting ${capturedPath}…`)
+          formatStatus.textContent = "Formatting cancelled because the file changed";
+        refreshChrome();
+      }
+    }
+  }
+  const commands: Record<string, () => void | Promise<void>> = {
+    save: () => { if (editable) form.requestSubmit(); },
+    undo: () => { undo(view); focusEditor(); },
+    redo: () => { redo(view); focusEditor(); },
+    find: () => { openSearchPanel(view); },
+    replace: () => {
+      openSearchPanel(view);
+      requestAnimationFrame(() => view.dom.querySelector<HTMLInputElement>('.cm-search input[name="replace"]')?.focus());
+    },
+    "goto-line": () => { gotoLine(view); },
+    "select-all": () => { selectAll(view); focusEditor(); },
+    format: formatDocument,
+    "toggle-files": () => togglePanel("files"),
+    "toggle-tools": () => togglePanel("tools"),
+    "toggle-preview": () => togglePanel("preview"),
+    "word-wrap": () => {
+      wrapEnabled = !wrapEnabled;
+      const effect = wordWrap.reconfigure(wrapEnabled ? EditorView.lineWrapping : []);
+      view.dispatch({ effects: effect });
+      for (const [path, state] of editorStates)
+        if (path !== activePath) editorStates.set(path, state.update({ effects: effect }).state);
+      root.querySelector<HTMLButtonElement>('[data-editor-command="word-wrap"]')?.setAttribute("aria-pressed", String(wrapEnabled));
+      try { localStorage.setItem(wrapStorageKey, String(wrapEnabled)); } catch {}
+      focusEditor();
+    },
+    "reset-layout": () => {
+      panelState = clampPanelState({ ...defaultPanelState }, innerWidth, innerHeight);
+      applyPanels(true);
+    },
+    shortcuts: () => must<HTMLDialogElement>(root, "[data-shortcuts-dialog]").showModal(),
+  };
+  root.querySelector<HTMLButtonElement>('[data-editor-command="word-wrap"]')?.setAttribute("aria-pressed", String(wrapEnabled));
+  for (const button of root.querySelectorAll<HTMLButtonElement>("[data-editor-command]"))
+    button.addEventListener("click", () => void commands[button.dataset.editorCommand!]?.());
+  const workspaceKeys = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && root.querySelector(".template-editor-menu[open]")) {
+      const activeMenu = root.querySelector<HTMLDetailsElement>(".template-editor-menu[open]");
+      closeMenus();
+      activeMenu?.querySelector<HTMLElement>("summary")?.focus();
+      event.preventDefault();
+      return;
+    }
+    const inEditor = view.dom.contains(event.target as Node);
+    if (!inEditor && event.target instanceof HTMLInputElement && event.target === name && !(event.key.toLowerCase() === "s" && (event.metaKey || event.ctrlKey))) return;
+    const key = event.key.toLowerCase(), primary = event.metaKey || event.ctrlKey;
+    let command = primary && key === "s" ? "save" : "";
+    if (inEditor && event.shiftKey && event.altKey && key === "f") command = "format";
+    if (!command) return;
+    event.preventDefault();
+    void commands[command]?.();
+  };
+  root.addEventListener("keydown", workspaceKeys);
   root
     .querySelector<HTMLButtonElement>("[data-add-text]")
     ?.addEventListener("click", () => {
@@ -698,7 +900,9 @@ function initialise(root: HTMLElement) {
     queue.destroy();
     previewPanel.destroy();
     observer.disconnect();
+    formatter.dispose();
     view.destroy();
+    document.removeEventListener("pointerdown", clickAway);
     window.removeEventListener("beforeunload", beforeUnload);
     window.removeEventListener("pagehide", cleanup);
     window.removeEventListener("pageshow", pageShow);

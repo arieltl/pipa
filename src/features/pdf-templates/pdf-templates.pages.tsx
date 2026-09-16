@@ -309,14 +309,38 @@ function TemplateWorkspace({
         class="contents"
       >
         <header class="template-workspace-toolbar">
-          <a
-            href="/settings/pdf-templates"
-            class="template-icon-button"
-            aria-label="Back to template library"
-            title="Template library"
-          >
-            ←
-          </a>
+          <nav class="template-workspace-menus" aria-label="Editor menus">
+            <EditorMenu label="File">
+              {editable ? <MenuButton command="save">{submitLabel} <kbd data-shortcut="save" /></MenuButton> : null}
+              {templateId ? <a href={`/settings/pdf-templates/${templateId}/source`}>Export saved revision <small>Unsaved edits excluded</small></a> : null}
+              <span class="template-menu-separator" />
+              <a href="/settings/pdf-templates">Back to template library</a>
+            </EditorMenu>
+            <EditorMenu label="Edit">
+              <MenuButton command="undo">Undo <kbd data-shortcut="undo" /></MenuButton>
+              <MenuButton command="redo">Redo <kbd data-shortcut="redo" /></MenuButton>
+              <span class="template-menu-separator" />
+              <MenuButton command="find">Find <kbd data-shortcut="find" /></MenuButton>
+              <MenuButton command="replace">Replace <kbd data-shortcut="replace" /></MenuButton>
+              <MenuButton command="goto-line">Go to line <kbd data-shortcut="goto-line" /></MenuButton>
+              <MenuButton command="select-all">Select all <kbd data-shortcut="select-all" /></MenuButton>
+              <span class="template-menu-separator" />
+              <MenuButton command="format">Format document <kbd data-shortcut="format" /></MenuButton>
+              <small data-format-reason class="template-menu-hint" hidden></small>
+            </EditorMenu>
+            <EditorMenu label="View">
+              <MenuButton command="toggle-files" checked>Left panel</MenuButton>
+              <MenuButton command="toggle-tools" checked>Bottom panel</MenuButton>
+              <MenuButton command="toggle-preview" checked>Right panel</MenuButton>
+              <span class="template-menu-separator" />
+              <MenuButton command="word-wrap" checked>Word wrap</MenuButton>
+              <MenuButton command="reset-layout">Reset layout</MenuButton>
+            </EditorMenu>
+            <EditorMenu label="Help">
+              <MenuButton command="shortcuts">Keyboard shortcuts</MenuButton>
+              <a href="/public/template-author-reference.txt" target="_blank" rel="noopener">Template author reference</a>
+            </EditorMenu>
+          </nav>
           <div class="template-title-field">
             <input
               name="name"
@@ -336,39 +360,12 @@ function TemplateWorkspace({
           <span data-template-saved class="template-save-state">
             Saved
           </span>
+          <span data-format-status class="template-format-status" role="status" aria-live="polite"></span>
           <div class="template-toolbar-spacer" />
-          <button
-            type="button"
-            class="btn btn-ghost btn-xs"
-            data-panel-toggle="files"
-            aria-pressed="true"
-          >
-            Files
-          </button>
-          <button
-            type="button"
-            class="btn btn-ghost btn-xs"
-            data-panel-toggle="tools"
-            aria-pressed="true"
-          >
-            Tools
-          </button>
-          <button
-            type="button"
-            class="btn btn-ghost btn-xs"
-            data-panel-toggle="preview"
-            aria-pressed="true"
-          >
-            Preview
-          </button>
-          {templateId ? (
-            <a
-              href={`/settings/pdf-templates/${templateId}/source`}
-              class="btn btn-ghost btn-xs"
-            >
-              Export
-            </a>
-          ) : null}
+          <PanelToggle panel="files" label="left" />
+          <PanelToggle panel="tools" label="bottom" />
+          <PanelToggle panel="preview" label="right" />
+          {templateId ? <a href={`/settings/pdf-templates/${templateId}/source`} class="btn btn-ghost btn-xs" title="Export saved revision — unsaved edits are excluded">Export</a> : null}
           {editable ? (
             <button type="submit" class="btn btn-primary btn-sm">
               {submitLabel}
@@ -446,7 +443,7 @@ function TemplateWorkspace({
             data-resizer="files"
             role="separator"
             tabindex={0}
-            aria-label="Resize files panel"
+            aria-label="Resize left panel"
           />
           <main class="template-code-area">
             <div
@@ -466,16 +463,18 @@ function TemplateWorkspace({
             data-resizer="preview"
             role="separator"
             tabindex={0}
-            aria-label="Resize preview panel"
+            aria-label="Resize right panel"
           />
           <aside
             class="template-preview-shell"
             data-panel="preview"
             aria-label="PDF preview"
           >
-            <div class="template-panel-heading">
+            <div class="template-preview-tabs" role="tablist">
+              <button type="button" role="tab" aria-selected="true">Preview</button>
+            </div>
+            <div class="template-panel-heading template-preview-statusbar">
               <div>
-                <strong>Preview</strong>
                 <p
                   data-template-preview-status
                   role="status"
@@ -500,7 +499,7 @@ function TemplateWorkspace({
             data-resizer="tools"
             role="separator"
             tabindex={0}
-            aria-label="Resize tools panel"
+            aria-label="Resize bottom panel"
           />
           <section class="template-tools-panel" data-panel="tools">
             <div class="template-tool-tabs" role="tablist">
@@ -567,9 +566,29 @@ function TemplateWorkspace({
           </section>
         </div>
       </form>
+      <dialog class="template-shortcuts-dialog" data-shortcuts-dialog>
+        <form method="dialog">
+          <header><h2>Keyboard shortcuts</h2><button aria-label="Close keyboard shortcuts">×</button></header>
+          <dl data-shortcuts-list></dl>
+          <button class="btn btn-primary btn-sm">Close</button>
+        </form>
+      </dialog>
       <script type="module" src="/public/template-editor.mjs"></script>
     </section>
   );
+}
+
+function EditorMenu({ label, children }: { label: string; children: unknown }) {
+  return <details class="template-editor-menu"><summary>{label}</summary><div>{children}</div></details>;
+}
+
+function MenuButton({ command, checked, children }: { command: string; checked?: boolean; children: unknown }) {
+  return <button type="button" data-editor-command={command} aria-pressed={checked ? "true" : undefined}>{children}</button>;
+}
+
+function PanelToggle({ panel, label }: { panel: "files" | "tools" | "preview"; label: string }) {
+  const shapes = panel === "files" ? <><rect class="template-panel-icon-fill" x="4" y="5" width="4" height="14" rx="1"/><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16"/></> : panel === "tools" ? <><rect class="template-panel-icon-fill" x="4" y="14" width="16" height="5" rx="1"/><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 14h18"/></> : <><rect class="template-panel-icon-fill" x="16" y="5" width="4" height="14" rx="1"/><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 4v16"/></>;
+  return <button type="button" class="template-icon-button" data-panel-toggle={panel} aria-pressed="true" aria-label={`Hide ${label} panel`} title={`Hide ${label} panel`}><svg viewBox="0 0 24 24" aria-hidden="true">{shapes}</svg></button>;
 }
 
 function AvailableFields({
