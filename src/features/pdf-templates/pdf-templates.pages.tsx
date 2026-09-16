@@ -480,7 +480,7 @@ function TemplateWorkspace({
                   role="status"
                   aria-live="polite"
                 >
-                  Preview uses fictional data
+                  Loading preview data…
                 </p>
               </div>
               <button
@@ -512,6 +512,9 @@ function TemplateWorkspace({
               <button type="button" data-tool-tab="available">
                 Available fields
               </button>
+              <button type="button" data-tool-tab="preview-data">
+                Preview data
+              </button>
               <button type="button" data-tool-tab="info">
                 Info & history
               </button>
@@ -525,12 +528,19 @@ function TemplateWorkspace({
                 <div data-used-fields></div>
               </div>
               <div data-tool-view="available" hidden>
-                <AvailableFields engine={engine} />
+                <div class="template-dynamic-fields" data-dynamic-available-fields></div>
+                <details class="template-generic-fields">
+                  <summary>Collection helpers</summary>
+                  <AvailableFields engine={engine} />
+                </details>
+              </div>
+              <div data-tool-view="preview-data" hidden>
+                <PreviewDataEditor />
               </div>
               <div data-tool-view="info" hidden>
                 <p>
                   Every save creates an immutable package revision. The preview
-                  uses fictional invoice data.
+                  uses preview-only data selected in this browser session.
                 </p>
                 {engine === "gotenberg-html" ? (
                   <p>
@@ -680,6 +690,43 @@ function AvailableFields({
           </div>
         </section>
       ))}
+    </div>
+  );
+}
+
+function PreviewDataEditor() {
+  return (
+    <div class="template-preview-data" data-preview-data-editor>
+      <header>
+        <div>
+          <h3>Preview values</h3>
+          <p data-preview-data-status role="status" aria-live="polite">Loading preview values…</p>
+        </div>
+        <div class="template-preview-data-actions">
+          <button type="button" data-preview-empty-all>Empty all</button>
+          <button type="button" data-preview-reset-overrides>Reset overrides</button>
+          <button type="button" data-preview-restore-samples>Restore samples</button>
+        </div>
+      </header>
+      <div class="template-preview-sources">
+        <label><span>Company</span><select data-preview-source="issuerSource"><option value="settings">Settings</option><option value="sample">Sample</option><option value="empty">All empty</option></select></label>
+        <label><span>Customer</span><select data-preview-source="customerSource"><option value="sample">Sample</option><option value="client">Saved customer</option><option value="empty">All empty</option></select></label>
+        <label class="template-preview-client" hidden><span>Saved customer</span><select data-preview-client hidden><option>Choose a customer</option></select></label>
+        <label><span>Invoice, items & records</span><select data-preview-source="invoiceSource"><option value="sample">Sample</option><option value="empty">All empty</option></select></label>
+        <label class="template-preview-search"><span>Find a field</span><input type="search" data-preview-field-search placeholder="Name or path" /></label>
+      </div>
+      <p class="template-preview-data-help">Empty values let template defaults show. Dates and totals are calculated from the invoice fields and items; numeric amounts stay zero when empty.</p>
+      <details class="template-preview-custom-field">
+        <summary>Add a preview-only party field</summary>
+        <div>
+          <label><span>Party</span><select data-preview-custom-party><option value="issuer">Company</option><option value="customer">Customer</option></select></label>
+          <label><span>Key</span><input data-preview-custom-key maxlength={64} placeholder="purchase_order" /></label>
+          <label><span>Label</span><input data-preview-custom-label maxlength={120} placeholder="Purchase order" /></label>
+          <label><span>Section</span><select data-preview-custom-section><option value="identity">Identity</option><option value="contact">Contact</option><option value="address">Address</option><option value="payment">Payment</option><option value="other">Other</option></select></label>
+          <button type="button" data-preview-add-field>Add field</button>
+        </div>
+      </details>
+      <div data-preview-data-fields class="template-preview-data-fields"></div>
     </div>
   );
 }

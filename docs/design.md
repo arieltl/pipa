@@ -65,6 +65,12 @@ revisions are adapted when read, without rewriting historical rows. Previewing
 an unsaved package does not create a revision or change an invoice. The editor
 and invoice renderer use the same package-resolution rules.
 
+The editor resolves preview values from fictional samples, company settings,
+a selected client, or empty data, with bounded per-field overrides. These values
+exist only for the preview request and never change invoice snapshots, party
+settings, or template revisions. Both PDF engines receive the same resolved
+document model. Internal party fields remain excluded.
+
 Dependencies belong to the package that contains them. Local assets and Liquid
 `render` partials cannot reach other templates, application files, or remote
 resources. See the [template reference](../pdf_template_author_reference.md)

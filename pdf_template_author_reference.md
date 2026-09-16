@@ -71,8 +71,34 @@ record type you configured. For example, if a record defines a `reference` field
 {% endfor %}
 ```
 
-The fictional sample preview may have no supporting records or custom party
-fields. Guard optional fields and collections rather than assuming they exist.
+Optional fields may be absent from the document, including when a client has
+never had that field or its value is empty. Guard optional fields and collections,
+or supply a fallback with Liquid's `default` filter:
+
+```liquid
+{{ customer.field.tax_id.value | default: "Tax ID not supplied" }}
+{{ issuer.name | default: "Your company" }}
+```
+
+Put `default` first when reading an optional value, before filters such as
+`upcase`. Missing values, empty strings, and `false` use the fallback; numeric
+zero does not. For boolean fields where `false` is meaningful, use
+`default: "Not supplied", allow_false: true`. Unguarded unknown values still
+produce an error, which helps catch misspelled field names.
+
+In React PDF templates, use optional chaining and an explicit fallback, for
+example `document.customer.field.tax_id?.value || "Tax ID not supplied"`.
+These source-level defaults also apply to real invoice rendering. Preview
+values only control the editor's test document.
+
+**Preview data** in the bottom panel lets you choose company settings, a saved
+client, samples, or empty values, and override individual values. Its available
+field catalog includes configured document-visible custom fields, including
+blank definitions that are omitted from the rendered document until populated.
+Preview-only custom field definitions do not add fields to saved parties.
+The preview choices reset on navigation or reload and are excluded from exports.
+Dates and totals are derived from invoice fields and items; empty mode keeps
+numeric totals at zero while clearing textual totals and collections.
 
 Compatibility aliases (`client`, `invoice.date`, `invoice.total`, and the month
 name fields) remain available for migrated text generators, but new templates
@@ -89,12 +115,12 @@ should use the names above.
   `layout` remain unsupported. The multiline `{% liquid %}` tag is also
   unsupported; write individual Liquid tags instead. Text generators do not
   support partials.
-- Unknown variables, tags, and filters fail when Pipa validates or renders the
-  template; they do not silently become empty output.
+- Unguarded unknown variables, unknown tags, and unknown filters fail when Pipa
+  validates or renders the template. Use `if` or `default` for optional values.
 - Saving an edit creates an immutable revision. Existing invoices keep their
   selected revision.
-- The web editor's PDF preview uses fictional sample invoice data and unsaved
-  source. It is a writing aid, not a saved revision or an invoice preview.
+- The web editor's PDF preview uses unsaved source and the values selected in
+  **Preview data**. It is a writing aid, not a saved revision or an invoice preview.
 - The preview needs a configured Gotenberg service. Source editing and saving
   remain available when the service is unavailable.
 - React PDF templates can be edited as TSX packages and used without Gotenberg.

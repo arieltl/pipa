@@ -52,6 +52,12 @@ import {
   getFormatterForPath,
 } from "./template-formatter-client.ts";
 import {
+  createPreviewDataEditor,
+  type PreviewDataPayload,
+  type PreviewField,
+} from "./template-preview-data.ts";
+import { previewFieldSnippet } from "./template-field-snippet.ts";
+import {
   addWorkspaceFile,
   clampPanelState,
   defaultPanelState,
@@ -188,7 +194,8 @@ function initialise(root: HTMLElement) {
     retry = must<HTMLButtonElement>(root, "[data-template-preview-retry]"),
     dirtyBadge = must<HTMLElement>(root, "[data-template-dirty]"),
     savedBadge = must<HTMLElement>(root, "[data-template-saved]"),
-    formatStatus = must<HTMLElement>(root, "[data-format-status]");
+    formatStatus = must<HTMLElement>(root, "[data-format-status]"),
+    previewDataRoot = must<HTMLElement>(root, "[data-preview-data-editor]");
   const editable = root.dataset.templateEditable === "true",
     engine =
       root.dataset.templateEngine === "react-pdf"
@@ -222,8 +229,10 @@ function initialise(root: HTMLElement) {
   let destroyed = false,
     submitting = false,
     previewStarted = false,
-    lastPreviewPackage = "",
+    lastPreviewIdentity = "",
     hasSuccessfulPreview = false;
+  let previewData: PreviewDataPayload = { version: 1 };
+  let previewDataDescription = "loading preview values";
   let previewProblem = "";
   let operationProblem = "";
   let formatting = false;
@@ -545,11 +554,14 @@ function initialise(root: HTMLElement) {
       ? "Out of date — last successful preview remains visible"
       : "Preview is out of date";
     status.dataset.state = "outdated";
-    if (panelState.previewOpen) queue.schedule(serialiseWorkspacePackage(pkg));
+    if (panelState.previewOpen) queue.schedule(previewIdentity());
   }
 
-  const queue = new TemplatePreviewQueue(async (packageJson) => {
-    if (destroyed || !panelState.previewOpen) return;
+  const previewIdentity = () => JSON.stringify({ packageJson: serialiseWorkspacePackage(pkg), previewData });
+
+  const queue = new TemplatePreviewQueue(async (identity) => {
+    if (destroyed || !panelState.previewOpen || identity !== previewIdentity()) return;
+    const { packageJson, previewData: requestedData } = JSON.parse(identity) as { packageJson: string; previewData: PreviewDataPayload };
     try {
       status.textContent = "Rendering unsaved package…";
       status.dataset.state = "rendering";
@@ -557,6 +569,7 @@ function initialise(root: HTMLElement) {
       const data = new FormData();
       data.set("packageJson", packageJson);
       data.set("engine", engine);
+      data.set("previewData", JSON.stringify(requestedData));
       const response = await fetch("/settings/pdf-templates/preview.pdf", {
         method: "POST",
         headers: { Accept: "application/pdf" },
@@ -568,24 +581,24 @@ function initialise(root: HTMLElement) {
       if (
         destroyed ||
         !panelState.previewOpen ||
-        packageJson !== serialiseWorkspacePackage(pkg)
+        identity !== previewIdentity()
       )
         return;
       const displayed = await previewPanel.loadData(bytes, {
-        label: "Unsaved sample preview",
+        label: "Unsaved template preview",
       });
       if (
         destroyed ||
         !panelState.previewOpen ||
-        packageJson !== serialiseWorkspacePackage(pkg)
+        identity !== previewIdentity()
       )
         return;
       if (displayed) {
         previewProblem = "";
         renderProblems();
         hasSuccessfulPreview = true;
-        lastPreviewPackage = packageJson;
-        status.textContent = "Unsaved preview · fictional data";
+        lastPreviewIdentity = identity;
+        status.textContent = `Unsaved preview · ${previewDataDescription}`;
         status.dataset.state = "ready";
       } else {
         status.textContent = hasSuccessfulPreview
@@ -597,13 +610,43 @@ function initialise(root: HTMLElement) {
         renderProblems();
       }
     } catch (error) {
-      if (destroyed || packageJson !== serialiseWorkspacePackage(pkg)) return;
+      if (destroyed || identity !== previewIdentity()) return;
       status.textContent = `${(error as Error).message}${hasSuccessfulPreview ? " The visible preview is out of date." : ""}`;
       status.dataset.state = "error";
       retry.hidden = false;
       previewProblem = (error as Error).message;
       renderProblems();
     }
+  });
+
+  function renderAvailableFields(fields: PreviewField[]) {
+    const target = must<HTMLElement>(root, "[data-dynamic-available-fields]");
+    target.replaceChildren(...fields.map((field) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      const snippet = previewFieldSnippet(field.path, engine);
+      button.dataset.insertField = snippet;
+      button.disabled = !editable || Boolean(mount.hidden);
+      button.innerHTML = `<span><strong>${escapeHtml(field.label)}</strong><code>${escapeHtml(snippet)}</code></span><small>${field.kind} · Insert</small>`;
+      button.onclick = () => {
+        const active = pkg.files.find((file) => file.path === activePath);
+        if (!editable || !active || !isEditableTextFile(active) || mount.hidden) return;
+        view.dispatch(view.state.replaceSelection(snippet));
+        view.focus();
+      };
+      return button;
+    }));
+  }
+  const previewDataEditor = createPreviewDataEditor(previewDataRoot, (next, nextDescription) => {
+    previewData = next;
+    previewDataDescription = nextDescription;
+    markPreviewStale();
+  }, renderAvailableFields, (next, nextDescription) => {
+    previewData = next;
+    previewDataDescription = nextDescription;
+    previewPanel.cancelPending();
+    status.textContent = hasSuccessfulPreview ? "Out of date — preview values changed" : "Preview values changed";
+    status.dataset.state = "outdated";
   });
 
   const storageKey = `pipa-template-workspace:${root.dataset.templateKey}`;
@@ -640,10 +683,10 @@ function initialise(root: HTMLElement) {
     } catch {}
     if (
       openedPreview &&
-      (!previewStarted || lastPreviewPackage !== serialiseWorkspacePackage(pkg))
+      (!previewStarted || lastPreviewIdentity !== previewIdentity())
     ) {
       previewStarted = true;
-      queue.retry(serialiseWorkspacePackage(pkg));
+      queue.retry(previewIdentity());
     }
     requestAnimationFrame(() => previewPanel.refresh());
   }
@@ -664,7 +707,13 @@ function initialise(root: HTMLElement) {
       panelState = clampPanelState(panelState, innerWidth, innerHeight);
       applyPanels();
     });
+  let previewDataOpened = false;
   function switchTool(tab: string) {
+    if (tab === "preview-data" && !previewDataOpened) {
+      previewDataOpened = true;
+      panelState = clampPanelState({ ...panelState, toolsHeight: Math.max(panelState.toolsHeight, 360) }, innerWidth, innerHeight);
+      applyPanels();
+    }
     for (const button of root.querySelectorAll<HTMLElement>("[data-tool-tab]"))
       button.classList.toggle("is-active", button.dataset.toolTab === tab);
     for (const view of root.querySelectorAll<HTMLElement>("[data-tool-view]"))
@@ -872,7 +921,7 @@ function initialise(root: HTMLElement) {
     assetInput.value = "";
   });
   name.oninput = refreshChrome;
-  retry.onclick = () => queue.retry(serialiseWorkspacePackage(pkg));
+  retry.onclick = () => queue.retry(previewIdentity());
   form.onsubmit = () => {
     submitting = true;
     syncInputs();
@@ -901,6 +950,7 @@ function initialise(root: HTMLElement) {
     previewPanel.destroy();
     observer.disconnect();
     formatter.dispose();
+    previewDataEditor.destroy();
     view.destroy();
     document.removeEventListener("pointerdown", clickAway);
     window.removeEventListener("beforeunload", beforeUnload);

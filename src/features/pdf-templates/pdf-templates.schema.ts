@@ -35,6 +35,7 @@ export const htmlTemplatePreviewSchema = z
       .string()
       .max(12 * 1024 * 1024, "Template package is too large")
       .optional(),
+    previewData: z.string().max(100 * 1024, "Preview data is too large").optional(),
   })
   .refine(
     (value) => Boolean(value.source?.trim() || value.packageJson?.trim()),

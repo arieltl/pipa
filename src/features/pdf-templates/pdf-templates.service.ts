@@ -27,6 +27,7 @@ import {
 } from "../../domain/template-package.ts";
 import { classicEditableReactSource } from "../../pdf/classic-react-template-source.ts";
 import { renderReactTemplatePackage } from "../../pdf/react-template-renderer.tsx";
+import type { InvoiceDocumentModel } from "../../pdf/document-model.ts";
 
 export class PdfTemplateNotFoundError extends Error {}
 export class PdfTemplateArchivedError extends Error {}
@@ -104,23 +105,25 @@ export function listTemplateRevisions(templateId: number) {
   return repo.listRevisions(templateId);
 }
 
-function validateHtml(templatePackage: TemplatePackage): TemplatePackage {
+function validateHtml(templatePackage: TemplatePackage, document: InvoiceDocumentModel = sampleInvoiceDocument): TemplatePackage {
   const normalized = validateLiquidHtmlPackage(templatePackage);
-  renderLiquidHtmlPackage(normalized, sampleInvoiceDocument);
+  renderLiquidHtmlPackage(normalized, document);
   return normalized;
 }
 
 function packageForInput(
   source: string,
   templatePackage?: TemplatePackage,
+  document: InvoiceDocumentModel = sampleInvoiceDocument,
 ): TemplatePackage {
-  return validateHtml(templatePackage ?? packageFromSource(source));
+  return validateHtml(templatePackage ?? packageFromSource(source), document);
 }
 
 function packageForEngine(
   engine: "react-pdf" | "gotenberg-html",
   source: string,
   templatePackage?: TemplatePackage,
+  document: InvoiceDocumentModel = sampleInvoiceDocument,
 ): TemplatePackage {
   const normalized = validateTemplatePackage(
     templatePackage ??
@@ -132,7 +135,7 @@ function packageForEngine(
     throw new PdfTemplateImmutableError(
       "The package entry selects a different PDF engine",
     );
-  return engine === "gotenberg-html" ? validateHtml(normalized) : normalized;
+  return engine === "gotenberg-html" ? validateHtml(normalized, document) : normalized;
 }
 
 export function getRevisionPackage(
@@ -293,10 +296,11 @@ export async function renderHtmlPreviewPdf(
   source: string,
   renderer: (request: PdfRenderRequest) => Promise<Buffer> = renderPdf,
   templatePackage?: TemplatePackage,
+  document: InvoiceDocumentModel = sampleInvoiceDocument,
 ): Promise<Buffer> {
   // Validate before testing the renderer or making a network request, so the
   // editor can always surface actionable Liquid errors.
-  const normalized = packageForInput(source, templatePackage);
+  const normalized = packageForInput(source, templatePackage, document);
   const entry = findPackageFile(normalized, normalized.entry)!;
   if (!isGotenbergConfigured()) {
     throw new PdfEngineNotConfiguredError(
@@ -314,7 +318,7 @@ export async function renderHtmlPreviewPdf(
       contentSha256: templatePackageHash(normalized),
       createdAt: nowIso(),
     },
-    document: sampleInvoiceDocument,
+    document,
     traceId: crypto.randomUUID(),
   });
 }
@@ -323,11 +327,12 @@ export async function renderTemplatePreviewPdf(
   engine: "react-pdf" | "gotenberg-html",
   source: string,
   templatePackage?: TemplatePackage,
+  document: InvoiceDocumentModel = sampleInvoiceDocument,
 ): Promise<Buffer> {
-  const normalized = packageForEngine(engine, source, templatePackage);
+  const normalized = packageForEngine(engine, source, templatePackage, document);
   const entry = findPackageFile(normalized, normalized.entry)!;
   if (engine === "gotenberg-html")
-    return renderHtmlPreviewPdf(entry.content, undefined, normalized);
+    return renderHtmlPreviewPdf(entry.content, undefined, normalized, document);
   return renderPdf({
     template: {
       id: 0,
@@ -339,7 +344,7 @@ export async function renderTemplatePreviewPdf(
       contentSha256: templatePackageHash(normalized),
       createdAt: nowIso(),
     },
-    document: sampleInvoiceDocument,
+    document,
     traceId: crypto.randomUUID(),
   });
 }

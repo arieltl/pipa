@@ -43,6 +43,7 @@ import {
   type HtmlTemplateValues,
 } from "./pdf-templates.pages.tsx";
 import { getGotenbergStatus } from "./pdf-engine-status.ts";
+import { parsePreviewData, PreviewDataError, resolvePreviewData } from "./preview-data.ts";
 
 export const pdfTemplatesRoutes = new Hono();
 
@@ -68,6 +69,35 @@ pdfTemplatesRoutes.post("/engine-check", async (c) =>
   ),
 );
 
+/** Preview sources are resolved server-side so a client selection never exposes other client data. */
+pdfTemplatesRoutes.get("/preview-data", (c) => {
+  try {
+    const customerClientId = c.req.query("customerClientId");
+    const data = resolvePreviewData({
+      issuerSource: c.req.query("issuerSource") as "settings" | "sample" | "empty" | undefined,
+      customerSource: c.req.query("customerSource") as "sample" | "empty" | "client" | undefined,
+      ...(customerClientId ? { customerClientId: Number(customerClientId) } : {}),
+      invoiceSource: c.req.query("invoiceSource") as "sample" | "empty" | undefined,
+    });
+    c.header("Cache-Control", "no-store");
+    return c.json(data);
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "Invalid preview data" }, 422);
+  }
+});
+
+/** Full editable config belongs in a request body, never a URL or access log. */
+pdfTemplatesRoutes.post("/preview-data", async (c) => {
+  try {
+    const body = (await c.req.parseBody()) as FormBody;
+    const data = resolvePreviewData(parsePreviewData(formString(body.previewData)));
+    c.header("Cache-Control", "no-store");
+    return c.json(data);
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "Invalid preview data" }, 422);
+  }
+});
+
 // This endpoint intentionally precedes `/:id` routes. It renders editor input
 // transiently and must never create a template, revision, or stored file.
 pdfTemplatesRoutes.post("/preview.pdf", async (c) => {
@@ -89,11 +119,16 @@ pdfTemplatesRoutes.post("/preview.pdf", async (c) => {
     const engine = parsed.data.engine ?? templatePackageEngine(templatePackage);
     if (templatePackageEngine(templatePackage) !== engine)
       return c.text("The package entry selects a different PDF engine", 422);
+    const previewData = parsePreviewData(parsed.data.previewData);
+    const document = previewData
+      ? resolvePreviewData(previewData, false).document
+      : undefined; // Omitting previewData preserves the legacy fictional sample exactly.
     const buffer = await renderTemplatePreviewPdf(
       engine,
       parsed.data.source ??
         findPackageFile(templatePackage, templatePackage.entry)!.content,
       templatePackage,
+      document,
     );
     c.header("Content-Type", "application/pdf");
     c.header("Cache-Control", "no-store");
@@ -107,7 +142,8 @@ pdfTemplatesRoutes.post("/preview.pdf", async (c) => {
     if (
       error instanceof LiquidSourceError ||
       error instanceof TemplatePackageError ||
-      error instanceof ReactTemplateError
+      error instanceof ReactTemplateError ||
+      error instanceof PreviewDataError
     )
       return c.text(error.message, 422);
     if (error instanceof PdfEngineNotConfiguredError)

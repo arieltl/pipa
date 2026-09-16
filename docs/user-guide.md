@@ -48,8 +48,8 @@ local image or supporting text file when the layout needs it. HTML/Liquid uses
 `index.html`, with optional stylesheets and Liquid partials. React PDF uses
 `index.tsx`, with React PDF styles and local component files.
 
-The **bottom** panel contains problems, used fields, available fields, and
-template information and revision history. Click a used-field occurrence to
+The **bottom** panel contains preview data, problems, used fields, available
+fields, and template information and revision history. Click a used-field occurrence to
 open its file and select the reference. The field list helps navigate source;
 the server validates the actual template when rendering or saving it.
 
@@ -65,8 +65,30 @@ formatted. Formatting is manual, not part of saving.
 reference. Use Ctrl+S (Cmd+S on macOS) to save the entire template package as a
 revision, including edits in other tabs.
 
+Use **Preview data** to control the values shown in the PDF. Company data starts
+from your company settings when available. Customer data starts with a fictional
+sample; choose a saved client to use its document-visible fields instead. Each
+source can also be set to **All empty**, or use **Empty all** to test fallback
+text throughout the template. Derived dates and totals follow the invoice
+fields and line items. Numeric amounts stay zero when empty.
+Manually editing a value changes only the preview. Clearing a value is an
+explicit empty override; resetting it restores the selected source's value.
+
+Configured custom fields appear with their labels and template paths. Fields
+hidden from invoices are excluded. You can also add a preview-only custom field
+to test a template before adding that field to a company or client; **Remove**
+discards that preview-only definition. These
+choices and overrides are temporary and reset when you leave or reload the
+editor; they are not saved in template revisions or exports.
+
+For Liquid fallback text, use a default in the source, for example
+`{{ customer.field.tax_id.value | default: "Tax ID not supplied" }}`.
+This also works when the client does not have that field. See the
+[template reference](../pdf_template_author_reference.md) for optional fields
+and the different behavior of numeric zero and empty text.
+
 The PDF.js preview refreshes after a short pause while its panel is open. It
-renders the entire unsaved package with fictional sample invoice data; it never
+renders the entire unsaved package with your selected preview values; it never
 creates a revision or changes an invoice. If rendering fails, the last
 successful preview stays visible with an outdated warning. Editing and saving
 remain available when Gotenberg is unavailable.

@@ -29,6 +29,14 @@ async function preview(sourceValue: string): Promise<Response> {
   });
 }
 
+async function previewWithData(sourceValue: string, previewData: unknown): Promise<Response> {
+  return await app.request("/settings/pdf-templates/preview.pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ source: sourceValue, previewData: JSON.stringify(previewData) }),
+  });
+}
+
 async function previewPackage(templatePackage: unknown): Promise<Response> {
   return await app.request("/settings/pdf-templates/preview.pdf", {
     method: "POST",
@@ -62,6 +70,15 @@ describe("HTML template preview route", () => {
     expect(response.status).toBe(422);
     expect(response.headers.get("content-type")).toContain("text/plain");
     expect(await response.text()).toContain("not_a_field");
+  });
+
+  test("rejects invalid preview data and permits Liquid default for a fully absent optional field", async () => {
+    const invalid = await previewWithData(source("Preview"), { version: 1, customFieldDefinitions: [{ party: "customer", key: "__proto__", label: "Bad", section: "other" }] });
+    expect(invalid.status).toBe(422);
+    const optional = await previewWithData(source("{{ customer.field.absent_optional.value | default: 'Fallback' }}"), { version: 1, customerSource: "empty" });
+    // Source validation succeeds; the configured renderer is the only missing dependency.
+    expect(optional.status).toBe(503);
+    expect(await optional.text()).toContain("not configured");
   });
 
   test("reports an unavailable HTML renderer", async () => {

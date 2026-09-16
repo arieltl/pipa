@@ -4,6 +4,7 @@ import {
   LiquidSourceError,
   renderLiquidPlainText,
   renderLiquidHtml,
+  renderLiquidHtmlPackage,
   validateLiquidHtmlSource,
   validateLiquidSource,
 } from "./liquid-engine.ts";
@@ -37,6 +38,19 @@ describe("plain-text Liquid", () => {
     expect(() => validateLiquidSource("{% include 'secret' %}")).toThrow(
       "not allowed",
     );
+  });
+
+  test("keeps strict unknown-variable errors but lets default handle a missing optional custom field", () => {
+    expect(renderLiquidPlainText("{{ customer.field.optional_custom.value | default: 'Fallback' }}", document)).toBe("Fallback");
+    expect(() => renderLiquidPlainText("{{ customer.field.optional_custom.value }}", document)).toThrow(LiquidSourceError);
+  });
+
+  test("keeps default fallback for absent optional fields in package partials", () => {
+    const rendered = renderLiquidHtmlPackage({ version: 1, entry: "index.html", files: [
+      { path: "index.html", encoding: "utf8", content: "<!doctype html><html><head><title>x</title></head><body>{% render 'partials/customer.liquid', customer: customer %}</body></html>" },
+      { path: "partials/customer.liquid", encoding: "utf8", content: "{{ customer.field.absent_optional.value | default: 'Fallback' }}" },
+    ] }, document);
+    expect(rendered.files.find((file) => file.path === "index.html")?.content).toContain("Fallback");
   });
 
   test("HTML mode requires a complete document and escapes values", () => {
