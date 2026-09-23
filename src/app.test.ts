@@ -82,7 +82,7 @@ describe("PDF template routes", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("Classic HTML");
-    expect(html).toContain("HTML PDF engine");
+    expect(html).toContain("HTML renderer:");
     expect(html).toContain("unconfigured");
     expect(html).toContain("React PDF remains available");
   });

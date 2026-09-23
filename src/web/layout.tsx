@@ -10,6 +10,8 @@ export type LayoutProps = {
   clients?: Client[];
   /** Id of the pinned default client, marked with a star. */
   defaultClientId?: number | null;
+  /** Use the full viewport chrome for focused authoring tools. */
+  templateWorkspace?: boolean;
   children?: Child;
 };
 
@@ -23,6 +25,7 @@ export function Layout({
   currentPath,
   clients = [],
   defaultClientId = null,
+  templateWorkspace = false,
   children,
 }: LayoutProps) {
   const pageTitle = title ? `${title} · Pipa` : "Pipa";
@@ -41,15 +44,11 @@ export function Layout({
         <script src="/public/alpine.min.js" defer></script>
       </head>
       <body
-        class="app-shell min-h-screen bg-base-200 text-base-content antialiased"
+        class={`app-shell min-h-screen bg-base-200 text-base-content antialiased${templateWorkspace ? " has-template-workspace" : ""}`}
         x-data="{ nav: false }"
       >
         <div class="flex min-h-screen">
-          <Sidebar
-            clients={clients}
-            defaultClientId={defaultClientId}
-            currentPath={currentPath}
-          />
+          {templateWorkspace ? null : <Sidebar clients={clients} defaultClientId={defaultClientId} currentPath={currentPath} />}
 
           {/* Mobile overlay backdrop */}
           <div
@@ -76,11 +75,11 @@ export function Layout({
               </a>
             </header>
 
-            <main class="page-enter mx-auto w-full max-w-7xl flex-1 px-4 py-7 sm:py-9">
+            <main class={templateWorkspace ? "page-enter min-h-0 w-full flex-1" : "page-enter mx-auto w-full max-w-7xl flex-1 px-4 py-7 sm:py-9"}>
               {children}
             </main>
 
-            <footer class="border-t border-base-300/70 bg-base-100/45">
+            <footer class={`border-t border-base-300/70 bg-base-100/45${templateWorkspace ? " hidden" : ""}`}>
               <div class="mx-auto max-w-7xl px-4 py-3 text-xs text-base-content/60">
                 Personal Invoicing &amp; Paperwork Assistant
               </div>
@@ -166,23 +165,10 @@ function Sidebar({
           )}
         </ul>
 
-        <div class="mt-5 border-t border-base-300/60 pt-3">
-          <NavLink
-            href="/settings/issuer"
-            label="Issuer settings"
-            currentPath={currentPath}
-          />
-          <NavLink
-            href="/settings/numbering"
-            label="Numbering profiles"
-            currentPath={currentPath}
-          />
-          <NavLink
-            href="/settings/pdf-templates"
-            label="PDF templates"
-            currentPath={currentPath}
-          />
-        </div>
+        <details class="mt-5 border-t border-base-300/60 pt-3" open={currentPath?.startsWith("/settings/")}>
+          <summary class="cursor-pointer list-none rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-base-content/55 hover:bg-base-300/35">Settings <span class="float-right">⌄</span></summary>
+          <div class="mt-1 ml-2 border-l border-base-300/60 pl-1"><NavLink href="/settings/issuer" label="Issuer" currentPath={currentPath} /><NavLink href="/settings/numbering" label="Numbering" currentPath={currentPath} /><NavLink href="/settings/pdf-templates" label="PDF templates" currentPath={currentPath} /></div>
+        </details>
       </nav>
 
       <div class="border-t border-base-300/60 p-3">

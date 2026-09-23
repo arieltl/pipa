@@ -21,6 +21,7 @@ declare module "hono" {
 
 export type RenderOptions = {
   title?: string;
+  templateWorkspace?: boolean;
 };
 
 export function isHtmxRequest(c: Context): boolean {
@@ -41,6 +42,7 @@ export const renderer: MiddlewareHandler = async (c, next) => {
     return c.html(
       <Layout
         title={options?.title}
+        templateWorkspace={options?.templateWorkspace}
         currentPath={c.req.path}
         clients={clients}
         defaultClientId={defaultClientId}

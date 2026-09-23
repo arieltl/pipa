@@ -12,9 +12,6 @@ permissions:
   contents: read
 
 jobs:
-  binaries:
-    uses: ./.github/workflows/binaries.yml
-
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -39,6 +36,3 @@ jobs:
 
       - name: Test
         run: bun run test:unit
-
-      - name: Build executable
-        run: bun build --compile --minify --sourcemap --bytecode --target=bun-linux-x64-baseline src/index.tsx --outfile dist/invoice

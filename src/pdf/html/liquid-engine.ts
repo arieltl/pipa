@@ -1,10 +1,17 @@
 import { Liquid } from "liquidjs";
 import type { InvoiceDocumentModel } from "../document-model.ts";
 import { monthNameEn, monthNamePt } from "../../domain/dates.ts";
+import {
+  findPackageFile,
+  type TemplatePackage,
+  TemplatePackageError,
+  validateTemplatePackage,
+} from "../../domain/template-package.ts";
 
 const MAX_SOURCE_LENGTH = 20_000;
 const MAX_OUTPUT_LENGTH = 100_000;
 const MAX_HTML_OUTPUT_LENGTH = 500_000;
+const MAX_PACKAGE_TEXT_LENGTH = 200 * 1024;
 const FORBIDDEN_TAG = /{%\s*(include|render|layout)\b/i;
 
 const plainTextEngine = new Liquid({
@@ -119,6 +126,48 @@ export function validateLiquidHtmlSource(source: string): void {
   }
 }
 
+function packageLiquidEngine(templatePackage: TemplatePackage): Liquid {
+  return new Liquid({
+    strictFilters: true,
+    strictVariables: true,
+    lenientIf: true,
+    ownPropertyOnly: true,
+    outputEscape: "escape",
+    // `templates` is an in-memory map. Liquid must never resolve a package
+    // partial from the process filesystem or another template revision.
+    templates: Object.fromEntries(
+      templatePackage.files
+        .filter((file) => file.encoding === "utf8")
+        .map((file) => [file.path, file.content]),
+    ),
+    parseLimit: MAX_PACKAGE_TEXT_LENGTH,
+    renderLimit: 1_000,
+    memoryLimit: 10_000_000,
+  });
+}
+
+/** Validate a package whose entry is a complete HTML/Liquid document. */
+export function validateLiquidHtmlPackage(input: TemplatePackage): TemplatePackage {
+  let templatePackage: TemplatePackage;
+  try {
+    templatePackage = validateTemplatePackage(input);
+  } catch (error) {
+    throw new LiquidSourceError(error instanceof Error ? error.message : "Invalid template package");
+  }
+  const entry = findPackageFile(templatePackage, templatePackage.entry);
+  if (!entry || entry.encoding !== "utf8") throw new LiquidSourceError("Template package entry index.html is missing");
+  assertCompleteHtml(entry.content);
+  try {
+    const engine = packageLiquidEngine(templatePackage);
+    for (const file of templatePackage.files) {
+      if (file.encoding === "utf8") engine.parse(file.content, file.path);
+    }
+  } catch (error) {
+    throw new LiquidSourceError(error instanceof Error ? error.message : "Invalid Liquid template package");
+  }
+  return templatePackage;
+}
+
 function liquidScope(document: InvoiceDocumentModel) {
   const legacyField = (key: string) => document.customer.field[key]?.value ?? "";
   const legacyIssuerField = (key: string) => document.issuer.field[key]?.value ?? "";
@@ -205,5 +254,46 @@ export function renderLiquidHtml(
     throw new LiquidSourceError(
       error instanceof Error ? error.message : "Liquid HTML rendering failed",
     );
+  }
+}
+
+/**
+ * Render the entry document from an isolated, in-memory package. Liquid's
+ * `render` tag can resolve only literal paths which package validation already
+ * proved belong to this revision. The returned package has no partial files;
+ * those are authoring inputs, not Chromium resources.
+ */
+export function renderLiquidHtmlPackage(
+  input: TemplatePackage,
+  document: InvoiceDocumentModel,
+): TemplatePackage {
+  const templatePackage = validateLiquidHtmlPackage(input);
+  const entry = findPackageFile(templatePackage, templatePackage.entry)!;
+  try {
+    const output = String(
+      packageLiquidEngine(templatePackage).parseAndRenderSync(entry.content, liquidScope(document), {
+        strictVariables: true,
+        ownPropertyOnly: true,
+        renderLimit: 1_000,
+        memoryLimit: 10_000_000,
+        templateLimit: 10_000,
+      }),
+    );
+    assertCompleteHtml(output);
+    if (output.length > MAX_HTML_OUTPUT_LENGTH) {
+      throw new LiquidSourceError(`Rendered HTML is too long (maximum ${MAX_HTML_OUTPUT_LENGTH.toLocaleString()} characters)`);
+    }
+    // Check the rendered attributes as well. A Liquid value must not turn a
+    // local resource reference into a network or filesystem request.
+    return validateTemplatePackage({
+      ...templatePackage,
+      files: templatePackage.files
+        .filter((file) => !file.path.endsWith(".liquid"))
+        .map((file) => file.path === templatePackage.entry ? { ...file, content: output } : file),
+    });
+  } catch (error) {
+    if (error instanceof LiquidSourceError) throw error;
+    if (error instanceof TemplatePackageError) throw new LiquidSourceError(error.message);
+    throw new LiquidSourceError(error instanceof Error ? error.message : "Liquid HTML rendering failed");
   }
 }

@@ -3,6 +3,8 @@ import type { GotenbergConfig } from "../../config/gotenberg.ts";
 import {
   checkGotenbergHealth,
   convertHtmlToPdf,
+  convertHtmlPackageToPdf,
+  flattenPackageForGotenberg,
   GotenbergConnectionError,
   GotenbergInvalidPdfError,
   GotenbergInvalidResponseError,
@@ -87,6 +89,46 @@ describe("Gotenberg client", () => {
     );
   });
 
+  test("posts every local package asset in the same multipart request", async () => {
+    const names: string[] = [];
+    const server = fakeServer(async (request) => {
+      const form = await request.formData();
+      for (const file of form.getAll("files")) if (file instanceof File) names.push(file.name);
+      return new Response("%PDF-1.7\nexample", { headers: { "content-type": "application/pdf" } });
+    });
+    await convertHtmlPackageToPdf({
+      version: 1,
+      entry: "index.html",
+      files: [
+        { path: "index.html", content: "<!doctype html><html><body>Invoice</body></html>", encoding: "utf8" },
+        { path: "styles/invoice.css", content: "body { color: navy }", encoding: "utf8" },
+        { path: "images/logo.png", content: "iVBORw0KGgoAAAANSUhEUg==", encoding: "base64" },
+      ],
+    }, "trace", {}, configFor(server));
+    expect(names).toHaveLength(3);
+    expect(names[0]).toBe("index.html");
+    expect(names[1]).toMatch(/^[a-f0-9]+-invoice-css\.css$/);
+    expect(names[2]).toMatch(/^[a-f0-9]+-logo-png\.png$/);
+  });
+
+  test("rewrites CSS import paths without dropping media qualifiers", () => {
+    const flattened = flattenPackageForGotenberg({
+      version: 1,
+      entry: "index.html",
+      files: [
+        { path: "index.html", content: "<!doctype html><html><head><link rel=\"stylesheet\" href=\"styles/main.css\"></head><body></body></html>", encoding: "utf8" },
+        { path: "styles/main.css", content: "@import url('print.css') print; @import 'screen.css' screen;", encoding: "utf8" },
+        { path: "styles/print.css", content: "body{color:black}", encoding: "utf8" },
+        { path: "styles/screen.css", content: "body{color:navy}", encoding: "utf8" },
+      ],
+    });
+    const css = flattened.files.find((file) => file.content.includes("@import"))!.content;
+    expect(css).toContain("print");
+    expect(css).toContain("screen");
+    expect(css).not.toContain("print.css");
+    expect(css).not.toContain("screen.css");
+  });
+
   test("maps timeout and connection failures", async () => {
     const slow = fakeServer(
       () => new Promise((resolve) => setTimeout(() => resolve(new Response("late")), 100)),
@@ -151,6 +193,27 @@ const integrationUrl = process.env.GOTENBERG_INTEGRATION_URL?.trim();
         timeoutMs: 15_000,
         maxResponseBytes: 5 * 1024 * 1024,
       },
+    );
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  },
+);
+
+(integrationUrl ? test : test.skip)(
+  "real Gotenberg renders flattened nested CSS assets",
+  async () => {
+    const pdf = await convertHtmlPackageToPdf(
+      {
+        version: 1,
+        entry: "index.html",
+        files: [
+          { path: "index.html", content: "<!doctype html><html><head><link rel=\"stylesheet\" href=\"styles/invoice.css\"></head><body><img class=\"logo\" src=\"images/logo.png\">Invoice</body></html>", encoding: "utf8" },
+          { path: "styles/invoice.css", content: ".logo { background-image: url('../images/logo.png'); width: 10px; height: 10px }", encoding: "utf8" },
+          { path: "images/logo.png", content: "iVBORw0KGgoAAAANSUhEUg==", encoding: "base64" },
+        ],
+      },
+      crypto.randomUUID(),
+      {},
+      { url: integrationUrl!, timeoutMs: 15_000, maxResponseBytes: 5 * 1024 * 1024 },
     );
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
   },

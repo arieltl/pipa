@@ -2,7 +2,7 @@
 
 ## First setup
 
-1. Open **Issuer settings** and enter details for new invoices.
+1. Open **Settings → Issuer** and enter details for new invoices.
 2. Create a client. Client defaults seed future invoices and never rewrite historical ones.
 3. Optionally configure the client's numbering profile, currency, recurring item, PDF template, text generators, and supporting record types.
 
@@ -34,7 +34,85 @@ Clients can define reusable text generators and invoice record types. Generated 
 
 ## Templates and historical data
 
-PDF templates are revisioned. Saving an HTML template creates an immutable revision, and an invoice keeps its selected revision. See the [template reference](../pdf_template_author_reference.md) for Liquid syntax and variables.
+Open **Settings → PDF templates** to create a layout, import a document or ZIP,
+or open an existing template. Duplicate **Classic** for an editable React PDF
+starting point, or **Classic HTML** for an HTML/Liquid layout. Built-ins remain
+read-only; your copy has its own saved revisions. React PDF works without
+Gotenberg.
+
+The desktop workspace keeps files on the left, the source editor in the center,
+and the PDF preview on the right. The header's layout icons toggle the **left**,
+**bottom**, and **right** panels; hover or focus them to see their labels.
+Resize the panels to make room. Open files have separate editor tabs. Add a
+local image or supporting text file when the layout needs it. HTML/Liquid uses
+`index.html`, with optional stylesheets and Liquid partials. React PDF uses
+`index.tsx`, with React PDF styles and local component files.
+
+The **bottom** panel contains preview data, problems, used fields, available
+fields, and template information and revision history. Click a used-field occurrence to
+open its file and select the reference. The field list helps navigate source;
+the server validates the actual template when rendering or saving it.
+
+The **File**, **Edit**, **View**, and **Help** menus expose editing commands and
+workspace controls. Use **Edit → Format document** to format the active HTML,
+Liquid, CSS, JavaScript, or TypeScript file. This expands one-line source into
+readable code without saving it; Undo restores the previous source. Formatting
+errors leave the file untouched. Images and read-only built-ins cannot be
+formatted. Formatting is manual, not part of saving.
+
+**View → Word wrap** changes how long lines appear without changing the file.
+**Help** lists keyboard shortcuts and opens the bundled template author
+reference. Use Ctrl+S (Cmd+S on macOS) to save the entire template package as a
+revision, including edits in other tabs.
+
+Use **Preview data** to control the values shown in the PDF. Expand **Data
+sources** to change where values come from. Company data starts
+from your company settings when available. Customer data starts with a fictional
+sample; choose a saved client to use its document-visible fields instead. Each
+source can also be set to **All empty**, or use **Empty all** to test fallback
+text throughout the template. Derived dates and totals follow the invoice
+fields and line items. Numeric amounts stay zero when empty.
+Manually editing a value changes only the preview. Clearing a value is an
+explicit empty override; resetting it restores the selected source's value.
+
+Use **Field group** to jump to invoice fields, line items, company/customer
+fields, or supporting records. **Add line item** adds a preview row; each row
+has a name, decimal amount, and **Remove** action. Totals recalculate from these
+rows, including when starting with empty data. The application has fixed
+invoice metadata and line-item fields; configurable custom fields belong to
+companies/customers and supporting records attached to invoices.
+
+Configured custom fields appear with their labels and template paths. Custom
+company/customer fields referenced in your template also appear automatically,
+marked **From template**, even when the current sample has no value. Detection
+covers literal field paths, common aliases, and package-local Liquid partials.
+Runtime-computed field keys can still be added manually. If you remove a
+reference after entering a sample value, its **Retained sample** remains
+available until you remove or reset it. Fields hidden from invoices never load
+their saved values into the preview. You can also add a preview-only custom field
+to test a template before adding that field to a company or client; **Remove**
+discards that preview-only definition. These
+choices and overrides are temporary and reset when you leave or reload the
+editor; they are not saved in template revisions or exports.
+
+For Liquid fallback text, use a default in the source, for example
+`{{ customer.field.tax_id.value | default: "Tax ID not supplied" }}`.
+This also works when the client does not have that field. See the
+[template reference](../pdf_template_author_reference.md) for optional fields
+and the different behavior of numeric zero and empty text.
+
+The PDF.js preview refreshes after a short pause while its panel is open. It
+renders the entire unsaved package with your selected preview values; it never
+creates a revision or changes an invoice. If rendering fails, the last
+successful preview stays visible with an outdated warning. Editing and saving
+remain available when Gotenberg is unavailable.
+
+**Save new revision** captures every file in an immutable revision. Invoices
+keep their selected revision. **Export saved revision** downloads an HTML or TSX file for a
+single-file template, or a ZIP for a template with additional files. See the
+[template reference](../pdf_template_author_reference.md) for package rules,
+React PDF and Liquid syntax, and variables.
+Export includes the last saved revision; save first to include unsaved edits.
 
 Invoice party details and template choices are snapshotted so later settings changes do not silently rewrite the document. Archived PDFs remain authoritative; regenerating a PDF does not overwrite an archive.
 

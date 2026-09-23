@@ -42,8 +42,8 @@ is regenerated.
 
 ## PDF engines
 
-React PDF is the built-in renderer and the lightweight default. It runs inside
-the app and needs no additional service. HTML/Liquid templates use the same
+React PDF is the built-in renderer and the lightweight default. It needs no
+additional service. HTML/Liquid templates use the same
 constrained document model but are rendered through an optional private
 Gotenberg service. Gotenberg provides a template-editing path with Chromium,
 at a higher memory/CPU cost.
@@ -52,6 +52,49 @@ The engines are selected explicitly; neither silently substitutes for the other.
 If a selected Gotenberg renderer is unconfigured or unavailable, the user sees the failure and
 the invoice/archive state is left unchanged. Keep Gotenberg on the private
 Compose network because rendered content contains invoice and payment data.
+
+### Template packages
+
+Editable templates use one package model: an `index.html` entry for HTML/Liquid
+or `index.tsx` for React PDF, plus supporting files. A single-file template is
+the same model with only its entry document. Import and export select plain
+text or ZIP automatically; users do not choose an internal template type.
+
+Each saved revision captures the complete package. Existing single-file
+revisions are adapted when read, without rewriting historical rows. Previewing
+an unsaved package does not create a revision or change an invoice. The editor
+and invoice renderer use the same package-resolution rules.
+
+The editor resolves preview values from fictional samples, company settings,
+a selected client, or empty data, with bounded per-field overrides. These values
+exist only for the preview request and never change invoice snapshots, party
+settings, or template revisions. Both PDF engines receive the same resolved
+document model. Internal party fields remain excluded.
+
+Dependencies belong to the package that contains them. Local assets and Liquid
+`render` partials cannot reach other templates, application files, or remote
+resources. See the [template reference](../pdf_template_author_reference.md)
+for the supported file types and authoring rules.
+
+### Editable React PDF
+
+The original compiled Classic renderer remains available for historical
+revisions. Duplicating Classic creates a source package that can be edited and
+saved through the same workspace as HTML templates. New React packages receive
+the renderer-neutral invoice document model.
+
+Template JavaScript runs inside QuickJS compiled to WebAssembly, with execution
+and memory limits. It receives a small React/PDF authoring API and package-local
+modules, without Bun, Node, filesystem, or network capabilities. The application
+does not evaluate template JavaScript in its host runtime. The sandbox produces
+a bounded document tree; the host validates it before constructing React PDF
+elements. Image resources must belong to the template or use supported raster
+data URLs. This is a restricted authoring environment, not a general React app
+or an arbitrary npm dependency loader.
+
+The QuickJS runtime is bundled into the application, including compiled
+executables. It does not require a separate renderer service. HTML/Liquid still
+uses optional Gotenberg, and neither engine falls back to the other.
 
 ## Access boundary
 
