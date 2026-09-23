@@ -41,3 +41,9 @@ Thumbs.db
 
 src/public/pdfjs/
 src/public/pdf-preview.mjs
+src/public/template-editor.mjs
+src/public/template-formatter.worker.mjs
+src/public/template-author-reference.txt
+src/public/template-formatter-LICENSE-prettier.txt
+src/public/template-formatter-LICENSE-liquid.txt
+src/public/template-formatter-THIRD-PARTY-NOTICES.txt

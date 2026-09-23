@@ -22,6 +22,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "scripts", "drizzle.config.ts"],
+  "include": ["src", "scripts", "assets/template-editor.ts", "assets/template-formatter.worker.ts", "drizzle.config.ts"],
   "exclude": ["node_modules"]
 }

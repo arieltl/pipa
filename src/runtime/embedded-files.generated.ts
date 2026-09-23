@@ -317,6 +317,12 @@ import file312 from "../public/pdfjs/wasm/qcms_bg.wasm" with { type: "file" };
 import file313 from "../public/pdfjs/wasm/quickjs-eval.js" with { type: "file" };
 import file314 from "../public/pdfjs/wasm/quickjs-eval.wasm" with { type: "file" };
 import file315 from "../public/pipa-logo.svg" with { type: "file" };
+import file316 from "../public/template-author-reference.txt" with { type: "file" };
+import file317 from "../public/template-editor.mjs" with { type: "file" };
+import file318 from "../public/template-formatter-LICENSE-liquid.txt" with { type: "file" };
+import file319 from "../public/template-formatter-LICENSE-prettier.txt" with { type: "file" };
+import file320 from "../public/template-formatter-THIRD-PARTY-NOTICES.txt" with { type: "file" };
+import file321 from "../public/template-formatter.worker.mjs" with { type: "file" };
 
 export const embeddedRuntimeFiles = [
   { source: file0, target: "drizzle/0000_mushy_the_call.sql" },
@@ -635,4 +641,10 @@ export const embeddedRuntimeFiles = [
   { source: file313, target: "src/public/pdfjs/wasm/quickjs-eval.js" },
   { source: file314, target: "src/public/pdfjs/wasm/quickjs-eval.wasm" },
   { source: file315, target: "src/public/pipa-logo.svg" },
+  { source: file316, target: "src/public/template-author-reference.txt" },
+  { source: file317, target: "src/public/template-editor.mjs" },
+  { source: file318, target: "src/public/template-formatter-LICENSE-liquid.txt" },
+  { source: file319, target: "src/public/template-formatter-LICENSE-prettier.txt" },
+  { source: file320, target: "src/public/template-formatter-THIRD-PARTY-NOTICES.txt" },
+  { source: file321, target: "src/public/template-formatter.worker.mjs" },
 ] as const;

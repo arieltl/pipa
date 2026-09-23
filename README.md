@@ -22,8 +22,7 @@ Pipa is a web app designed for self-hosting, but it is also practical to use on 
 ## Planned features
 
 - Built-in authentication.
-- An improved template text editor.
-- Better invoice and template previews.
+- Further improvements to text-generator authoring and invoice previews.
 - Simpler configuration and onboarding.
 - Easier setup for the optional HTML-to-PDF renderer (Gotenberg).
 - Backup and restore assistance.
@@ -76,7 +75,7 @@ docker compose -f compose.yml up -d
 
 Open <http://localhost:3000>. On first use, configure the issuer, create a client, then create an invoice. See [the user guide](docs/user-guide.md).
 
-`compose.yml` pins `ghcr.io/arieltl/invoice:0.3.1` by default. Set `INVOICE_IMAGE_TAG` to the desired published version when upgrading, and back up your data first. While the repository/image is private, pulling may require GHCR access.
+`compose.yml` pins `ghcr.io/arieltl/invoice:0.4.0` by default. Set `INVOICE_IMAGE_TAG` to the desired published version when upgrading, and back up your data first. While the repository/image is private, pulling may require GHCR access.
 
 The repository is now [arieltl/pipa](https://github.com/arieltl/pipa). The GHCR image name, Compose service `invoice`, and executable `dist/invoice` retain their existing names for deployment compatibility.
 

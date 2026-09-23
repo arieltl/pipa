@@ -53,6 +53,7 @@ Keep Chromium in optional Gotenberg, not inside the application. Avoid adding Pu
 - Keep generated text editable. Templates are helpers, not authority.
 - Client defaults are copied into invoices/items at creation time and must not mutate historical invoices.
 - PDF revisions and invoice presentation snapshots preserve historical documents. A renderer failure must not silently select another engine or advance invoice status.
+- Editable HTML/Liquid and React PDF templates use one package model, including single-file templates. Revisions capture all files; imports/exports choose HTML, TSX, or ZIP automatically. Dependencies stay package-local; React template code runs only in the bounded QuickJS sandbox, never through host eval or Node/Bun imports. See `pdf_template_author_reference.md` for the contract.
 - Text generators already have saved editable invoice fields. A separate generator-to-record linking feature was explicitly declined; do not implement old target/apply proposals.
 
 ## Domain Invariants
@@ -96,7 +97,7 @@ Use scripts from `package.json`; CI uses Bun 1.3.14.
 - Install dependencies: `bun install --frozen-lockfile`.
 - Start dev server: `bun run dev`.
 - Build assets and run tests: `bun run test`. After assets are built, `bun run test:unit` runs the suite alone. Typecheck: `bun run typecheck`.
-- Build the Linux x64 executable locally: `bun run build:binary`. `.github/workflows/binaries.yml` builds and smoke-tests Linux x64/ARM64, Windows x64, and macOS Intel/Apple Silicon for CI and releases. Run `bun run scripts/smoke-binary.ts <executable>` to test a host-compatible binary in isolated temporary storage. Release downloads are not available until a release using this workflow is published.
+- Build the Linux x64 executable locally: `bun run build:binary`. `.github/workflows/binaries.yml` builds and smoke-tests Linux x64/ARM64, Windows x64, and macOS Intel/Apple Silicon through the release workflow. Ordinary branch/PR CI only builds assets, typechecks, and runs tests. Run `bun run scripts/smoke-binary.ts <executable>` to test a host-compatible binary in isolated temporary storage. Release downloads are not available until a release using this workflow is published.
 - Apply migrations: `bun run db:migrate` (also runs at app startup). Generate schema migrations: `bun run db:generate`; review and test them, never substitute `drizzle-kit push`.
 - Demo data: `bun run scripts/seed-demo.ts` uses isolated `data/docs-demo/`. See `docs/demo.md`; never replace the user's database for screenshots. Test isolation is configured in `bunfig.toml` / `test/preload.ts`.
 
