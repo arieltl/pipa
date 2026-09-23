@@ -224,7 +224,36 @@ if (northstarSent) {
   recordInstances.createInvoiceRecord(detail, nfseType.id, { number: "DEMO-NFSE-2026-0091", issue_date: "2026-09-02", verification_code: "DEMO-VERIFY-91", public_url: "https://nfse-demo.example/verify/91" });
 }
 
+// Editable packages demonstrate both engines without changing invoice defaults.
+const templates = await import("../src/features/pdf-templates/pdf-templates.service.ts");
+const { classicEditableReactSource } = await import("../src/pdf/classic-react-template-source.ts");
+const reactStyles = classicEditableReactSource.match(/const styles = StyleSheet\.create\([\s\S]*?\n\}\);/);
+if (!reactStyles) throw new Error("Classic React styles were not found");
+const reactEntry = classicEditableReactSource
+  .replace("Page, StyleSheet, Text", "Page, Text")
+  .replace(reactStyles[0], 'import { styles } from "./styles";');
+const reactTemplate = await templates.createTemplate("Studio invoice — React PDF", "react-pdf", reactEntry, {
+  version: 1, entry: "index.tsx", files: [
+    { path: "index.tsx", encoding: "utf8", content: reactEntry },
+    { path: "styles.ts", encoding: "utf8", content: 'import { StyleSheet } from "@react-pdf/renderer";\n\n' + reactStyles[0].replace("const styles", "export const styles") + "\n" },
+  ],
+});
+const htmlSource = await Bun.file(new URL("../src/pdf/html/templates/classic.liquid", import.meta.url)).text();
+const htmlStyles = htmlSource.match(/<style>([\s\S]*?)<\/style>/);
+const paymentPartial = htmlSource.match(/  \{% if issuer\.sections\.payment\.size > 0 %\}[\s\S]*?\{% endif %\}/);
+if (!htmlStyles || !paymentPartial) throw new Error("Classic HTML styles or payment section were not found");
+const htmlEntry = htmlSource
+  .replace(htmlStyles[0], '<link rel="stylesheet" href="styles.css">')
+  .replace(paymentPartial[0], '  {% render "partials/payment.liquid", issuer: issuer %}');
+const htmlTemplate = templates.createHtmlTemplate("Studio invoice — HTML", htmlEntry, {
+  version: 1, entry: "index.html", files: [
+    { path: "index.html", encoding: "utf8", content: htmlEntry },
+    { path: "styles.css", encoding: "utf8", content: htmlStyles[1]!.trim() + "\n" },
+    { path: "partials/payment.liquid", encoding: "utf8", content: paymentPartial[0] + "\n" },
+  ],
+});
+
 db.run("CREATE TABLE IF NOT EXISTS demo_seed_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
 db.run("INSERT OR REPLACE INTO demo_seed_meta (key, value) VALUES ('fixture', 'docs-demo-v1')");
 
-console.log(JSON.stringify({ status: "seeded", dataDir: demoDataDir, dbPath: demoDbPath, filesDir: demoFilesDir, invoices: created }, null, 2));
+console.log(JSON.stringify({ status: "seeded", dataDir: demoDataDir, dbPath: demoDbPath, filesDir: demoFilesDir, invoices: created, templates: { react: reactTemplate.id, html: htmlTemplate.id } }, null, 2));

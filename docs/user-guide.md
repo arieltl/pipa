@@ -34,11 +34,24 @@ Clients can define reusable text generators and invoice record types. Generated 
 
 ## Templates and historical data
 
-Open **Settings → PDF templates** to create a layout, import a document or ZIP,
+### Choose a starting point
+
+Open **PDF templates** in the sidebar to create a layout, import a document or ZIP,
 or open an existing template. Duplicate **Classic** for an editable React PDF
 starting point, or **Classic HTML** for an HTML/Liquid layout. Built-ins remain
 read-only; your copy has its own saved revisions. React PDF works without
 Gotenberg.
+
+To try the editor:
+
+1. Open **Classic** or **Classic HTML**, then choose **Duplicate to edit**.
+2. Click the template name or its pencil icon to rename your copy.
+3. Edit a file. Use **Edit → Format document** if imported code is on one line.
+4. Open **Preview data** in the bottom panel and choose sample data or a saved client.
+5. Review the PDF, then **Save new revision**. Assign the template in client settings
+   or to a draft invoice when you are ready to use it.
+
+### Work in the editor
 
 The desktop workspace keeps files on the left, the source editor in the center,
 and the PDF preview on the right. The header's layout icons toggle the **left**,
@@ -47,6 +60,9 @@ Resize the panels to make room. Open files have separate editor tabs. Add a
 local image or supporting text file when the layout needs it. HTML/Liquid uses
 `index.html`, with optional stylesheets and Liquid partials. React PDF uses
 `index.tsx`, with React PDF styles and local component files.
+
+The back arrow before **File** returns to the library. The engine and save-status
+indicators sit beside the panel toggles.
 
 The **bottom** panel contains preview data, problems, used fields, available
 fields, and template information and revision history. Click a used-field occurrence to
@@ -64,6 +80,8 @@ formatted. Formatting is manual, not part of saving.
 **Help** lists keyboard shortcuts and opens the bundled template author
 reference. Use Ctrl+S (Cmd+S on macOS) to save the entire template package as a
 revision, including edits in other tabs.
+
+### Set preview values
 
 Use **Preview data** to control the values shown in the PDF. Expand **Data
 sources** to change where values come from. Company data starts
@@ -107,12 +125,21 @@ creates a revision or changes an invoice. If rendering fails, the last
 successful preview stays visible with an outdated warning. Editing and saving
 remain available when Gotenberg is unavailable.
 
+### Save, import, and export
+
+Import a single HTML/TSX source file or a ZIP from the template library. The file
+contents and package entry determine the engine; no separate package mode is
+required.
+
 **Save new revision** captures every file in an immutable revision. Invoices
 keep their selected revision. **Export saved revision** downloads an HTML or TSX file for a
 single-file template, or a ZIP for a template with additional files. See the
 [template reference](../pdf_template_author_reference.md) for package rules,
 React PDF and Liquid syntax, and variables.
 Export includes the last saved revision; save first to include unsaved edits.
+
+See the [template workspace gallery](demo.md#template-library) for both engines
+and the preview-data controls.
 
 Invoice party details and template choices are snapshotted so later settings changes do not silently rewrite the document. Archived PDFs remain authoritative; regenerating a PDF does not overwrite an archive.
 
