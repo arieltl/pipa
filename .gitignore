@@ -47,3 +47,6 @@ src/public/template-author-reference.txt
 src/public/template-formatter-LICENSE-prettier.txt
 src/public/template-formatter-LICENSE-liquid.txt
 src/public/template-formatter-THIRD-PARTY-NOTICES.txt
+
+# Python release-validation helpers
+__pycache__/
