@@ -32,8 +32,8 @@ override, include `-f compose.gotenberg.yml` in the same commands.
 
 ## Option 2: standalone executable
 
-The release workflow builds the following downloads, with runtime assets and
-SQLite embedded. These downloads are included starting with `v0.2.0`;
+The following downloads include runtime assets and SQLite. Each archive is
+built and smoke-tested before release; publishing uses the tested files. These downloads are included starting with `v0.2.0`;
 older releases do not include them.
 
 | Your computer | Download |

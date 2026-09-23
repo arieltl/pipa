@@ -13,6 +13,8 @@ Pipa is a web app designed for self-hosting, but it is also practical to use on 
 ## Features
 
 - Create, preview, and download invoice PDFs with customizable templates.
+- Edit React PDF or HTML/Liquid layouts in a desktop workspace with live previews,
+  multiple files, formatting, and editable preview data.
 - Reuse client details, currencies, numbering rules, and recurring line items.
 - Generate editable emails, messages, and bookkeeping notes from invoice information.
 - Keep supporting records, references, and attachments beside each invoice.
@@ -42,9 +44,7 @@ Some screens include **NFS-e**, Brazil's electronic service tax invoice, because
 
 ## A look inside
 
-Client workspaces and recent invoicing activity. All pictured data is fictional.
-
-![Overview with fictional clients and invoices](docs/images/overview.png)
+All pictured data is fictional.
 
 A compact invoice overview with generated text, supporting field values, and document actions:
 
@@ -54,11 +54,15 @@ Preview the saved PDF in the app, with selectable text, zoom, page controls, and
 
 ![In-page PDF preview of a fictional invoice](docs/images/invoice-preview.png)
 
+Customize a template with separate source and style files, field navigation, and a live PDF preview:
+
+![React PDF template editor with separate styles and a live fictional invoice preview](docs/images/template-react-editor.png)
+
 An actual generated invoice PDF, shown here as an image:
 
 <img src="docs/images/invoice-pdf.png" alt="Generated USD invoice PDF with fictional client details, line items, total, and payment information" width="640">
 
-See the [screenshot gallery and demo setup](docs/demo.md) for the continuous invoice editor, client configuration, and images rendered from actual generated invoice PDFs.
+See the [screenshot gallery and demo setup](docs/demo.md) for the template library, HTML/Liquid editor, preview-data controls, invoice editor, and generated invoice PDFs.
 
 ## Install with Docker Compose (GHCR)
 
