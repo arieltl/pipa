@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { posix as path } from "node:path";
 import { Unzip, UnzipInflate, strFromU8, strToU8, zipSync } from "fflate";
 import { parse } from "parse5";
-import * as csstree from "css-tree";
+import csstree from "./css-tree";
 
 export const TEMPLATE_PACKAGE_ENTRY = "index.html" as const;
 export const REACT_TEMPLATE_PACKAGE_ENTRY = "index.tsx" as const;

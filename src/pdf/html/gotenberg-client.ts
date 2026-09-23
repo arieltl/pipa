@@ -9,7 +9,7 @@ import {
 import { createHash } from "node:crypto";
 import { posix as path } from "node:path";
 import { parse, serialize } from "parse5";
-import * as csstree from "css-tree";
+import csstree from "../../domain/css-tree";
 
 class GotenbergError extends Error {
   constructor(message: string) {
