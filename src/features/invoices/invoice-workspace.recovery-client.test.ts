@@ -298,7 +298,9 @@ describe("invoice workspace browser recovery coordinator", () => {
     state.proposal.invoice.notes = "composed text";
     state.persistIdentity = () => true;
     let sends = 0;
-    state.sendFrozen = async () => { sends++; };
+    let notifySent!: () => void;
+    const sent = new Promise<void>((resolve) => { notifySent = resolve; });
+    state.sendFrozen = async () => { sends++; notifySent(); };
 
     state.compositionStart();
     await state.save();
@@ -307,7 +309,7 @@ describe("invoice workspace browser recovery coordinator", () => {
     expect(state.frozen).toBeNull();
 
     state.compositionEnd();
-    await new Promise((done) => setTimeout(done, 0));
+    await sent;
     expect(sends).toBe(1);
     expect(state.frozen.changes).toEqual({ setNotes: "composed text" });
   });
