@@ -4,142 +4,108 @@ on:
   push:
     tags:
       - "v*.*.*"
-  workflow_dispatch:
+
+# Serialize publishing so stable channel updates cannot overlap.
+concurrency:
+  group: pipa-release
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 env:
   REGISTRY: ghcr.io
-  # Keep the existing package when the repository is renamed to Pipa.
+  # Preserve the deployment-compatible package name.
   IMAGE_NAME: ${{ github.repository_owner }}/invoice
 
 jobs:
-  binaries:
-    uses: ./.github/workflows/binaries.yml
-
-  test:
-    name: Test
+  publish:
+    name: Publish validated release
     runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build runtime assets
-        run: bun run build
-
-      - name: Typecheck
-        run: bun run typecheck
-
-      - name: Test
-        run: bun run test:unit
-
-      - name: Build executable
-        run: bun build --compile --minify --sourcemap --bytecode --target=bun-linux-x64-baseline src/index.tsx --outfile dist/invoice
-
-  docker:
-    name: Build and Push Image
-    runs-on: ubuntu-latest
-    needs: [test, binaries]
+    timeout-minutes: 20
     permissions:
-      contents: read
+      contents: write
+      actions: read
       packages: write
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Login to GHCR
-        uses: docker/login-action@v4
+      - uses: actions/checkout@v5
+      - name: Check version and find successful main validation
+        id: validation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')
+          test "$GITHUB_REF_NAME" = "v$version"
+          test -s "docs/releases/$version.md"
+          commit=$(git rev-parse HEAD)
+          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml \
+            --branch main --event push --commit "$commit" --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [[ -z "$run_id" ]]; then
+            echo "::error::No successful main CI for $commit. Wait for full main validation, then rerun this release workflow."
+            exit 1
+          fi
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+      - name: Download exact tested outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: validated-release
+          path: release-bundle
+          run-id: ${{ steps.validation.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify commit, completeness, and checksums
+        env:
+          SOURCE_SHA: ${{ steps.validation.outputs.commit }}
+        run: python3 scripts/release-bundle.py verify release-bundle "$SOURCE_SHA"
+      - name: Load tested image
+        run: docker load -i release-bundle/docker-image.tar
+      - uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          # Docker metadata-action otherwise infers a `latest` tag from semver
-          # input. Stable `latest` is added only by the explicit rule below.
           flavor: |
             latest=false
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            # Pre-release tags (for example v0.2.0-beta.1) must never move
-            # the stable deployment channel.
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
-            type=sha,enable=${{ github.event_name == 'workflow_dispatch' }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  release:
-    name: Create GitHub Release
-    runs-on: ubuntu-latest
-    needs: [docker, binaries]
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout release notes
-        uses: actions/checkout@v5
-      - name: Download tested binaries
-        uses: actions/download-artifact@v4
-        with:
-          pattern: binary-*
-          merge-multiple: true
-          path: downloads
-      - name: Generate checksums and verify complete download set
-        working-directory: downloads
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+      - name: Push tested image without rebuilding
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          expected=(pipa-linux-x64.tar.gz pipa-linux-arm64.tar.gz pipa-windows-x64.zip pipa-macos-x64.tar.gz pipa-macos-arm64.tar.gz)
-          for archive in "${expected[@]}"; do test -s "$archive"; done
-          sha256sum "${expected[@]}" > SHA256SUMS.txt
-          sha256sum --check SHA256SUMS.txt
-      - name: Create GitHub release
+          set -euo pipefail
+          test -n "$IMAGE_TAGS"
+          while IFS= read -r tag; do
+            docker tag pipa-validated:ci "$tag"
+            docker push "$tag"
+          done <<< "$IMAGE_TAGS"
+      - name: Publish complete GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           PRERELEASE: ${{ contains(github.ref_name, '-') }}
         run: |
-          args=(
-            "${GITHUB_REF_NAME}"
-            --repo "${GITHUB_REPOSITORY}"
-            --title "${GITHUB_REF_NAME}"
-            --generate-notes
-            --verify-tag
-          )
-          if [[ "${PRERELEASE}" == "true" ]]; then
-            args+=(--prerelease)
-          fi
-          notes_file="docs/releases/${GITHUB_REF_NAME#v}.md"
-          if [[ -f "$notes_file" ]]; then
-            args+=(--notes-file "$notes_file")
+          set -euo pipefail
+          # A draft makes uploads retryable without exposing an incomplete release.
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft > /tmp/release-state.json; then
+            if [[ $(python3 -c 'import json; print(json.load(open("/tmp/release-state.json"))["isDraft"])') == False ]]; then
+              echo "Release already published; nothing to upload."
+              exit 0
+            fi
           else
-            args+=(--notes "Docker image: \`${IMAGE}:${GITHUB_REF_NAME#v}\`")
+            args=("$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME"
+              --draft --verify-tag --generate-notes --notes-file "docs/releases/${GITHUB_REF_NAME#v}.md")
+            if [[ "$PRERELEASE" == true ]]; then args+=(--prerelease); fi
+            gh release create "${args[@]}"
           fi
-          gh release create "${args[@]}" downloads/*
+          gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber \
+            release-bundle/pipa-*.tar.gz release-bundle/pipa-*.zip \
+            release-bundle/SHA256SUMS.txt release-bundle/release-manifest.json
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false

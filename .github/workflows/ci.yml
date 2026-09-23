@@ -35,4 +35,68 @@ jobs:
         run: bun run typecheck
 
       - name: Test
-        run: bun run test:unit
+        run: |
+          bun run test:unit
+          python3 -m unittest discover -s scripts -p test_release_bundle.py
+
+  binaries:
+    if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
+    needs: test
+    uses: ./.github/workflows/binaries.yml
+
+  docker:
+    name: Docker smoke
+    if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: pipa-validated:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test production image
+        run: bash scripts/smoke-docker.sh pipa-validated:ci
+      - name: Save tested image
+        run: docker save pipa-validated:ci -o docker-image.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tested-docker-image
+          path: docker-image.tar
+          compression-level: 0
+          retention-days: 7
+
+  release-ready:
+    name: Release ready
+    needs: [binaries, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          merge-multiple: true
+          path: release-bundle
+      - uses: actions/download-artifact@v4
+        with:
+          name: tested-docker-image
+          path: release-bundle
+      - name: Seal and verify tested outputs
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          python3 scripts/release-bundle.py seal release-bundle "$SOURCE_SHA"
+          python3 scripts/release-bundle.py verify release-bundle "$SOURCE_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: validated-release
+          path: release-bundle/
+          compression-level: 0
+          retention-days: 30
+          if-no-files-found: error

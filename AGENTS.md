@@ -97,7 +97,7 @@ Use scripts from `package.json`; CI uses Bun 1.3.14.
 - Install dependencies: `bun install --frozen-lockfile`.
 - Start dev server: `bun run dev`.
 - Build assets and run tests: `bun run test`. After assets are built, `bun run test:unit` runs the suite alone. Typecheck: `bun run typecheck`.
-- Build the Linux x64 executable locally: `bun run build:binary`. `.github/workflows/binaries.yml` builds and smoke-tests Linux x64/ARM64, Windows x64, and macOS Intel/Apple Silicon through the release workflow. Ordinary branch/PR CI only builds assets, typechecks, and runs tests. Run `bun run scripts/smoke-binary.ts <executable>` to test a host-compatible binary in isolated temporary storage. Release downloads are not available until a release using this workflow is published.
+- Build the Linux x64 executable locally: `bun run build:binary`. CI builds and smoke-tests Linux x64/ARM64, Windows x64, macOS Intel/Apple Silicon, and the production Docker image on main pushes and PRs targeting main. Other branches/PRs only build assets, typecheck, and run tests. Release tags promote the exact validated main outputs without rebuilding; see CONTRIBUTING.md. Run `bun run scripts/smoke-binary.ts <executable>` to test a host-compatible binary in isolated temporary storage. Release downloads are not available until a release using this workflow is published.
 - Apply migrations: `bun run db:migrate` (also runs at app startup). Generate schema migrations: `bun run db:generate`; review and test them, never substitute `drizzle-kit push`.
 - Demo data: `bun run scripts/seed-demo.ts` uses isolated `data/docs-demo/`. See `docs/demo.md`; never replace the user's database for screenshots. Test isolation is configured in `bunfig.toml` / `test/preload.ts`.
 
